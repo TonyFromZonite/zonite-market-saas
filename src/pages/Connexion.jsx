@@ -111,7 +111,7 @@ export default function Connexion() {
           user_id: user.id,
           email: seller.email,
           nom_complet: seller.nom_complet,
-          role: seller.role,
+          role: "vendeur",
           seller_status: seller.seller_status,
           statut_kyc: seller.statut_kyc,
           telephone: seller.telephone,
