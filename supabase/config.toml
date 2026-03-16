@@ -1,1 +1,7 @@
 project_id = "jpopxydfttoseckcakqp"
+
+[functions.loginUser]
+verify_jwt = false
+
+[functions.hash-password]
+verify_jwt = false
