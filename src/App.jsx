@@ -77,14 +77,8 @@ const AuthenticatedApp = () => {
           </LayoutWrapper>
         }
       />
-      <Route
-        path="/AuditComplet"
-        element={
-          <LayoutWrapper currentPageName="AuditComplet">
-            <AuditComplet />
-          </LayoutWrapper>
-        }
-      />
+
+
       <Route
         path="/ResoumissionKYC"
         element={
