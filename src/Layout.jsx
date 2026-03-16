@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { getVendeurSession } from "@/components/useSessionGuard";
@@ -43,11 +43,11 @@ export default function Layout({ children, currentPageName }) {
     if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName)) return;
     const chargerBadges = async () => {
       try {
-        const [cmdAttente, kycAttente] = await Promise.all([
-          base44.entities.CommandeVendeur.filter({ statut: "en_attente_validation_admin" }),
-          base44.entities.Seller.filter({ statut_kyc: "en_attente" }),
+        const [{ count: cmdCount }, { count: kycCount }] = await Promise.all([
+          supabase.from("commandes_vendeur").select("id", { count: "exact", head: true }).eq("statut", "en_attente_validation_admin"),
+          supabase.from("sellers").select("id", { count: "exact", head: true }).eq("statut_kyc", "en_attente").neq("role", "admin"),
         ]);
-        setBadges({ commandes: cmdAttente.length, kyc: kycAttente.length });
+        setBadges({ commandes: cmdCount || 0, kyc: kycCount || 0 });
       } catch (_) {}
     };
     chargerBadges();
@@ -58,56 +58,18 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
-    <div style={{
-      display: "flex",
-      width: "100vw",
-      height: "100vh",
-      overflow: "hidden",
-      background: "#f8fafc",
-      position: "fixed",
-      top: 0,
-      left: 0,
-    }}>
-      {/* Sidebar desktop — toujours rendue, jamais overlay */}
+    <div style={{ display: "flex", width: "100vw", height: "100vh", overflow: "hidden", background: "#f8fafc", position: "fixed", top: 0, left: 0 }}>
       {isDesktop && (
         <div style={{ width: 256, minWidth: 256, height: "100vh", flexShrink: 0, overflow: "hidden" }}>
           <AdminSidebar isOpen={true} onClose={() => {}} badges={badges} isDesktop={true} />
         </div>
       )}
-
-      {/* Sidebar mobile — overlay */}
       {!isDesktop && (
-        <AdminSidebar
-          isOpen={sidebarOuverte}
-          onClose={() => setSidebarOuverte(false)}
-          badges={badges}
-          isDesktop={false}
-        />
+        <AdminSidebar isOpen={sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={false} />
       )}
-
-      {/* Contenu principal */}
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minWidth: 0,
-        height: "100vh",
-        overflow: "hidden",
-      }}>
-        {/* Header */}
-        <AdminHeader
-          currentPageName={currentPageName}
-          onMenuOpen={() => setSidebarOuverte(true)}
-          showBurger={!isDesktop}
-        />
-        {/* Contenu scrollable */}
-        <main style={{
-          flex: 1,
-          overflowY: "auto",
-          overflowX: "hidden",
-          padding: isDesktop ? "24px" : "12px",
-          boxSizing: "border-box",
-        }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, height: "100vh", overflow: "hidden" }}>
+        <AdminHeader currentPageName={currentPageName} onMenuOpen={() => setSidebarOuverte(true)} showBurger={!isDesktop} />
+        <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: isDesktop ? "24px" : "12px", boxSizing: "border-box" }}>
           {children}
         </main>
       </div>
