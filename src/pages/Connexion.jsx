@@ -9,7 +9,7 @@ import { LOGO_URL as LOGO } from "@/components/constants";
 const MESSAGES_MOTIVATION = [
   "Chaque vente est une victoire. Allons-y ! 🚀",
   "Votre succès commence ici. Bienvenue ! 💪",
-  "Ensemble, construisons quelque chose de grand. ✨",
+  "Chaque vente est une victoire , allons-y 🚀",
   "Les champions se connectent tôt. C'est votre heure ! 🏆",
   "Prêt à performer aujourd'hui ? On vous attend ! 🔥",
 ];
