@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import GestionZones from './pages/GestionZones';
 import GestionCoursiers from './pages/GestionCoursiers';
-import AuditComplet from './pages/AuditComplet';
+
 import ResoumissionKYC from './pages/ResoumissionKYC';
 
 const { Pages, Layout, mainPage } = pagesConfig;
