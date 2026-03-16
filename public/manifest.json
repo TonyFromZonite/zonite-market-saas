@@ -1,0 +1,17 @@
+{
+  "name": "ZONITE",
+  "short_name": "ZONITE",
+  "description": "Plateforme de gestion vendeurs ZONITE",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1f4e",
+  "theme_color": "#f5a623",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
