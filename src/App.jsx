@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import GestionZones from './pages/GestionZones';
 import GestionCoursiers from './pages/GestionCoursiers';
-import AuditComplet from './pages/AuditComplet';
+
 import ResoumissionKYC from './pages/ResoumissionKYC';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -77,14 +77,8 @@ const AuthenticatedApp = () => {
           </LayoutWrapper>
         }
       />
-      <Route
-        path="/AuditComplet"
-        element={
-          <LayoutWrapper currentPageName="AuditComplet">
-            <AuditComplet />
-          </LayoutWrapper>
-        }
-      />
+
+
       <Route
         path="/ResoumissionKYC"
         element={
