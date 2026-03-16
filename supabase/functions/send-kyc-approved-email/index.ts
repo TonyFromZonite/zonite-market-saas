@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Resend } from "npm:resend";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -10,10 +11,19 @@ serve(async (req) => {
 
   try {
     const { email, nom } = await req.json();
-    
     console.log(`[send-kyc-approved-email] Sending to ${email}`);
 
-    const emailContent = {
+    const resendKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendKey) {
+      console.warn('[send-kyc-approved-email] RESEND_API_KEY not set, skipping send');
+      return new Response(JSON.stringify({ success: true, skipped: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const resend = new Resend(resendKey);
+    const { data, error } = await resend.emails.send({
+      from: 'ZONITE <noreply@zonite.com>',
       to: email,
       subject: "🎉 Votre compte ZONITE est activé !",
       html: `
@@ -36,11 +46,18 @@ serve(async (req) => {
           </div>
         </div>
       `,
-    };
+    });
 
-    console.log('[send-kyc-approved-email] Email prepared for:', email);
+    if (error) {
+      console.error('[send-kyc-approved-email] Resend error:', error);
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log('[send-kyc-approved-email] Sent successfully:', data);
+    return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

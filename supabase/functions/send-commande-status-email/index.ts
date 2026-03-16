@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Resend } from "npm:resend";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const STATUTS_FR = {
+const STATUTS_FR: Record<string, string> = {
   en_attente_validation_admin: "En attente de validation",
   validee: "Validée par l'admin",
   en_livraison: "En cours de livraison",
@@ -19,7 +20,6 @@ serve(async (req) => {
 
   try {
     const { email, nom, statut, reference } = await req.json();
-    
     console.log(`[send-commande-status-email] Sending to ${email}, ref: ${reference}, statut: ${statut}`);
 
     const statutLabel = STATUTS_FR[statut] || statut;
@@ -27,7 +27,17 @@ serve(async (req) => {
     const bgColor = isSuccess ? '#ECFDF5' : '#FEF3C7';
     const textColor = isSuccess ? '#065F46' : '#92400E';
 
-    const emailContent = {
+    const resendKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendKey) {
+      console.warn('[send-commande-status-email] RESEND_API_KEY not set, skipping send');
+      return new Response(JSON.stringify({ success: true, skipped: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const resend = new Resend(resendKey);
+    const { data, error } = await resend.emails.send({
+      from: 'ZONITE <noreply@zonite.com>',
       to: email,
       subject: `ZONITE - Commande ${reference} : ${statutLabel}`,
       html: `
@@ -46,11 +56,18 @@ serve(async (req) => {
           </div>
         </div>
       `,
-    };
+    });
 
-    console.log('[send-commande-status-email] Email prepared for:', email);
+    if (error) {
+      console.error('[send-commande-status-email] Resend error:', error);
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log('[send-commande-status-email] Sent successfully:', data);
+    return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
