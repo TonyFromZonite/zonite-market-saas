@@ -1,7 +1,4 @@
 project_id = "jpopxydfttoseckcakqp"
 
-[functions.loginUser]
-verify_jwt = false
-
-[functions.hash-password]
+[functions.seed-admin]
 verify_jwt = false

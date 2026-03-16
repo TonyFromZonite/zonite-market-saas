@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +24,8 @@ const TikTokIcon = ({ size = 20 }) => (
 const MODE_VENDEUR = "vendeur";
 const MODE_ADMIN = "admin";
 
-
-
 export default function Connexion() {
   const [mode, setMode] = useState(MODE_VENDEUR);
-
-  // Champs communs
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [mdpVisible, setMdpVisible] = useState(false);
@@ -55,84 +52,102 @@ export default function Connexion() {
     chargerConfigs();
   }, []);
 
-  // Connexion vendeur (email + mot de passe via fonction backend sécurisée)
-  const connexionVendeur = async (e) => {
+  // === SUPABASE AUTH LOGIN ===
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !motDePasse) { setErreur("Veuillez remplir tous les champs."); return; }
     setChargement(true);
     setErreur("");
+
     try {
-      const response = await base44.functions.invoke('loginUser', {
-        email,
+      // Step 1: Authenticate with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
         password: motDePasse,
-        userType: 'vendeur'
       });
-      if (response.data.success) {
-        console.log("✅ Login success:", response.data.session);
-        sessionStorage.setItem("vendeur_session", JSON.stringify(response.data.session));
-        window.location.href = createPageUrl("EspaceVendeur");
-      } else if (response.data.pendingApproval) {
-        window.location.href = createPageUrl("EnAttenteValidation");
+
+      if (authError) {
+        setErreur("Email ou mot de passe incorrect.");
+        return;
+      }
+
+      const user = authData.user;
+      const role = user.user_metadata?.role || "user";
+
+      // Step 2: Get seller profile
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      // Step 3: Route based on role
+      if (mode === MODE_ADMIN) {
+        if (role !== "admin" && role !== "sous_admin") {
+          setErreur("Ce compte n'a pas les droits administrateur.");
+          return;
+        }
+        sessionStorage.setItem("admin_session", JSON.stringify({
+          id: seller?.id || user.id,
+          user_id: user.id,
+          email: user.email,
+          role: role,
+          nom_complet: user.user_metadata?.full_name || seller?.nom_complet || "",
+          permissions: seller?.role === "sous_admin" ? [] : undefined,
+        }));
+        window.location.href = createPageUrl("TableauDeBord");
       } else {
-        setErreur(response.data.error || "Identifiants incorrects.");
+        // Vendeur login
+        if (!seller) {
+          setErreur("Profil vendeur introuvable. Veuillez vous inscrire.");
+          return;
+        }
+        if (["pending_verification", "pending_kyc"].includes(seller.seller_status)) {
+          window.location.href = createPageUrl("EnAttenteValidation");
+          return;
+        }
+        sessionStorage.setItem("vendeur_session", JSON.stringify({
+          id: seller.id,
+          user_id: user.id,
+          email: seller.email,
+          nom_complet: seller.nom_complet,
+          role: seller.role,
+          seller_status: seller.seller_status,
+          statut_kyc: seller.statut_kyc,
+          telephone: seller.telephone,
+          catalogue_debloque: seller.catalogue_debloque,
+          training_completed: seller.training_completed,
+          solde_commission: seller.solde_commission,
+        }));
+        window.location.href = createPageUrl("EspaceVendeur");
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || "Erreur lors de la connexion. Réessayez.";
-      setErreur(errorMsg);
+      console.error("Login error:", err);
+      setErreur("Une erreur est survenue. Réessayez.");
+    } finally {
+      setChargement(false);
     }
-    setChargement(false);
   };
 
-  // Mot de passe oublié vendeur : appelle fonction backend sécurisée
+  // Mot de passe oublié
   const mdpOublie = async (e) => {
     e.preventDefault();
     if (!emailOublie) { setErreur("Entrez votre email."); return; }
     setChargementOublie(true);
     setErreur("");
     try {
-      const response = await base44.functions.invoke('resetPassword', {
-        email: emailOublie
+      const { error } = await supabase.auth.resetPasswordForEmail(emailOublie.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/ResetPassword`,
       });
-      if (response.data.success) {
-        setMdpOublieSucces(true);
-      } else {
+      if (error) {
         setErreur("Erreur lors de l'envoi. Réessayez.");
+      } else {
+        setMdpOublieSucces(true);
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || "Erreur lors de l'envoi. Réessayez.";
-      setErreur(errorMsg);
+      setErreur("Erreur lors de l'envoi. Réessayez.");
     }
     setChargementOublie(false);
-  };
-
-  // Connexion sous-admin et admin via fonction backend sécurisée
-  const connexionSousAdmin = async (e) => {
-    e.preventDefault();
-    if (!email || !motDePasse) { setErreur("Veuillez remplir tous les champs."); return; }
-    setChargement(true);
-    setErreur("");
-    try {
-      const response = await base44.functions.invoke('loginUser', {
-        email,
-        password: motDePasse,
-        userType: 'admin'
-      });
-      if (response.data.success) {
-        if (response.data.session.role === 'admin') {
-          sessionStorage.setItem("admin_session", JSON.stringify(response.data.session));
-          window.location.href = createPageUrl("TableauDeBord");
-        } else if (response.data.session.role === 'sous_admin') {
-          sessionStorage.setItem("sous_admin", JSON.stringify(response.data.session));
-          window.location.href = createPageUrl("EspaceSousAdmin");
-        }
-      } else {
-        setErreur("Identifiants incorrects ou compte suspendu.");
-      }
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || "Erreur lors de la connexion. Réessayez.";
-      setErreur(errorMsg);
-    }
-    setChargement(false);
   };
 
   const lienFacebook = configs["lien_facebook"] || "https://facebook.com";
@@ -188,12 +203,16 @@ export default function Connexion() {
       <div className="w-full max-w-sm relative z-10 flex-1 flex flex-col justify-center px-3">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-5 md:p-6 border border-white/20 shadow-2xl">
 
-          {/* MODE VENDEUR */}
-          {mode === MODE_VENDEUR && !modeMdpOublie && (
+          {/* LOGIN FORM (both modes) */}
+          {!modeMdpOublie && (
             <div>
-              <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">Connexion Vendeur</h2>
-              <p className="text-slate-300 text-xs mb-4">Entrez vos identifiants reçus par email.</p>
-              <form onSubmit={connexionVendeur} className="space-y-4">
+              <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">
+                {mode === MODE_ADMIN ? "Connexion Administrateur" : "Connexion Vendeur"}
+              </h2>
+              <p className="text-slate-300 text-xs mb-4">
+                {mode === MODE_ADMIN ? "Sous-admins : utilisez vos identifiants attribués." : "Entrez vos identifiants reçus par email."}
+              </p>
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Email</label>
                   <Input
@@ -228,18 +247,21 @@ export default function Connexion() {
                   </div>
                 )}
 
-                <Button type="submit" disabled={chargement} className="w-full h-11 md:h-12 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black text-sm md:text-base rounded-xl shadow-lg shadow-[#F5C518]/20 transition-all active:scale-95">
-                  {chargement ? "Vérification..." : "Se connecter →"}
+                <Button type="submit" disabled={chargement} className={`w-full h-11 md:h-12 font-black text-sm md:text-base rounded-xl transition-all active:scale-95 ${mode === MODE_ADMIN ? "bg-white hover:bg-slate-100 text-[#1a1f5e]" : "bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] shadow-lg shadow-[#F5C518]/20"}`}>
+                  {chargement ? "Vérification..." : mode === MODE_ADMIN ? "Accéder au panneau admin →" : "Se connecter →"}
                 </Button>
               </form>
-              <div className="mt-3 md:mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <button onClick={() => { setModeMdpOublie(true); setErreur(""); }} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
-                  Mot de passe oublié ?
-                </button>
-                <a href={createPageUrl("InscriptionVendeur")} className="text-[#F5C518] text-xs font-semibold hover:underline text-center md:text-right">
-                  Créer mon compte →
-                </a>
-              </div>
+
+              {mode === MODE_VENDEUR && (
+                <div className="mt-3 md:mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <button onClick={() => { setModeMdpOublie(true); setErreur(""); }} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
+                    Mot de passe oublié ?
+                  </button>
+                  <a href={createPageUrl("InscriptionVendeur")} className="text-[#F5C518] text-xs font-semibold hover:underline text-center md:text-right">
+                    Créer mon compte →
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -281,52 +303,6 @@ export default function Connexion() {
                   </Button>
                 </form>
               )}
-            </div>
-          )}
-
-          {/* MODE ADMIN */}
-          {mode === MODE_ADMIN && (
-            <div>
-              <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">Connexion Administrateur</h2>
-              <p className="text-slate-300 text-xs mb-4">Sous-admins : utilisez vos identifiants attribués.</p>
-              <form onSubmit={connexionSousAdmin} className="space-y-4">
-                <div>
-                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Nom d'utilisateur ou email</label>
-                  <Input
-                    type="text"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="username ou email@example.com"
-                    autoComplete="username"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Mot de passe</label>
-                  <div className="relative">
-                    <Input
-                      type={mdpVisible ? "text" : "password"}
-                      value={motDePasse}
-                      onChange={(e) => setMotDePasse(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11 pr-12"
-                    />
-                    <button type="button" onClick={() => setMdpVisible(!mdpVisible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">
-                      {mdpVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-                {erreur && (
-                  <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5">
-                    <p className="text-red-300 text-xs">{erreur}</p>
-                  </div>
-                )}
-                <Button type="submit" disabled={chargement} className="w-full h-11 md:h-12 bg-white hover:bg-slate-100 text-[#1a1f5e] font-black text-sm md:text-base rounded-xl transition-all active:scale-95">
-                  {chargement ? "Vérification..." : "Accéder au panneau admin →"}
-                </Button>
-              </form>
-
             </div>
           )}
         </div>
