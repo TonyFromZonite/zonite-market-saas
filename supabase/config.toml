@@ -2,3 +2,15 @@ project_id = "jpopxydfttoseckcakqp"
 
 [functions.seed-admin]
 verify_jwt = false
+
+[functions.send-verification-email]
+verify_jwt = false
+
+[functions.send-kyc-approved-email]
+verify_jwt = false
+
+[functions.send-kyc-rejected-email]
+verify_jwt = false
+
+[functions.send-commande-status-email]
+verify_jwt = false
