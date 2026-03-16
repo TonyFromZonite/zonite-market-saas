@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext();
 
@@ -7,59 +7,60 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
+  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState(null);
+  const [appPublicSettings, setAppPublicSettings] = useState({ id: 'zonite', public_settings: {} });
 
   useEffect(() => {
-    checkAppState();
-  }, []);
+    checkUserAuth();
 
-  const checkAppState = async () => {
-    try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      // With Supabase, no need to check Base44 public settings
-      // Just set as loaded and check auth
-      setAppPublicSettings({ id: 'zonite', public_settings: {} });
-      setIsLoadingPublicSettings(false);
-      
-      await checkUserAuth();
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-    }
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.user_metadata?.role || 'user',
+          full_name: session.user.user_metadata?.full_name || '',
+        });
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
 
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setIsLoadingAuth(false);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        setUser({
+          id: currentUser.id,
+          email: currentUser.email,
+          role: currentUser.user_metadata?.role || 'user',
+          full_name: currentUser.user_metadata?.full_name || '',
+        });
+        setIsAuthenticated(true);
+      }
     } catch (error) {
       console.error('User auth check failed:', error);
+    } finally {
       setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      // Don't set auth error - let user access login page
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    base44.auth.logout(shouldRedirect ? window.location.href : undefined);
+    await supabase.auth.signOut();
+    if (shouldRedirect) window.location.href = '/Connexion';
   };
 
   const navigateToLogin = () => {
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.href = '/Connexion';
   };
 
   return (
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       logout,
       navigateToLogin,
-      checkAppState
+      checkAppState: checkUserAuth,
     }}>
       {children}
     </AuthContext.Provider>
