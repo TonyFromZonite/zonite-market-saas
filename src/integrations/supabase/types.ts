@@ -18,27 +18,30 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          module_name: string
-          user_id: string | null
+          modules_autorises: Json | null
+          sous_admin_email: string
+          sous_admin_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          module_name: string
-          user_id?: string | null
+          modules_autorises?: Json | null
+          sous_admin_email: string
+          sous_admin_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          module_name?: string
-          user_id?: string | null
+          modules_autorises?: Json | null
+          sous_admin_email?: string
+          sous_admin_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "admin_permissions_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "admin_permissions_sous_admin_id_fkey"
+            columns: ["sous_admin_id"]
             isOneToOne: false
-            referencedRelation: "sellers"
+            referencedRelation: "sous_admins"
             referencedColumns: ["id"]
           },
         ]
@@ -46,27 +49,36 @@ export type Database = {
       candidatures_vendeur: {
         Row: {
           created_at: string
+          email: string
+          full_name: string
           id: string
           notes_admin: string | null
           seller_id: string | null
           statut: string | null
-          updated_at: string
+          telephone: string | null
+          ville: string | null
         }
         Insert: {
           created_at?: string
+          email: string
+          full_name: string
           id?: string
           notes_admin?: string | null
           seller_id?: string | null
           statut?: string | null
-          updated_at?: string
+          telephone?: string | null
+          ville?: string | null
         }
         Update: {
           created_at?: string
+          email?: string
+          full_name?: string
           id?: string
           notes_admin?: string | null
           seller_id?: string | null
           statut?: string | null
-          updated_at?: string
+          telephone?: string | null
+          ville?: string | null
         }
         Relationships: [
           {
@@ -80,90 +92,137 @@ export type Database = {
       }
       categories: {
         Row: {
-          active: boolean | null
+          actif: boolean | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
           nom: string
           ordre: number | null
-          updated_at: string
         }
         Insert: {
-          active?: boolean | null
+          actif?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           nom: string
           ordre?: number | null
-          updated_at?: string
         }
         Update: {
-          active?: boolean | null
+          actif?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           nom?: string
           ordre?: number | null
-          updated_at?: string
         }
         Relationships: []
       }
       commandes_vendeur: {
         Row: {
           client_adresse: string | null
-          client_nom: string | null
-          client_telephone: string | null
-          commission: number | null
-          coursier_id: string | null
+          client_nom: string
+          client_quartier: string | null
+          client_telephone: string
+          client_ville: string | null
           created_at: string
-          date_livraison: string | null
+          date_livraison_effective: string | null
+          date_livraison_prevue: string | null
+          frais_livraison: number | null
           id: string
+          livraison_incluse: boolean | null
+          livreur_id: string | null
+          montant_total: number
           notes: string | null
-          produits: Json | null
+          notes_admin: string | null
+          prix_final_client: number | null
+          prix_unitaire: number
+          produit_id: string | null
+          produit_nom: string
+          produit_reference: string | null
+          quantite: number | null
+          reference_commande: string | null
           statut: string | null
-          total: number | null
           updated_at: string
-          vendeur_id: string | null
-          zone_livraison: string | null
+          variation: string | null
+          vendeur_email: string
+          vendeur_id: string
         }
         Insert: {
           client_adresse?: string | null
-          client_nom?: string | null
-          client_telephone?: string | null
-          commission?: number | null
-          coursier_id?: string | null
+          client_nom: string
+          client_quartier?: string | null
+          client_telephone: string
+          client_ville?: string | null
           created_at?: string
-          date_livraison?: string | null
+          date_livraison_effective?: string | null
+          date_livraison_prevue?: string | null
+          frais_livraison?: number | null
           id?: string
+          livraison_incluse?: boolean | null
+          livreur_id?: string | null
+          montant_total?: number
           notes?: string | null
-          produits?: Json | null
+          notes_admin?: string | null
+          prix_final_client?: number | null
+          prix_unitaire?: number
+          produit_id?: string | null
+          produit_nom: string
+          produit_reference?: string | null
+          quantite?: number | null
+          reference_commande?: string | null
           statut?: string | null
-          total?: number | null
           updated_at?: string
-          vendeur_id?: string | null
-          zone_livraison?: string | null
+          variation?: string | null
+          vendeur_email: string
+          vendeur_id: string
         }
         Update: {
           client_adresse?: string | null
-          client_nom?: string | null
-          client_telephone?: string | null
-          commission?: number | null
-          coursier_id?: string | null
+          client_nom?: string
+          client_quartier?: string | null
+          client_telephone?: string
+          client_ville?: string | null
           created_at?: string
-          date_livraison?: string | null
+          date_livraison_effective?: string | null
+          date_livraison_prevue?: string | null
+          frais_livraison?: number | null
           id?: string
+          livraison_incluse?: boolean | null
+          livreur_id?: string | null
+          montant_total?: number
           notes?: string | null
-          produits?: Json | null
+          notes_admin?: string | null
+          prix_final_client?: number | null
+          prix_unitaire?: number
+          produit_id?: string | null
+          produit_nom?: string
+          produit_reference?: string | null
+          quantite?: number | null
+          reference_commande?: string | null
           statut?: string | null
-          total?: number | null
           updated_at?: string
-          vendeur_id?: string | null
-          zone_livraison?: string | null
+          variation?: string | null
+          vendeur_email?: string
+          vendeur_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "commandes_vendeur_livreur_id_fkey"
+            columns: ["livreur_id"]
+            isOneToOne: false
+            referencedRelation: "livraisons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commandes_vendeur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commandes_vendeur_vendeur_id_fkey"
             columns: ["vendeur_id"]
@@ -176,116 +235,74 @@ export type Database = {
       config_app: {
         Row: {
           cle: string
-          created_at: string
           description: string | null
           id: string
           updated_at: string
-          valeur: string | null
+          valeur: Json
         }
         Insert: {
           cle: string
-          created_at?: string
           description?: string | null
           id?: string
           updated_at?: string
-          valeur?: string | null
+          valeur?: Json
         }
         Update: {
           cle?: string
-          created_at?: string
           description?: string | null
           id?: string
           updated_at?: string
-          valeur?: string | null
+          valeur?: Json
         }
         Relationships: []
-      }
-      coursiers: {
-        Row: {
-          actif: boolean | null
-          created_at: string
-          id: string
-          nom: string
-          telephone: string | null
-          updated_at: string
-          zone_id: string | null
-        }
-        Insert: {
-          actif?: boolean | null
-          created_at?: string
-          id?: string
-          nom: string
-          telephone?: string | null
-          updated_at?: string
-          zone_id?: string | null
-        }
-        Update: {
-          actif?: boolean | null
-          created_at?: string
-          id?: string
-          nom?: string
-          telephone?: string | null
-          updated_at?: string
-          zone_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coursiers_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       demandes_paiement_vendeur: {
         Row: {
           created_at: string
-          date_traitement: string | null
           id: string
-          mode_paiement: string | null
           montant: number
           notes: string | null
-          numero_paiement: string | null
+          notes_admin: string | null
+          numero_mobile_money: string
+          operateur_mobile_money: string
+          reference_paiement: string | null
           statut: string | null
+          traite_at: string | null
           traite_par: string | null
-          updated_at: string
-          vendeur_id: string | null
+          vendeur_email: string
+          vendeur_id: string
         }
         Insert: {
           created_at?: string
-          date_traitement?: string | null
           id?: string
-          mode_paiement?: string | null
           montant: number
           notes?: string | null
-          numero_paiement?: string | null
+          notes_admin?: string | null
+          numero_mobile_money: string
+          operateur_mobile_money: string
+          reference_paiement?: string | null
           statut?: string | null
+          traite_at?: string | null
           traite_par?: string | null
-          updated_at?: string
-          vendeur_id?: string | null
+          vendeur_email: string
+          vendeur_id: string
         }
         Update: {
           created_at?: string
-          date_traitement?: string | null
           id?: string
-          mode_paiement?: string | null
           montant?: number
           notes?: string | null
-          numero_paiement?: string | null
+          notes_admin?: string | null
+          numero_mobile_money?: string
+          operateur_mobile_money?: string
+          reference_paiement?: string | null
           statut?: string | null
+          traite_at?: string | null
           traite_par?: string | null
-          updated_at?: string
-          vendeur_id?: string | null
+          vendeur_email?: string
+          vendeur_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "demandes_paiement_vendeur_traite_par_fkey"
-            columns: ["traite_par"]
-            isOneToOne: false
-            referencedRelation: "sellers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "demandes_paiement_vendeur_vendeur_id_fkey"
             columns: ["vendeur_id"]
@@ -304,7 +321,6 @@ export type Database = {
           ordre: number | null
           question: string
           reponse: string
-          updated_at: string
         }
         Insert: {
           actif?: boolean | null
@@ -314,7 +330,6 @@ export type Database = {
           ordre?: number | null
           question: string
           reponse: string
-          updated_at?: string
         }
         Update: {
           actif?: boolean | null
@@ -324,7 +339,6 @@ export type Database = {
           ordre?: number | null
           question?: string
           reponse?: string
-          updated_at?: string
         }
         Relationships: []
       }
@@ -333,143 +347,120 @@ export type Database = {
           action: string
           created_at: string
           details: Json | null
-          entite: string | null
+          donnees_apres: Json | null
+          donnees_avant: Json | null
           entite_id: string | null
+          entite_type: string | null
           id: string
           ip_address: string | null
-          utilisateur_email: string | null
+          module: string
+          utilisateur: string | null
           utilisateur_id: string | null
         }
         Insert: {
           action: string
           created_at?: string
           details?: Json | null
-          entite?: string | null
+          donnees_apres?: Json | null
+          donnees_avant?: Json | null
           entite_id?: string | null
+          entite_type?: string | null
           id?: string
           ip_address?: string | null
-          utilisateur_email?: string | null
+          module?: string
+          utilisateur?: string | null
           utilisateur_id?: string | null
         }
         Update: {
           action?: string
           created_at?: string
           details?: Json | null
-          entite?: string | null
+          donnees_apres?: Json | null
+          donnees_avant?: Json | null
           entite_id?: string | null
+          entite_type?: string | null
           id?: string
           ip_address?: string | null
-          utilisateur_email?: string | null
+          module?: string
+          utilisateur?: string | null
           utilisateur_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "journal_audit_utilisateur_id_fkey"
-            columns: ["utilisateur_id"]
-            isOneToOne: false
-            referencedRelation: "sellers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       livraisons: {
         Row: {
-          adresse_livraison: string | null
-          commande_id: string | null
-          commande_type: string | null
-          coursier_nom: string | null
-          coursier_telephone: string | null
+          actif: boolean | null
           created_at: string
-          date_livraison: string | null
-          date_prevue: string | null
-          frais: number | null
+          email: string | null
           id: string
-          notes: string | null
-          statut: string | null
-          updated_at: string
-          zone_id: string | null
+          nom: string
+          tarif_par_zone: Json | null
+          telephone: string | null
+          zones_couvertes: Json | null
         }
         Insert: {
-          adresse_livraison?: string | null
-          commande_id?: string | null
-          commande_type?: string | null
-          coursier_nom?: string | null
-          coursier_telephone?: string | null
+          actif?: boolean | null
           created_at?: string
-          date_livraison?: string | null
-          date_prevue?: string | null
-          frais?: number | null
+          email?: string | null
           id?: string
-          notes?: string | null
-          statut?: string | null
-          updated_at?: string
-          zone_id?: string | null
+          nom: string
+          tarif_par_zone?: Json | null
+          telephone?: string | null
+          zones_couvertes?: Json | null
         }
         Update: {
-          adresse_livraison?: string | null
-          commande_id?: string | null
-          commande_type?: string | null
-          coursier_nom?: string | null
-          coursier_telephone?: string | null
+          actif?: boolean | null
           created_at?: string
-          date_livraison?: string | null
-          date_prevue?: string | null
-          frais?: number | null
+          email?: string | null
           id?: string
-          notes?: string | null
-          statut?: string | null
-          updated_at?: string
-          zone_id?: string | null
+          nom?: string
+          tarif_par_zone?: Json | null
+          telephone?: string | null
+          zones_couvertes?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "livraisons_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mouvements_stock: {
         Row: {
           created_at: string
           created_by: string | null
           id: string
-          motif: string | null
-          produit_id: string | null
+          localisation: string | null
+          notes: string | null
+          produit_id: string
           quantite: number
           reference_id: string | null
+          stock_apres: number | null
+          stock_avant: number | null
           type: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
-          motif?: string | null
-          produit_id?: string | null
+          localisation?: string | null
+          notes?: string | null
+          produit_id: string
           quantite: number
           reference_id?: string | null
+          stock_apres?: number | null
+          stock_avant?: number | null
           type: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
-          motif?: string | null
-          produit_id?: string | null
+          localisation?: string | null
+          notes?: string | null
+          produit_id?: string
           quantite?: number
           reference_id?: string | null
+          stock_apres?: number | null
+          stock_avant?: number | null
           type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "mouvements_stock_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "sellers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "mouvements_stock_produit_id_fkey"
             columns: ["produit_id"]
@@ -479,36 +470,72 @@ export type Database = {
           },
         ]
       }
-      notifications_vendeur: {
+      notifications_admin: {
         Row: {
           created_at: string
           id: string
-          lien: string | null
           lu: boolean | null
           message: string
+          reference_id: string | null
           titre: string
           type: string | null
-          vendeur_id: string | null
+          vendeur_email: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          lien?: string | null
           lu?: boolean | null
           message: string
+          reference_id?: string | null
           titre: string
           type?: string | null
-          vendeur_id?: string | null
+          vendeur_email?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          lien?: string | null
+          lu?: boolean | null
+          message?: string
+          reference_id?: string | null
+          titre?: string
+          type?: string | null
+          vendeur_email?: string | null
+        }
+        Relationships: []
+      }
+      notifications_vendeur: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          id: string
+          lu: boolean | null
+          message: string
+          titre: string
+          type: string | null
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          lu?: boolean | null
+          message: string
+          titre: string
+          type?: string | null
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
           lu?: boolean | null
           message?: string
           titre?: string
           type?: string | null
-          vendeur_id?: string | null
+          vendeur_email?: string
+          vendeur_id?: string
         }
         Relationships: [
           {
@@ -523,32 +550,42 @@ export type Database = {
       paiements_commission: {
         Row: {
           created_at: string
+          demande_id: string | null
+          effectue_par: string | null
           id: string
+          methode_paiement: string | null
           montant: number
-          notes: string | null
-          periode: string | null
-          statut: string | null
-          vendeur_id: string | null
+          reference_paiement: string | null
+          vendeur_id: string
         }
         Insert: {
           created_at?: string
+          demande_id?: string | null
+          effectue_par?: string | null
           id?: string
+          methode_paiement?: string | null
           montant: number
-          notes?: string | null
-          periode?: string | null
-          statut?: string | null
-          vendeur_id?: string | null
+          reference_paiement?: string | null
+          vendeur_id: string
         }
         Update: {
           created_at?: string
+          demande_id?: string | null
+          effectue_par?: string | null
           id?: string
+          methode_paiement?: string | null
           montant?: number
-          notes?: string | null
-          periode?: string | null
-          statut?: string | null
-          vendeur_id?: string | null
+          reference_paiement?: string | null
+          vendeur_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "paiements_commission_demande_id_fkey"
+            columns: ["demande_id"]
+            isOneToOne: false
+            referencedRelation: "demandes_paiement_vendeur"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "paiements_commission_vendeur_id_fkey"
             columns: ["vendeur_id"]
@@ -561,74 +598,76 @@ export type Database = {
       produits: {
         Row: {
           actif: boolean | null
-          category_id: string | null
+          categorie_id: string | null
           created_at: string
           description: string | null
+          details: string | null
+          featured: boolean | null
+          fournisseur: string | null
           id: string
-          image_url: string | null
-          images: string[] | null
+          images: Json | null
+          lien_telegram: string | null
           nom: string
-          poids: number | null
-          prix: number
           prix_achat: number | null
-          seller_id: string | null
-          sku: string | null
-          stock: number
-          stock_minimum: number | null
-          unite: string | null
+          prix_gros: number | null
+          prix_vente: number
+          reference: string | null
+          seuil_alerte_stock: number | null
+          stock_global: number | null
+          stocks_par_localisation: Json | null
           updated_at: string
+          variations: Json | null
         }
         Insert: {
           actif?: boolean | null
-          category_id?: string | null
+          categorie_id?: string | null
           created_at?: string
           description?: string | null
+          details?: string | null
+          featured?: boolean | null
+          fournisseur?: string | null
           id?: string
-          image_url?: string | null
-          images?: string[] | null
+          images?: Json | null
+          lien_telegram?: string | null
           nom: string
-          poids?: number | null
-          prix?: number
           prix_achat?: number | null
-          seller_id?: string | null
-          sku?: string | null
-          stock?: number
-          stock_minimum?: number | null
-          unite?: string | null
+          prix_gros?: number | null
+          prix_vente?: number
+          reference?: string | null
+          seuil_alerte_stock?: number | null
+          stock_global?: number | null
+          stocks_par_localisation?: Json | null
           updated_at?: string
+          variations?: Json | null
         }
         Update: {
           actif?: boolean | null
-          category_id?: string | null
+          categorie_id?: string | null
           created_at?: string
           description?: string | null
+          details?: string | null
+          featured?: boolean | null
+          fournisseur?: string | null
           id?: string
-          image_url?: string | null
-          images?: string[] | null
+          images?: Json | null
+          lien_telegram?: string | null
           nom?: string
-          poids?: number | null
-          prix?: number
           prix_achat?: number | null
-          seller_id?: string | null
-          sku?: string | null
-          stock?: number
-          stock_minimum?: number | null
-          unite?: string | null
+          prix_gros?: number | null
+          prix_vente?: number
+          reference?: string | null
+          seuil_alerte_stock?: number | null
+          stock_global?: number | null
+          stocks_par_localisation?: Json | null
           updated_at?: string
+          variations?: Json | null
         }
         Relationships: [
           {
-            foreignKeyName: "produits_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "produits_categorie_id_fkey"
+            columns: ["categorie_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "sellers"
             referencedColumns: ["id"]
           },
         ]
@@ -638,39 +677,46 @@ export type Database = {
           commande_id: string | null
           created_at: string
           id: string
-          motif: string | null
-          notes: string | null
-          produit_id: string | null
-          quantite: number | null
+          impact_commission: number | null
+          notes_admin: string | null
+          produit_id: string
+          quantite: number
+          raison: string | null
           statut: string | null
-          updated_at: string
-          vendeur_id: string | null
+          vendeur_id: string
         }
         Insert: {
           commande_id?: string | null
           created_at?: string
           id?: string
-          motif?: string | null
-          notes?: string | null
-          produit_id?: string | null
-          quantite?: number | null
+          impact_commission?: number | null
+          notes_admin?: string | null
+          produit_id: string
+          quantite?: number
+          raison?: string | null
           statut?: string | null
-          updated_at?: string
-          vendeur_id?: string | null
+          vendeur_id: string
         }
         Update: {
           commande_id?: string | null
           created_at?: string
           id?: string
-          motif?: string | null
-          notes?: string | null
-          produit_id?: string | null
-          quantite?: number | null
+          impact_commission?: number | null
+          notes_admin?: string | null
+          produit_id?: string
+          quantite?: number
+          raison?: string | null
           statut?: string | null
-          updated_at?: string
-          vendeur_id?: string | null
+          vendeur_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "retours_produit_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_vendeur"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retours_produit_produit_id_fkey"
             columns: ["produit_id"]
@@ -690,87 +736,111 @@ export type Database = {
       sellers: {
         Row: {
           catalogue_debloque: boolean | null
+          conditions_acceptees: boolean | null
           created_at: string
+          date_naissance: string | null
           email: string
+          email_verification_code: string | null
+          email_verification_expires_at: string | null
+          email_verified: boolean | null
           experience_vente: string | null
+          full_name: string
           id: string
-          nom_complet: string
-          nombre_commandes: number | null
+          kyc_document_recto_url: string | null
+          kyc_document_verso_url: string | null
+          kyc_raison_rejet: string | null
+          kyc_selfie_url: string | null
+          kyc_type_document: string | null
+          motivation: string | null
           numero_mobile_money: string | null
           operateur_mobile_money: string | null
-          password_hash: string | null
-          photo_identite_url: string | null
-          photo_identite_verso_url: string | null
+          photo_profil_url: string | null
           quartier: string | null
           role: string
-          selfie_url: string | null
           seller_status: string
           solde_commission: number | null
           statut_kyc: string | null
+          taux_commission: number | null
           telephone: string | null
-          total_ventes: number | null
+          total_commissions_gagnees: number | null
+          total_commissions_payees: number | null
           training_completed: boolean | null
           updated_at: string
           user_id: string | null
-          verification_code: string | null
-          verification_code_expires_at: string | null
           ville: string | null
+          whatsapp: string | null
         }
         Insert: {
           catalogue_debloque?: boolean | null
+          conditions_acceptees?: boolean | null
           created_at?: string
+          date_naissance?: string | null
           email: string
+          email_verification_code?: string | null
+          email_verification_expires_at?: string | null
+          email_verified?: boolean | null
           experience_vente?: string | null
+          full_name: string
           id?: string
-          nom_complet: string
-          nombre_commandes?: number | null
+          kyc_document_recto_url?: string | null
+          kyc_document_verso_url?: string | null
+          kyc_raison_rejet?: string | null
+          kyc_selfie_url?: string | null
+          kyc_type_document?: string | null
+          motivation?: string | null
           numero_mobile_money?: string | null
           operateur_mobile_money?: string | null
-          password_hash?: string | null
-          photo_identite_url?: string | null
-          photo_identite_verso_url?: string | null
+          photo_profil_url?: string | null
           quartier?: string | null
           role?: string
-          selfie_url?: string | null
           seller_status?: string
           solde_commission?: number | null
           statut_kyc?: string | null
+          taux_commission?: number | null
           telephone?: string | null
-          total_ventes?: number | null
+          total_commissions_gagnees?: number | null
+          total_commissions_payees?: number | null
           training_completed?: boolean | null
           updated_at?: string
           user_id?: string | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
           ville?: string | null
+          whatsapp?: string | null
         }
         Update: {
           catalogue_debloque?: boolean | null
+          conditions_acceptees?: boolean | null
           created_at?: string
+          date_naissance?: string | null
           email?: string
+          email_verification_code?: string | null
+          email_verification_expires_at?: string | null
+          email_verified?: boolean | null
           experience_vente?: string | null
+          full_name?: string
           id?: string
-          nom_complet?: string
-          nombre_commandes?: number | null
+          kyc_document_recto_url?: string | null
+          kyc_document_verso_url?: string | null
+          kyc_raison_rejet?: string | null
+          kyc_selfie_url?: string | null
+          kyc_type_document?: string | null
+          motivation?: string | null
           numero_mobile_money?: string | null
           operateur_mobile_money?: string | null
-          password_hash?: string | null
-          photo_identite_url?: string | null
-          photo_identite_verso_url?: string | null
+          photo_profil_url?: string | null
           quartier?: string | null
           role?: string
-          selfie_url?: string | null
           seller_status?: string
           solde_commission?: number | null
           statut_kyc?: string | null
+          taux_commission?: number | null
           telephone?: string | null
-          total_ventes?: number | null
+          total_commissions_gagnees?: number | null
+          total_commissions_payees?: number | null
           training_completed?: boolean | null
           updated_at?: string
           user_id?: string | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
           ville?: string | null
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -778,79 +848,130 @@ export type Database = {
         Row: {
           actif: boolean | null
           created_at: string
-          email: string | null
+          email: string
+          full_name: string
           id: string
-          nom_complet: string | null
-          permissions: string[] | null
+          nom_role: string | null
           seller_id: string | null
-          updated_at: string
+          user_id: string | null
         }
         Insert: {
           actif?: boolean | null
           created_at?: string
-          email?: string | null
+          email: string
+          full_name: string
           id?: string
-          nom_complet?: string | null
-          permissions?: string[] | null
+          nom_role?: string | null
           seller_id?: string | null
-          updated_at?: string
+          user_id?: string | null
         }
         Update: {
           actif?: boolean | null
           created_at?: string
-          email?: string | null
+          email?: string
+          full_name?: string
           id?: string
-          nom_complet?: string | null
-          permissions?: string[] | null
+          nom_role?: string | null
           seller_id?: string | null
-          updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "sous_admins_seller_id_fkey"
             columns: ["seller_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "sellers"
             referencedColumns: ["id"]
           },
         ]
       }
-      tickets_support: {
+      statistiques_journalieres: {
         Row: {
+          chiffre_affaires: number | null
+          commandes_annulees: number | null
+          commandes_livrees: number | null
           created_at: string
+          date: string
           id: string
-          lu: boolean | null
-          message: string
-          priorite: string | null
-          reponse: string | null
-          statut: string | null
-          sujet: string
-          updated_at: string
-          vendeur_id: string | null
+          nouveaux_vendeurs: number | null
+          profit_zonite: number | null
+          total_commandes: number | null
+          total_commissions: number | null
+          vendeurs_actifs: number | null
         }
         Insert: {
+          chiffre_affaires?: number | null
+          commandes_annulees?: number | null
+          commandes_livrees?: number | null
           created_at?: string
+          date: string
           id?: string
-          lu?: boolean | null
-          message: string
-          priorite?: string | null
-          reponse?: string | null
-          statut?: string | null
-          sujet: string
-          updated_at?: string
-          vendeur_id?: string | null
+          nouveaux_vendeurs?: number | null
+          profit_zonite?: number | null
+          total_commandes?: number | null
+          total_commissions?: number | null
+          vendeurs_actifs?: number | null
         }
         Update: {
+          chiffre_affaires?: number | null
+          commandes_annulees?: number | null
+          commandes_livrees?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          nouveaux_vendeurs?: number | null
+          profit_zonite?: number | null
+          total_commandes?: number | null
+          total_commissions?: number | null
+          vendeurs_actifs?: number | null
+        }
+        Relationships: []
+      }
+      tickets_support: {
+        Row: {
+          categorie: string | null
+          created_at: string
+          id: string
+          lu_par_vendeur: boolean | null
+          message: string
+          priorite: string | null
+          repondu_at: string | null
+          repondu_par: string | null
+          reponse_admin: string | null
+          statut: string | null
+          sujet: string
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Insert: {
+          categorie?: string | null
           created_at?: string
           id?: string
-          lu?: boolean | null
+          lu_par_vendeur?: boolean | null
+          message: string
+          priorite?: string | null
+          repondu_at?: string | null
+          repondu_par?: string | null
+          reponse_admin?: string | null
+          statut?: string | null
+          sujet: string
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Update: {
+          categorie?: string | null
+          created_at?: string
+          id?: string
+          lu_par_vendeur?: boolean | null
           message?: string
           priorite?: string | null
-          reponse?: string | null
+          repondu_at?: string | null
+          repondu_par?: string | null
+          reponse_admin?: string | null
           statut?: string | null
           sujet?: string
-          updated_at?: string
-          vendeur_id?: string | null
+          vendeur_email?: string
+          vendeur_id?: string
         }
         Relationships: [
           {
@@ -862,81 +983,124 @@ export type Database = {
           },
         ]
       }
-      ventes: {
+      user_roles: {
         Row: {
-          client_adresse: string | null
-          client_nom: string | null
-          client_telephone: string | null
-          coursier_id: string | null
           created_at: string
           id: string
-          mode_paiement: string | null
-          notes: string | null
-          produits: Json | null
-          statut: string | null
-          total: number | null
-          updated_at: string
-          zone_livraison: string | null
+          role: string
+          user_id: string
         }
         Insert: {
-          client_adresse?: string | null
-          client_nom?: string | null
-          client_telephone?: string | null
-          coursier_id?: string | null
           created_at?: string
           id?: string
-          mode_paiement?: string | null
-          notes?: string | null
-          produits?: Json | null
-          statut?: string | null
-          total?: number | null
-          updated_at?: string
-          zone_livraison?: string | null
+          role?: string
+          user_id: string
         }
         Update: {
-          client_adresse?: string | null
-          client_nom?: string | null
-          client_telephone?: string | null
-          coursier_id?: string | null
           created_at?: string
           id?: string
-          mode_paiement?: string | null
-          notes?: string | null
-          produits?: Json | null
-          statut?: string | null
-          total?: number | null
-          updated_at?: string
-          zone_livraison?: string | null
+          role?: string
+          user_id?: string
         }
         Relationships: []
+      }
+      ventes: {
+        Row: {
+          annee: number | null
+          commande_id: string | null
+          commission_vendeur: number
+          created_at: string
+          id: string
+          mois: number | null
+          montant_total: number
+          prix_achat_unitaire: number | null
+          produit_id: string
+          profit_zonite: number
+          quantite: number
+          semaine: number | null
+          taux_commission_applique: number | null
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Insert: {
+          annee?: number | null
+          commande_id?: string | null
+          commission_vendeur?: number
+          created_at?: string
+          id?: string
+          mois?: number | null
+          montant_total: number
+          prix_achat_unitaire?: number | null
+          produit_id: string
+          profit_zonite?: number
+          quantite: number
+          semaine?: number | null
+          taux_commission_applique?: number | null
+          vendeur_email: string
+          vendeur_id: string
+        }
+        Update: {
+          annee?: number | null
+          commande_id?: string | null
+          commission_vendeur?: number
+          created_at?: string
+          id?: string
+          mois?: number | null
+          montant_total?: number
+          prix_achat_unitaire?: number | null
+          produit_id?: string
+          profit_zonite?: number
+          quantite?: number
+          semaine?: number | null
+          taux_commission_applique?: number | null
+          vendeur_email?: string
+          vendeur_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventes_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_vendeur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_vendeur_id_fkey"
+            columns: ["vendeur_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       zones: {
         Row: {
           actif: boolean | null
           created_at: string
-          description: string | null
-          frais_livraison: number | null
           id: string
           nom: string
-          updated_at: string
+          ville: string
         }
         Insert: {
           actif?: boolean | null
           created_at?: string
-          description?: string | null
-          frais_livraison?: number | null
           id?: string
           nom: string
-          updated_at?: string
+          ville?: string
         }
         Update: {
           actif?: boolean | null
           created_at?: string
-          description?: string | null
-          frais_livraison?: number | null
           id?: string
           nom?: string
-          updated_at?: string
+          ville?: string
         }
         Relationships: []
       }
@@ -945,8 +1109,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_seller_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_seller_role: { Args: { _user_id: string }; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      is_admin_or_sous_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
