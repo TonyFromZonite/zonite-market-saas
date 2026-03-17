@@ -21,7 +21,7 @@ export default function ConfigurationAdminPassword() {
   useEffect(() => {
     const charger = async () => {
       try {
-        const configs = await filterTable("config_app", {});
+        const { data: configs } = await supabase.from("config_app").select("*");
         const configMap = {};
         configs.forEach(c => { configMap[c.cle] = c.valeur; });
         setAdminMdpHash(configMap["admin_password_hash"] || "");

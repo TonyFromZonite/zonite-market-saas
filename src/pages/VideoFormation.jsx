@@ -64,11 +64,18 @@ export default function VideoFormation() {
         const sellers = await filterTable("sellers", { email: u.email });
         if (isMounted && sellers.length > 0) setCompteVendeur(sellers[0]);
 
-        // Récupérer config vidéo (avec retry)
-        let configs = await filterTable("config_app", { cle: "lien_youtube_formation" });
+        // Récupérer config vidéo directement via supabase (config_app n'a pas created_at)
+        let { data: configs } = await supabase
+          .from("config_app")
+          .select("*")
+          .eq("cle", "lien_youtube_formation");
         if (!configs?.length) {
           await new Promise(r => setTimeout(r, 300));
-          configs = await filterTable("config_app", { cle: "lien_youtube_formation" });
+          const retry = await supabase
+            .from("config_app")
+            .select("*")
+            .eq("cle", "lien_youtube_formation");
+          configs = retry.data;
         }
 
         if (!isMounted) return;

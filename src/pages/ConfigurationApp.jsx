@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { adminApi } from "@/components/adminApi";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,6 @@ const CONFIGS = [
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Lock, Youtube } from "lucide-react";
-import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function ConfigurationApp() {
   const [valeurs, setValeurs] = useState({});
@@ -26,10 +25,17 @@ export default function ConfigurationApp() {
 
   useEffect(() => {
     const charger = async () => {
-      const items = await filterTable("config_app", {});
+      const { data: items, error } = await supabase
+        .from("config_app")
+        .select("*")
+        .order("updated_at", { ascending: false });
+      if (error) { console.error("Chargement config:", error); return; }
       const map = {};
       const idMap = {};
-      items.forEach((i) => { map[i.cle] = i.valeur; idMap[i.cle] = i.id; });
+      (items || []).forEach((i) => {
+        map[i.cle] = typeof i.valeur === "string" ? i.valeur : JSON.stringify(i.valeur).replace(/^"|"$/g, '');
+        idMap[i.cle] = i.id;
+      });
       setValeurs(map);
       setIds(idMap);
     };
@@ -39,18 +45,26 @@ export default function ConfigurationApp() {
   const sauvegarder = async () => {
     setChargement(true);
     setSucces(false);
-    for (const { cle } of CONFIGS) {
-      const valeur = valeurs[cle] || "";
-      if (ids[cle]) {
-        await adminApi.updateConfigApp(ids[cle], { cle, valeur });
-      } else if (valeur) {
-        const res = await adminApi.createConfigApp({ cle, valeur });
-        setIds((prev) => ({ ...prev, [cle]: res.result?.id }));
+    try {
+      for (const { cle } of CONFIGS) {
+        const valeur = valeurs[cle] || "";
+        if (ids[cle]) {
+          // Update existing
+          const { error } = await supabase.from("config_app").update({ valeur }).eq("id", ids[cle]);
+          if (error) { console.error(`Update ${cle}:`, error); }
+        } else if (valeur) {
+          // Insert new
+          const { data, error } = await supabase.from("config_app").insert({ cle, valeur }).select().single();
+          if (error) { console.error(`Insert ${cle}:`, error); }
+          else if (data) { setIds((prev) => ({ ...prev, [cle]: data.id })); }
+        }
       }
+      setSucces(true);
+      setTimeout(() => setSucces(false), 3000);
+    } catch (err) {
+      console.error("Sauvegarde config:", err);
     }
     setChargement(false);
-    setSucces(true);
-    setTimeout(() => setSucces(false), 3000);
   };
 
   return (
