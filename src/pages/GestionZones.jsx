@@ -351,7 +351,7 @@ export default function GestionZones() {
       </Dialog>
 
       {/* Dialog Quartier */}
-      <Dialog open={dialogQuartier} onOpenChange={setDialogQuartier}>
+      <Dialog open={dialogQuartier} onOpenChange={(open) => { setDialogQuartier(open); if (!open) setKeepQuartierOpen(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Nouveau Quartier</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); if (formQuartier.nom.trim() && formQuartier.ville_id) createQuartierMut.mutate(formQuartier); }} className="space-y-4">
@@ -366,11 +366,24 @@ export default function GestionZones() {
             </div>
             <div className="space-y-2">
               <Label>Nom du quartier *</Label>
-              <Input value={formQuartier.nom} onChange={(e) => setFormQuartier((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Bastos" required />
+              <Input value={formQuartier.nom} onChange={(e) => setFormQuartier((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Bastos" required autoFocus />
             </div>
+            {/* Show existing quartiers for selected ville */}
+            {formQuartier.ville_id && getQuartiersForVille(formQuartier.ville_id).length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Quartiers existants :</Label>
+                <div className="flex flex-wrap gap-1">
+                  {getQuartiersForVille(formQuartier.ville_id).map((q) => (
+                    <Badge key={q.id} variant="secondary" className="text-xs">{q.nom}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setDialogQuartier(false)} className="flex-1">Annuler</Button>
-              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]" disabled={createQuartierMut.isPending}>Ajouter</Button>
+              <Button type="button" variant="outline" onClick={() => { setDialogQuartier(false); setKeepQuartierOpen(false); }} className="flex-1">Fermer</Button>
+              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]" disabled={createQuartierMut.isPending}>
+                {createQuartierMut.isPending ? "Ajout..." : "Ajouter"}
+              </Button>
             </div>
           </form>
         </DialogContent>
