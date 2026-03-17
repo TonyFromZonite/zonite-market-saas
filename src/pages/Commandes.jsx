@@ -93,9 +93,9 @@ export default function Commandes() {
           reference_vente: vente.id,
         });
       }
-      // Réduire commission vendeur via adminApi (service role)
-      const resSellers = await supabase.functions.invoke('getAllVendeurs', {});
-      const allSellers = resSellers.data || [];
+      // Réduire commission vendeur
+      const { data: allSellers } = await supabase.from("sellers").select("*");
+      const allSellersArr = allSellers || [];
       const vendeur = allSellers.find(v => v.id === vente.vendeur_id);
       if (vendeur) {
         await adminApi.updateVendeur(vendeur.id, {

@@ -573,8 +573,9 @@ export default function Vendeurs() {
   const { data: kycs = [] } = useQuery({ 
     queryKey: ["sellers_badge"], 
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getAllVendeurs', {});
-      return (res.data || []).filter(s => s.statut_kyc === "en_attente");
+      const { data, error } = await supabase.from("sellers").select("*").eq("statut_kyc", "en_attente").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     }, 
     refetchInterval: 30000 
   });
