@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -6,14 +7,29 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import GestionZones from './pages/GestionZones';
-import GestionCoursiers from './pages/GestionCoursiers';
 
-import ResoumissionKYC from './pages/ResoumissionKYC';
+const GestionZones = lazy(() => import('./pages/GestionZones'));
+const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
+const ResoumissionKYC = lazy(() => import('./pages/ResoumissionKYC'));
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const MainPage = mainPageKey ? Pages[mainPageKey] : () => <></>;
+
+const LoadingFallback = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    background: '#1a1f4e',
+    color: '#f5a623',
+    fontSize: '18px',
+    fontWeight: 600,
+  }}>
+    Chargement...
+  </div>
+);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -22,79 +38,54 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
   return (
-    <Routes>
-      <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
-        </LayoutWrapper>
-      } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route
-        path="/GestionZones"
-        element={
-          <LayoutWrapper currentPageName="GestionZones">
-            <GestionZones />
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={
+          <LayoutWrapper currentPageName={mainPageKey}>
+            <MainPage />
           </LayoutWrapper>
-        }
-      />
-      <Route
-        path="/GestionCoursiers"
-        element={
-          <LayoutWrapper currentPageName="GestionCoursiers">
-            <GestionCoursiers />
-          </LayoutWrapper>
-        }
-      />
-
-
-      <Route
-        path="/ResoumissionKYC"
-        element={
-          <LayoutWrapper currentPageName="ResoumissionKYC">
-            <ResoumissionKYC />
-          </LayoutWrapper>
-        }
-      />
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+        } />
+        {Object.entries(Pages).map(([path, Page]) => (
+          <Route
+            key={path}
+            path={`/${path}`}
+            element={
+              <LayoutWrapper currentPageName={path}>
+                <Page />
+              </LayoutWrapper>
+            }
+          />
+        ))}
+        <Route path="/GestionZones" element={
+          <LayoutWrapper currentPageName="GestionZones"><GestionZones /></LayoutWrapper>
+        } />
+        <Route path="/GestionCoursiers" element={
+          <LayoutWrapper currentPageName="GestionCoursiers"><GestionCoursiers /></LayoutWrapper>
+        } />
+        <Route path="/ResoumissionKYC" element={
+          <LayoutWrapper currentPageName="ResoumissionKYC"><ResoumissionKYC /></LayoutWrapper>
+        } />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 
-
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>

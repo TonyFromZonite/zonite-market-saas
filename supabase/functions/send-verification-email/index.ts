@@ -23,13 +23,13 @@ serve(async (req) => {
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
-      from: 'ZONITE <onboarding@resend.dev>',
+      from: 'Zonite Market <hello@zonite.org>',
       to: email,
-      subject: "ZONITE - Code de vérification",
+      subject: "Zonite Market - Code de vérification",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1a1f5e, #2d34a5); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">ZONITE</h1>
+            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">Zonite Market</h1>
             <p style="color: #CBD5E1; margin-top: 5px;">Plateforme de vente</p>
           </div>
           <div style="background: white; padding: 30px; border: 1px solid #E2E8F0; border-radius: 0 0 12px 12px;">
@@ -40,7 +40,7 @@ serve(async (req) => {
             </div>
             <p style="color: #64748B; font-size: 14px;">Ce code expire dans 24 heures.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe ZONITE</p>
+            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe Zonite Market</p>
           </div>
         </div>
       `,
@@ -50,8 +50,7 @@ serve(async (req) => {
       console.error('[send-verification-email] Resend error:', error);
       const isValidationError = error.name === 'validation_error' || error.statusCode === 403;
       return new Response(JSON.stringify({ 
-        success: isValidationError, 
-        skipped: isValidationError,
+        success: isValidationError, skipped: isValidationError,
         warning: isValidationError ? 'Domain not verified - email not sent' : undefined,
         error: isValidationError ? undefined : error.message 
       }), {
