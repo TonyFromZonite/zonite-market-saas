@@ -285,10 +285,10 @@ export default function NouvelleCommandeVendeur() {
           {/* Variations */}
           {produitSelectionne && variations.length > 0 && (
             <div className="space-y-2">
-              {variations.map((v) => (
-                <div key={v.id} className="space-y-1">
+              {variations.map((v, idx) => (
+                <div key={v.nom || idx} className="space-y-1">
                   <Label>{v.nom} *</Label>
-                  <Select value={selectedVariations[v.id] || ""} onValueChange={(val) => setSelectedVariations((prev) => ({ ...prev, [v.id]: val }))}>
+                  <Select value={selectedVariations[v.nom] || ""} onValueChange={(val) => setSelectedVariations((prev) => ({ ...prev, [v.nom]: val }))}>
                     <SelectTrigger><SelectValue placeholder={`Choisir ${v.nom}`} /></SelectTrigger>
                     <SelectContent>
                       {v.options.map((opt) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
