@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
@@ -78,12 +79,13 @@ function ListeVendeurs() {
   };
 
   const supprimer = async (vendeur) => {
-    if (!confirm(`Supprimer le vendeur "${vendeur.nom_complet}" ? Cette action supprimera aussi son compte utilisateur et toutes ses données.`)) return;
+    if (!confirm(`Supprimer le vendeur "${vendeur.full_name || vendeur.nom_complet}" ? Cette action supprimera aussi son compte utilisateur et toutes ses données.`)) return;
     try {
-      await base44.functions.invoke('deleteSellerComplete', {
-        seller_id: vendeur.id,
-        seller_email: vendeur.email
+      const { data, error } = await supabase.functions.invoke('delete-seller-complete', {
+        body: { seller_id: vendeur.id }
       });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: "Vendeur supprimé avec succès", description: "Toutes les données ont été supprimées", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
     } catch (error) {
