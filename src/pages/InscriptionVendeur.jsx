@@ -184,6 +184,16 @@ export default function InscriptionVendeur() {
         return;
       }
 
+      // Sign in immediately to guarantee active session for RLS
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email.trim().toLowerCase(),
+        password: form.mot_de_passe,
+      });
+      if (signInError) {
+        setErreur("Compte créé mais connexion échouée: " + signInError.message);
+        return;
+      }
+
       // 2. Insert into sellers table
       const { data: sellerData, error: sellerError } = await supabase
         .from('sellers')
