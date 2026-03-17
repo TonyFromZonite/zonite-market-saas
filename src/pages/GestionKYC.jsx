@@ -174,7 +174,7 @@ export default function GestionKYC() {
       )}
 
       <Dialog open={!!compteSelectionne} onOpenChange={() => setCompteSelectionne(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Dossier KYC : {compteSelectionne?.full_name}</DialogTitle>
           </DialogHeader>
