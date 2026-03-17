@@ -98,13 +98,14 @@ export default function CatalogueVendeur() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {produitsFiltres.map(p => {
-              const stockDispo = Math.max(0, (p.stock_global || 0) - (p.stock_reserve || 0));
+              const stockDispo = p.stock_global || 0;
               const stockOk = stockDispo > 0;
+              const imageUrl = (p.images && p.images.length > 0) ? p.images[0] : null;
               return (
                 <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <div className="flex">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.nom} className="w-28 h-28 object-cover flex-shrink-0" />
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={p.nom} className="w-28 h-28 object-cover flex-shrink-0" />
                     ) : (
                       <div className="w-28 h-28 bg-slate-100 flex items-center justify-center flex-shrink-0">
                         <Package className="w-8 h-8 text-slate-300" />
