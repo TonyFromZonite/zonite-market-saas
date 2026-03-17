@@ -15,6 +15,7 @@ import {
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import NotificationCenterVendeur from "@/components/NotificationCenterVendeur";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/components/SellerStatusEngine";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";

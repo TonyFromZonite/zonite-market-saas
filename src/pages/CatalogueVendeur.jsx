@@ -8,6 +8,7 @@ import { createPageUrl } from "@/utils";
 import { Search, Package, ExternalLink, ChevronLeft, PlayCircle } from "lucide-react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import BlocageKycPending from "@/components/BlocageKycPending";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function CatalogueVendeur() {
