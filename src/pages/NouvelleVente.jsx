@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import FormulaireVente from "@/components/vente/FormulaireVente";
+import { getRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function NouvelleVente() {
   const [enCours, setEnCours] = useState(false);
@@ -15,17 +16,17 @@ export default function NouvelleVente() {
 
   const { data: produits = [] } = useQuery({
     queryKey: ["produits"],
-    queryFn: () => base44.entities.Produit.list(),
+    queryFn: () => listTable("produits"),
   });
 
   const { data: vendeurs = [] } = useQuery({
     queryKey: ["vendeurs"],
-    queryFn: () => base44.entities.Seller.list(),
+    queryFn: () => listTable("sellers"),
   });
 
   const { data: livraisons = [] } = useQuery({
     queryKey: ["livraisons"],
-    queryFn: () => base44.entities.Livraison.list(),
+    queryFn: () => listTable("livraisons"),
   });
 
   const enregistrerVente = async (donnees) => {
@@ -37,7 +38,7 @@ export default function NouvelleVente() {
     const livraison = donnees.livraisonSelectionnee;
 
     // 1. Créer la vente via backend avec localisation et variation
-    await base44.functions.invoke('createVente', {
+    await supabase.functions.invoke('createVente', {
       produit_id: donnees.produit_id,
       produit_nom: produit.nom,
       vendeur_id: donnees.vendeur_id,
@@ -64,7 +65,7 @@ export default function NouvelleVente() {
     });
 
     // 2. Décrémenter le stock de la variation spécifique dans la zone
-    const produitActuel = await base44.asServiceRole.entities.Produit.get(produit.id);
+    const produitActuel = await getRecord("produits", produit.id);
     const stocksLoc = produitActuel.stocks_par_localisation || [];
     
     const updatedStocks = stocksLoc.map(loc => {
@@ -99,7 +100,7 @@ export default function NouvelleVente() {
     });
 
     // 3. Mouvement stock via backend avec détails localisation
-    await base44.functions.invoke('createMouvementStock', {
+    await supabase.functions.invoke('createMouvementStock', {
       produit_id: produit.id,
       produit_nom: produit.nom,
       type_mouvement: "sortie",
@@ -110,7 +111,7 @@ export default function NouvelleVente() {
     });
 
     // 4. Mettre à jour le seller (vendeur)
-    await base44.asServiceRole.entities.Seller.update(vendeur.id, {
+    await updateRecord("sellers", vendeur.id, {
       solde_commission: (vendeur.solde_commission || 0) + donnees.commission,
       total_commissions_gagnees: (vendeur.total_commissions_gagnees || 0) + donnees.commission,
       nombre_ventes: (vendeur.nombre_ventes || 0) + 1,
@@ -118,7 +119,7 @@ export default function NouvelleVente() {
     });
 
     // 5. Journal d'audit via backend avec localisation
-    await base44.functions.invoke('createAudit', {
+    await supabase.functions.invoke('createAudit', {
       action: "Nouvelle vente enregistrée",
       module: "vente",
       details: `Vente de ${donnees.quantite}x ${produit.nom} (${donnees.variation}) à ${donnees.ville}/${donnees.zone} par ${vendeur.nom_complet} – Total: ${donnees.montantTotal} FCFA`,

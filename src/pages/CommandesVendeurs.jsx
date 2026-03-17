@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { requireAdminOrSousAdmin } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateQuery } from "@/components/CacheManager";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { filterTable, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente validation", couleur: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -40,12 +40,12 @@ export default function CommandesVendeurs() {
 
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeurs_admin"],
-    queryFn: () => base44.entities.CommandeVendeur.list("-created_date", 200),
+    queryFn: () => listTable("commandes_vendeur", "-created_date", 200),
   });
 
   const { data: livreurs = [] } = useQuery({
     queryKey: ["livreurs_actifs"],
-    queryFn: () => base44.entities.Livraison.filter({ statut: "actif" }),
+    queryFn: () => filterTable("livraisons", { statut: "actif" }),
   });
 
   const nbEnAttente = commandes.filter(c => c.statut === "en_attente_validation_admin").length;
@@ -114,7 +114,7 @@ export default function CommandesVendeurs() {
 
   const marquerLivree = async () => {
     setEnCours(true);
-    const produits = await base44.entities.Produit.list();
+    const produits = await listTable("produits");
     const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
     if (produit) {
       await adminApi.updateProduit(produit.id, {
@@ -123,10 +123,10 @@ export default function CommandesVendeurs() {
       });
     }
 
-    const sellers = await base44.entities.Seller.filter({ id: commandeSelectionnee.vendeur_id });
+    const sellers = await filterTable("sellers", { id: commandeSelectionnee.vendeur_id });
     if (sellers.length > 0) {
       const seller = sellers[0];
-      await base44.asServiceRole.entities.Seller.update(seller.id, {
+      await updateRecord("sellers", seller.id, {
         solde_commission: (seller.solde_commission || 0) + (commandeSelectionnee.commission_vendeur || 0),
         total_commissions_gagnees: (seller.total_commissions_gagnees || 0) + (commandeSelectionnee.commission_vendeur || 0),
         ventes_reussies: (seller.ventes_reussies || 0) + 1,
@@ -154,7 +154,7 @@ export default function CommandesVendeurs() {
 
   const marquerEchec = async () => {
     setEnCours(true);
-    const produits = await base44.entities.Produit.list();
+    const produits = await listTable("produits");
     const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
     if (produit) {
       await adminApi.updateProduit(produit.id, {
@@ -171,10 +171,10 @@ export default function CommandesVendeurs() {
         raison: `Échec livraison — commande ${commandeSelectionnee.id}`,
       });
     }
-    const sellersEchec = await base44.entities.Seller.filter({ id: commandeSelectionnee.vendeur_id });
+    const sellersEchec = await filterTable("sellers", { id: commandeSelectionnee.vendeur_id });
     if (sellersEchec.length > 0) {
       const sellerEchec = sellersEchec[0];
-      await base44.asServiceRole.entities.Seller.update(sellerEchec.id, {
+      await updateRecord("sellers", sellerEchec.id, {
         ventes_echouees: (sellerEchec.ventes_echouees || 0) + 1,
       });
     }
@@ -228,7 +228,7 @@ export default function CommandesVendeurs() {
     // Restituer le stock si la commande était encore en cours (pas livrée)
     const statutsAvecStockReserve = ["en_attente_validation_admin", "validee_admin", "attribuee_livreur", "en_livraison"];
     if (statutsAvecStockReserve.includes(commandeSelectionnee.statut)) {
-      const produits = await base44.entities.Produit.list();
+      const produits = await listTable("produits");
       const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
       if (produit) {
         await adminApi.updateProduit(produit.id, {

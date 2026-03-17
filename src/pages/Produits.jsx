@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { requireAdminOrSousAdmin } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { showSuccess, showError } from "@/components/NotificationSystem";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import CategoriesTab from "@/components/produits/CategoriesTab";
 import RetoursTab from "@/components/produits/RetoursTab";
 import DialogProduit from "@/components/produits/DialogProduit";
+import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const initProduit = {
   nom: "", description: "", reference: "",
@@ -52,13 +52,13 @@ export default function Produits() {
 
   const { data: produits = [], isLoading } = useQuery({
     queryKey: ["produits"],
-    queryFn: () => base44.entities.Produit.list("-created_date"),
+    queryFn: () => listTable("produits", "-created_date"),
     staleTime: 30 * 60 * 1000,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => base44.entities.Categorie.list("nom"),
+    queryFn: () => listTable("categories", "nom"),
     staleTime: 60 * 60 * 1000,
   });
 
@@ -163,7 +163,7 @@ export default function Produits() {
 
   const { data: retoursEnAttente = [] } = useQuery({
     queryKey: ["retours_badge"],
-    queryFn: () => base44.entities.RetourProduit.filter({ statut: "en_attente" }),
+    queryFn: () => filterTable("retours_produit", { statut: "en_attente" }),
     staleTime: 10 * 60 * 1000,
   });
 

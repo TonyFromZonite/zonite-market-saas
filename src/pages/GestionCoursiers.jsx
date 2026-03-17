@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Truck, Plus, Edit2, Trash2, MapPin, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { createRecord, deleteRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 export default function GestionCoursiers() {
   const [dialogOuvert, setDialogOuvert] = useState(false);
@@ -40,16 +40,16 @@ export default function GestionCoursiers() {
 
   const { data: coursiers = [] } = useQuery({
     queryKey: ["coursiers"],
-    queryFn: () => base44.entities.Coursier.list()
+    queryFn: () => listTable("livraisons")
   });
 
   const { data: zones = [] } = useQuery({
     queryKey: ["zones"],
-    queryFn: () => base44.entities.Zone.list()
+    queryFn: () => listTable("zones")
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Coursier.create(data),
+    mutationFn: (data) => createRecord("livraisons", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
       fermerDialog();
@@ -57,7 +57,7 @@ export default function GestionCoursiers() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Coursier.update(id, data),
+    mutationFn: ({ id, data }) => updateRecord("livraisons", id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
       fermerDialog();
@@ -65,7 +65,7 @@ export default function GestionCoursiers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Coursier.delete(id),
+    mutationFn: (id) => deleteRecord("livraisons", id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
     }

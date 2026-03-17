@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Truck, CheckCircle2, AlertCircle, Clock, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", color: "bg-yellow-100 text-yellow-700" },
@@ -31,13 +31,13 @@ export default function GestionCommandes() {
   // Récupérer les commandes
   const { data: commandes = [], isLoading: loadingCommandes } = useQuery({
     queryKey: ["commandes"],
-    queryFn: () => base44.entities.CommandeVendeur.list("-created_date"),
+    queryFn: () => listTable("commandes_vendeur", "-created_date"),
   });
 
   // Récupérer les livreurs actifs
   const { data: livreurs = [] } = useQuery({
     queryKey: ["livreurs"],
-    queryFn: () => base44.entities.Livraison.filter({ statut: "actif" }),
+    queryFn: () => filterTable("livraisons", { statut: "actif" }),
   });
 
   // Filtrer les commandes

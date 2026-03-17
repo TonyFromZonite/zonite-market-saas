@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search, RotateCcw, PackageCheck, XCircle, Loader2 } from "lucide-react";
+import { createRecord, filterTable, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 const RAISONS = {
   defaut_produit:     "Défaut produit",
@@ -44,7 +44,7 @@ export default function RetoursAdmin() {
 
   const { data: retours = [], isLoading } = useQuery({
     queryKey: ["retours_admin"],
-    queryFn: () => base44.entities.RetourProduit.list("-created_date", 200),
+    queryFn: () => listTable("retours_produit", "-created_date", 200),
   });
 
   const nbEnAttente = retours.filter(r => r.statut === "en_attente").length;
@@ -63,12 +63,12 @@ export default function RetoursAdmin() {
 
     // 1. Réintégrer le stock si demandé
     if (stockReintegre) {
-      const [produit] = await base44.entities.Produit.filter({ id: retourSelectionne.produit_id });
+      const [produit] = await filterTable("produits", { id: retourSelectionne.produit_id });
       if (produit) {
-        await base44.entities.Produit.update(produit.id, {
+        await updateRecord("produits", produit.id, {
           stock_global: (produit.stock_global || 0) + retourSelectionne.quantite_retournee,
         });
-        await base44.entities.MouvementStock.create({
+        await createRecord("mouvements_stock", {
           produit_id: produit.id,
           produit_nom: produit.nom,
           type_mouvement: "entree",
@@ -82,17 +82,17 @@ export default function RetoursAdmin() {
 
     // 2. Ajuster le solde du vendeur
     if (actionVendeur !== "aucune" && montant > 0) {
-      const [compte] = await base44.entities.CompteVendeur.filter({ id: retourSelectionne.vendeur_id });
+      const [compte] = await filterTable("sellers", { id: retourSelectionne.vendeur_id });
       if (compte) {
         const delta = actionVendeur === "deduire_commission" ? -montant : montant;
-        await base44.entities.CompteVendeur.update(compte.id, {
+        await updateRecord("sellers", compte.id, {
           solde_commission: Math.max(0, (compte.solde_commission || 0) + delta),
         });
       }
     }
 
     // 3. Mettre à jour le retour
-    await base44.entities.RetourProduit.update(retourSelectionne.id, {
+    await updateRecord("retours_produit", retourSelectionne.id, {
       statut: "traite",
       stock_reintegre: stockReintegre,
       action_vendeur: actionVendeur,
@@ -104,7 +104,7 @@ export default function RetoursAdmin() {
     let msgAction = "";
     if (actionVendeur === "deduire_commission" && montant > 0) msgAction = ` Déduction de ${fmt(montant)} sur votre solde.`;
     if (actionVendeur === "crediter_bonus" && montant > 0) msgAction = ` Crédit de ${fmt(montant)} sur votre solde.`;
-    await base44.entities.NotificationVendeur.create({
+    await createRecord("notifications_vendeur", {
       vendeur_email: retourSelectionne.vendeur_email,
       titre: "Retour produit traité",
       message: `Le retour de ${retourSelectionne.quantite_retournee}x ${retourSelectionne.produit_nom} a été traité.${msgAction}`,
@@ -112,7 +112,7 @@ export default function RetoursAdmin() {
     });
 
     // 5. Journal
-    await base44.entities.JournalAudit.create({
+    await createRecord("journal_audit", {
       action: "Retour produit traité",
       module: "commande",
       details: `Retour ${retourSelectionne.id} — ${retourSelectionne.produit_nom} × ${retourSelectionne.quantite_retournee} — Stock: ${stockReintegre ? "OUI" : "NON"} — Action vendeur: ${ACTIONS_VENDEUR[actionVendeur]}`,
@@ -126,11 +126,11 @@ export default function RetoursAdmin() {
 
   const rejeterRetour = async () => {
     setEnCours(true);
-    await base44.entities.RetourProduit.update(retourSelectionne.id, {
+    await updateRecord("retours_produit", retourSelectionne.id, {
       statut: "rejete",
       notes_admin: notesAdmin,
     });
-    await base44.entities.NotificationVendeur.create({
+    await createRecord("notifications_vendeur", {
       vendeur_email: retourSelectionne.vendeur_email,
       titre: "Retour produit rejeté",
       message: `Le retour de ${retourSelectionne.produit_nom} a été rejeté.${notesAdmin ? ` Raison : ${notesAdmin}` : ""}`,

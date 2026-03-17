@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { uploadFile } from "@/lib/supabaseHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,7 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadEnCours(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await uploadFile(file);
     const imgs = [...(form.images_urls || []), file_url];
     setForm(p => ({ ...p, images_urls: imgs, image_url: imgs[0] }));
     setUploadEnCours(false);

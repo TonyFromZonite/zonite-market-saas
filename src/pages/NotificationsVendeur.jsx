@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { vendeurApi } from "@/components/vendeurApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Bell, ChevronLeft, CheckCheck, Star } from "lucide-react";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 const COULEURS = {
   info: "bg-blue-50 border-blue-100 text-blue-800",
@@ -48,7 +48,7 @@ export default function NotificationsVendeur() {
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["notifs_vendeur", utilisateur?.email],
-    queryFn: () => base44.entities.NotificationVendeur.filter({ vendeur_email: utilisateur.email }, "-created_date", 100),
+    queryFn: () => filterTable("notifications_vendeur", { vendeur_email: utilisateur.email }, "-created_date", 100),
     enabled: !!utilisateur?.email,
   });
 

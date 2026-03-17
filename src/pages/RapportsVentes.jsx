@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import VentesVendeurTab from "@/components/rapports/VentesVendeurTab";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download, Loader2 } from "lucide-react";
@@ -9,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { jsPDF } from "jspdf";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const PERIODES = [
   { label: "7 jours", valeur: 7 },
@@ -224,17 +224,17 @@ export default function RapportsVentes() {
 
   const { data: ventes = [], isLoading: chargVentes } = useQuery({
     queryKey: ["ventes_rapport"],
-    queryFn: () => base44.entities.Vente.list("-created_date", 2000),
+    queryFn: () => listTable("ventes", "-created_date", 2000),
   });
 
   const { data: commandesVendeurs = [], isLoading: chargCmds } = useQuery({
     queryKey: ["commandes_vendeurs_rapport"],
-    queryFn: () => base44.entities.CommandeVendeur.list("-created_date", 2000),
+    queryFn: () => listTable("commandes_vendeur", "-created_date", 2000),
   });
 
   const { data: produits = [] } = useQuery({
     queryKey: ["produits_rapport"],
-    queryFn: () => base44.entities.Produit.list(),
+    queryFn: () => listTable("produits"),
   });
 
   const isLoading = chargVentes || chargCmds;

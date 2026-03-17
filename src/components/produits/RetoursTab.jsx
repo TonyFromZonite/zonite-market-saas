@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { showSuccess, showError } from "@/components/NotificationSystem";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Loader2, RotateCcw, PackageCheck, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const RAISONS = {
   defaut_produit: "Défaut produit",
@@ -47,7 +47,7 @@ export default function RetoursTab() {
 
   const { data: retours = [], isLoading } = useQuery({
     queryKey: ["retours_admin"],
-    queryFn: () => base44.entities.RetourProduit.list("-created_date", 200),
+    queryFn: () => listTable("retours_produit", "-created_date", 200),
   });
 
   const nbEnAttente = retours.filter(r => r.statut === "en_attente").length;
@@ -66,7 +66,7 @@ export default function RetoursTab() {
       const montant = parseFloat(montantAjustement) || 0;
       
       if (stockReintegre) {
-        const [produit] = await base44.entities.Produit.filter({ id: retourSelectionne.produit_id });
+        const [produit] = await filterTable("produits", { id: retourSelectionne.produit_id });
         if (produit) {
           await adminApi.updateProduit(produit.id, { stock_global: (produit.stock_global || 0) + retourSelectionne.quantite_retournee });
           await adminApi.createMouvementStock({ produit_id: produit.id, produit_nom: produit.nom, type_mouvement: "entree", quantite: retourSelectionne.quantite_retournee, stock_avant: produit.stock_global || 0, stock_apres: (produit.stock_global || 0) + retourSelectionne.quantite_retournee, raison: `Retour produit — ${RAISONS[retourSelectionne.raison]}` });
@@ -74,7 +74,7 @@ export default function RetoursTab() {
       }
       
       if (actionVendeur !== "aucune" && montant > 0) {
-        const [compte] = await base44.entities.CompteVendeur.filter({ id: retourSelectionne.vendeur_id });
+        const [compte] = await filterTable("sellers", { id: retourSelectionne.vendeur_id });
         if (compte) {
           const delta = actionVendeur === "deduire_commission" ? -montant : montant;
           await adminApi.updateCompteVendeur(compte.id, { solde_commission: Math.max(0, (compte.solde_commission || 0) + delta) });

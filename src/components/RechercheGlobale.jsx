@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
 import { Search, X, Package, ShoppingCart, Users, ClipboardList, Loader2 } from "lucide-react";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const TYPES = [
   { key: "produits",   label: "Produit",   icone: Package,       couleur: "text-blue-600 bg-blue-50",  page: "Produits" },
@@ -49,10 +49,10 @@ export default function RechercheGlobale() {
     const ql = q.toLowerCase();
     try {
       const [produits, ventes, commandes, vendeurs] = await Promise.all([
-        base44.entities.Produit.list("-created_date", 100),
-        base44.entities.Vente.list("-created_date", 100),
-        base44.entities.CommandeVendeur.list("-created_date", 100),
-        base44.entities.Vendeur.list("-created_date", 100),
+        listTable("produits", "-created_date", 100),
+        listTable("ventes", "-created_date", 100),
+        listTable("commandes_vendeur", "-created_date", 100),
+        listTable("sellers", "-created_date", 100),
       ]);
 
       const res = [];

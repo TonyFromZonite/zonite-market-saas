@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Loader2, Truck, MapPin, X, ChevronDown, ChevronUp, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const initZone = { ville: "", quartiers: "", prix_standard: 0, prix_express: 0, delai_standard: "24-48h", delai_express: "2-4h" };
 const initForm = { nom: "", telephone: "", vehicule: "", notes: "", statut: "actif", zones_couvertes: [] };
@@ -29,7 +29,7 @@ export default function Livraisons() {
 
   const { data: livraisons = [], isLoading } = useQuery({
     queryKey: ["livraisons"],
-    queryFn: () => base44.entities.Livraison.list("-created_date"),
+    queryFn: () => listTable("livraisons", "-created_date"),
   });
 
   const modifier = (champ, valeur) => setForm((p) => ({ ...p, [champ]: valeur }));

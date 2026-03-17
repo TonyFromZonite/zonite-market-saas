@@ -14,7 +14,6 @@ function ResponsiveRow({ children }) {
     </div>
   );
 }
-import { base44 } from "@/api/base44Client";
 import { useCachedQuery } from "@/components/CacheManager";
 import {
   DollarSign, TrendingUp, Wallet, AlertTriangle,
@@ -29,6 +28,7 @@ import TopProduits from "@/components/dashboard/TopProduits";
 import TopVendeurs from "@/components/dashboard/TopVendeurs";
 import StockCritique from "@/components/dashboard/StockCritique";
 import { getAdminSession, getSousAdminSession } from "@/components/useSessionGuard";
+import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const formaterMontant = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
@@ -36,13 +36,13 @@ const formaterMontant = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FC
 function DashboardSousAdmin({ sousAdmin }) {
   const { data: commandesVendeurs = [], isLoading: chargCmd } = useCachedQuery(
     'COMMANDES',
-    () => base44.entities.CommandeVendeur.list("-created_date", 100),
+    () => listTable("commandes_vendeur", "-created_date", 100),
     { ttl: 5 * 60 * 1000, enabled: true }
   );
 
   const { data: produits = [] } = useCachedQuery(
     'PRODUITS',
-    () => base44.entities.Produit.list(),
+    () => listTable("produits"),
     { ttl: 30 * 60 * 1000, enabled: (sousAdmin.permissions || []).includes("Produits") }
   );
 
@@ -135,13 +135,13 @@ function DashboardSousAdmin({ sousAdmin }) {
 function DashboardAdmin() {
   const { data: ventes = [], isLoading: chargementVentes } = useCachedQuery(
     'VENTES',
-    () => base44.entities.Vente.list("-created_date", 100),
+    () => listTable("ventes", "-created_date", 100),
     { ttl: 10 * 60 * 1000 }
   );
 
   const { data: produits = [], isLoading: chargementProduits } = useCachedQuery(
     'PRODUITS',
-    () => base44.entities.Produit.list(),
+    () => listTable("produits"),
     { ttl: 30 * 60 * 1000 }
   );
 
@@ -150,7 +150,7 @@ function DashboardAdmin() {
 
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useCachedQuery(
     'VENDEURS',
-    () => base44.entities.Seller.list(),
+    () => listTable("sellers"),
     { ttl: 60 * 60 * 1000 }
   );
 
@@ -159,25 +159,25 @@ function DashboardAdmin() {
 
   const { data: commandesVendeurs = [] } = useCachedQuery(
     'COMMANDES',
-    () => base44.entities.CommandeVendeur.list("-created_date", 100),
+    () => listTable("commandes_vendeur", "-created_date", 100),
     { ttl: 5 * 60 * 1000 }
   );
 
   const { data: candidaturesEnAttente } = useCachedQuery(
     'CANDIDATURES',
-    () => base44.entities.CandidatureVendeur.filter({ statut: "en_attente" }),
+    () => filterTable("candidatures_vendeur", { statut: "en_attente" }),
     { ttl: 15 * 60 * 1000 }
   );
 
   const { data: kycEnAttente } = useCachedQuery(
     'KYC',
-    () => base44.entities.Seller.filter({ statut_kyc: "en_attente" }),
+    () => filterTable("sellers", { statut_kyc: "en_attente" }),
     { ttl: 15 * 60 * 1000 }
   );
 
   const { data: paiementsEnAttente } = useCachedQuery(
     'PAIEMENTS',
-    () => base44.entities.DemandePaiementVendeur.filter({ statut: "en_attente" }),
+    () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }),
     { ttl: 15 * 60 * 1000 }
   );
 

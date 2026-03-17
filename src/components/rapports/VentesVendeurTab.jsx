@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, DollarSign, ShoppingCart, TrendingUp } from "lucide-react";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const fmt = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -25,7 +25,7 @@ export default function VentesVendeurTab() {
 
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeurs_ventes_tab"],
-    queryFn: () => base44.entities.CommandeVendeur.list("-created_date", 2000),
+    queryFn: () => listTable("commandes_vendeur", "-created_date", 2000),
   });
 
   // Commandes livrées uniquement

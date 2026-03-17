@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, UserCog, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { listTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const MODULES_DISPONIBLES = [
   { id: "TableauDeBord",     label: "Tableau de Bord" },
@@ -43,7 +44,7 @@ export default function GestionSousAdmins() {
 
   const { data: sousAdmins = [], isLoading } = useQuery({
     queryKey: ["sous_admins"],
-    queryFn: () => base44.entities.SousAdmin.list("-created_date"),
+    queryFn: () => listTable("sous_admins", "-created_date"),
   });
 
   const ouvrirCreation = () => {
@@ -94,7 +95,7 @@ export default function GestionSousAdmins() {
         mot_de_passe_clair: form.mot_de_passe, // transmis pour créer le compte Base44 + email
       };
       if (form.mot_de_passe) {
-        const response = await base44.functions.invoke('hashPassword', {
+        const response = await supabase.functions.invoke('hashPassword', {
           password: form.mot_de_passe
         });
         data.mot_de_passe_hash = response.data.hashedPassword;

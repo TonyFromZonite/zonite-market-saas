@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Check, X, ShieldAlert } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 
 export default function ConfigurationAdminPassword() {
@@ -20,7 +21,7 @@ export default function ConfigurationAdminPassword() {
   useEffect(() => {
     const charger = async () => {
       try {
-        const configs = await base44.entities.ConfigApp.filter({});
+        const configs = await filterTable("config_app", {});
         const configMap = {};
         configs.forEach(c => { configMap[c.cle] = c.valeur; });
         setAdminMdpHash(configMap["admin_password_hash"] || "");
@@ -70,7 +71,7 @@ export default function ConfigurationAdminPassword() {
     try {
       if (necessiteAncien) {
         // Vérifier ancien mot de passe via la fonction backend
-        const response = await base44.functions.invoke('changePassword', {
+        const response = await supabase.functions.invoke('changePassword', {
           oldPassword: mdpActuel,
           newPassword: mdpNouveau,
           userType: 'admin'
@@ -86,7 +87,7 @@ export default function ConfigurationAdminPassword() {
         }
       } else {
         // Création initiale — hash via fonction backend
-        const response = await base44.functions.invoke('setAdminPassword', {
+        const response = await supabase.functions.invoke('setAdminPassword', {
           password: mdpNouveau
         });
         if (response.data.success) {

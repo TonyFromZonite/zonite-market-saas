@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { MapPin, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { createRecord, deleteRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 export default function GestionZones() {
   const [dialogOuvert, setDialogOuvert] = useState(false);
@@ -38,11 +38,11 @@ export default function GestionZones() {
 
   const { data: zones = [], isLoading } = useQuery({
     queryKey: ["zones"],
-    queryFn: () => base44.entities.Zone.list()
+    queryFn: () => listTable("zones")
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Zone.create(data),
+    mutationFn: (data) => createRecord("zones", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
       fermerDialog();
@@ -50,7 +50,7 @@ export default function GestionZones() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Zone.update(id, data),
+    mutationFn: ({ id, data }) => updateRecord("zones", id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
       fermerDialog();
@@ -58,7 +58,7 @@ export default function GestionZones() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Zone.delete(id),
+    mutationFn: (id) => deleteRecord("zones", id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["zones"] });
     }

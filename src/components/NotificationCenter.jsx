@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Bell, X, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
+import { deleteRecord, filterTable, getCurrentUser, updateRecord } from "@/lib/supabaseHelpers";
 
 const ICONES_TYPE = {
   kyc_soumis: "👤",
@@ -38,8 +38,8 @@ export default function NotificationCenter() {
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
-      const user = await base44.auth.me();
-      const notifs = await base44.entities.Notification.filter(
+      const user = await getCurrentUser();
+      const notifs = await filterTable("notifications_vendeur", 
         { destinataire_email: user.email },
         "-created_date",
         50
@@ -52,7 +52,7 @@ export default function NotificationCenter() {
 
   const marquerCommeLueMutation = useMutation({
     mutationFn: async (notifId) => {
-      await base44.entities.Notification.update(notifId, {
+      await updateRecord("notifications_vendeur", notifId, {
         lue: true,
         date_lecture: new Date().toISOString(),
       });
@@ -64,7 +64,7 @@ export default function NotificationCenter() {
 
   const supprimerMutation = useMutation({
     mutationFn: async (notifId) => {
-      await base44.entities.Notification.delete(notifId);
+      await deleteRecord("notifications_vendeur", notifId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -76,7 +76,7 @@ export default function NotificationCenter() {
       const nonLues = notifications.filter((n) => !n.lue);
       await Promise.all(
         nonLues.map((n) =>
-          base44.entities.Notification.update(n.id, {
+          updateRecord("notifications_vendeur", n.id, {
             lue: true,
             date_lecture: new Date().toISOString(),
           })
