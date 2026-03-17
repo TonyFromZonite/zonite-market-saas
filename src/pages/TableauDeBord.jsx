@@ -2,14 +2,8 @@ import React, { useState, useEffect } from "react";
 
 // Composant helper pour 2 colonnes sur desktop, 1 sur mobile
 function ResponsiveRow({ children }) {
-  const [isWide, setIsWide] = useState(window.innerWidth >= 1024);
-  useEffect(() => {
-    const handler = () => setIsWide(window.innerWidth >= 1024);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: isWide ? "1fr 1fr" : "1fr", gap: 16 }}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {children}
     </div>
   );
