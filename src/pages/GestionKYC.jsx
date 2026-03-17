@@ -109,7 +109,7 @@ export default function GestionKYC() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "En attente", val: enAttente.length, couleur: "text-yellow-600" },
           { label: "Validés", val: comptes.filter(c => c.statut_kyc === "valide").length, couleur: "text-emerald-600" },
@@ -174,7 +174,7 @@ export default function GestionKYC() {
       )}
 
       <Dialog open={!!compteSelectionne} onOpenChange={() => setCompteSelectionne(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Dossier KYC : {compteSelectionne?.full_name}</DialogTitle>
           </DialogHeader>

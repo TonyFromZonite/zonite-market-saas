@@ -37,7 +37,7 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
       <aside
         className={
           isDesktop
-            ? "hidden h-dvh w-64 shrink-0 flex-col bg-[#1a1f5e] text-white lg:flex"
+            ? "sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-[#1a1f5e] text-white lg:flex"
             : `fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[18rem] flex-col bg-[#1a1f5e] text-white shadow-2xl transition-transform duration-300 lg:hidden ${
                 isOpen ? "translate-x-0" : "-translate-x-full"
               }`
