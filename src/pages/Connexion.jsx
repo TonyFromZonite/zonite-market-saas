@@ -7,14 +7,14 @@ import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
 const MESSAGES_MOTIVATION = [
-  "Chaque vente est une victoire. Allons-y 🚀",
-];
+"Chaque vente est une victoire. Allons-y 🚀"];
 
-const TikTokIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+
+const TikTokIcon = ({ size = 20 }) =>
+<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.77a4.85 4.85 0 01-1.01-.08z" />
-  </svg>
-);
+  </svg>;
+
 
 const MODE_VENDEUR = "vendeur";
 const MODE_ADMIN = "admin";
@@ -40,7 +40,7 @@ export default function Connexion() {
         const { data } = await supabase.from("config_app").select("cle, valeur");
         const map = {};
         (data || []).forEach((i) => {
-          try { map[i.cle] = typeof i.valeur === "string" ? i.valeur : JSON.parse(JSON.stringify(i.valeur)); } catch { map[i.cle] = i.valeur; }
+          try {map[i.cle] = typeof i.valeur === "string" ? i.valeur : JSON.parse(JSON.stringify(i.valeur));} catch {map[i.cle] = i.valeur;}
         });
         setConfigs(map);
       } catch (_) {}
@@ -50,14 +50,14 @@ export default function Connexion() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email || !motDePasse) { setErreur("Veuillez remplir tous les champs."); return; }
+    if (!email || !motDePasse) {setErreur("Veuillez remplir tous les champs.");return;}
     setChargement(true);
     setErreur("");
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password: motDePasse,
+        password: motDePasse
       });
 
       if (authError) {
@@ -68,11 +68,11 @@ export default function Connexion() {
       const user = authData.user;
       const role = user.user_metadata?.role || "user";
 
-      const { data: seller } = await supabase
-        .from("sellers")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: seller } = await supabase.
+      from("sellers").
+      select("*").
+      eq("user_id", user.id).
+      maybeSingle();
 
       if (mode === MODE_ADMIN) {
         if (role !== "admin" && role !== "sous_admin") {
@@ -84,7 +84,7 @@ export default function Connexion() {
           user_id: user.id,
           email: user.email,
           role: role,
-          nom_complet: user.user_metadata?.full_name || seller?.full_name || "",
+          nom_complet: user.user_metadata?.full_name || seller?.full_name || ""
         }));
         window.location.href = "/TableauDeBord";
       } else {
@@ -107,7 +107,7 @@ export default function Connexion() {
           telephone: seller.telephone,
           catalogue_debloque: seller.catalogue_debloque,
           training_completed: seller.training_completed,
-          solde_commission: seller.solde_commission,
+          solde_commission: seller.solde_commission
         }));
         window.location.href = "/EspaceVendeur";
       }
@@ -121,16 +121,16 @@ export default function Connexion() {
 
   const mdpOublie = async (e) => {
     e.preventDefault();
-    if (!emailOublie) { setErreur("Entrez votre email."); return; }
+    if (!emailOublie) {setErreur("Entrez votre email.");return;}
     setChargementOublie(true);
     setErreur("");
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(emailOublie.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/ResetPassword`,
+        redirectTo: `${window.location.origin}/ResetPassword`
       });
-      if (error) setErreur("Erreur lors de l'envoi. Réessayez.");
-      else setMdpOublieSucces(true);
-    } catch { setErreur("Erreur lors de l'envoi. Réessayez."); }
+      if (error) setErreur("Erreur lors de l'envoi. Réessayez.");else
+      setMdpOublieSucces(true);
+    } catch {setErreur("Erreur lors de l'envoi. Réessayez.");}
     setChargementOublie(false);
   };
 
@@ -139,21 +139,21 @@ export default function Connexion() {
   const messageAccueil = configs["message_accueil"] || MESSAGES_MOTIVATION[msgIndex];
   const nomApp = configs["nom_app"] || "ZONITE Vendeurs";
 
-  const changerMode = (m) => { setMode(m); setErreur(""); setModeMdpOublie(false); setMdpOublieSucces(false); setEmail(""); setMotDePasse(""); };
+  const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-between px-5 relative overflow-hidden"
-      style={{ paddingTop: "max(2.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))" }}>
+    style={{ paddingTop: "max(2.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))" }}>
       <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="w-full flex flex-col items-center mt-3 mb-6 md:mt-4 md:mb-8 relative z-10 px-3">
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
-          <img src={LOGO} alt="Logo" className="w-full h-full object-contain p-0.5" />
+          <img alt="Logo" className="w-full h-full object-contain p-0.5" src="/lovable-uploads/87d7eb1b-437e-4a6a-b26e-387a91498d34.png" />
         </div>
         <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight">
           {String(nomApp).replace(/"/g, '').split(" ").map((w, i) =>
-            i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
+          i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
         <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3">
@@ -164,11 +164,11 @@ export default function Connexion() {
       <div className="w-full max-w-sm relative z-10 mb-4 md:mb-6 px-3">
         <div className="bg-white/10 backdrop-blur rounded-2xl p-1 flex border border-white/15">
           <button onClick={() => changerMode(MODE_VENDEUR)}
-            className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_VENDEUR ? "bg-[#F5C518] text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
+          className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_VENDEUR ? "bg-[#F5C518] text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
             👤 Espace Vendeur
           </button>
           <button onClick={() => changerMode(MODE_ADMIN)}
-            className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_ADMIN ? "bg-white text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
+          className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_ADMIN ? "bg-white text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
             🔐 Espace Admin
           </button>
         </div>
@@ -176,8 +176,8 @@ export default function Connexion() {
 
       <div className="w-full max-w-sm relative z-10 flex-1 flex flex-col justify-center px-3">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-5 md:p-6 border border-white/20 shadow-2xl">
-          {!modeMdpOublie && (
-            <div>
+          {!modeMdpOublie &&
+          <div>
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">
                 {mode === MODE_ADMIN ? "Connexion Administrateur" : "Connexion Vendeur"}
               </h2>
@@ -188,66 +188,66 @@ export default function Connexion() {
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Email</label>
                   <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com" autoComplete="email"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
                 </div>
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Mot de passe</label>
                   <div className="relative">
                     <Input type={mdpVisible ? "text" : "password"} value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} placeholder="••••••••" autoComplete="current-password"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11 pr-12" />
+                  className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11 pr-12" />
                     <button type="button" onClick={() => setMdpVisible(!mdpVisible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">
                       {mdpVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
-                {erreur && (
-                  <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5">
+                {erreur &&
+              <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5">
                     <p className="text-red-300 text-xs">{erreur}</p>
                   </div>
-                )}
+              }
                 <Button type="submit" disabled={chargement}
-                  className={`w-full h-11 md:h-12 font-black text-sm md:text-base rounded-xl transition-all active:scale-95 ${mode === MODE_ADMIN ? "bg-white hover:bg-slate-100 text-[#1a1f5e]" : "bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] shadow-lg shadow-[#F5C518]/20"}`}>
+              className={`w-full h-11 md:h-12 font-black text-sm md:text-base rounded-xl transition-all active:scale-95 ${mode === MODE_ADMIN ? "bg-white hover:bg-slate-100 text-[#1a1f5e]" : "bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] shadow-lg shadow-[#F5C518]/20"}`}>
                   {chargement ? "Vérification..." : mode === MODE_ADMIN ? "Accéder au panneau admin →" : "Se connecter →"}
                 </Button>
               </form>
-              {mode === MODE_VENDEUR && (
-                <div className="mt-3 md:mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <button onClick={() => { setModeMdpOublie(true); setErreur(""); }} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
+              {mode === MODE_VENDEUR &&
+            <div className="mt-3 md:mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <button onClick={() => {setModeMdpOublie(true);setErreur("");}} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
                     Mot de passe oublié ?
                   </button>
                   <a href={createPageUrl("InscriptionVendeur")} className="text-[#F5C518] text-xs font-semibold hover:underline text-center md:text-right">
                     Créer mon compte →
                   </a>
                 </div>
-              )}
+            }
             </div>
-          )}
-          {mode === MODE_VENDEUR && modeMdpOublie && (
-            <div>
-              <button onClick={() => { setModeMdpOublie(false); setErreur(""); setMdpOublieSucces(false); }} className="text-slate-400 text-xs hover:text-white mb-3 flex items-center gap-1">← Retour</button>
+          }
+          {mode === MODE_VENDEUR && modeMdpOublie &&
+          <div>
+              <button onClick={() => {setModeMdpOublie(false);setErreur("");setMdpOublieSucces(false);}} className="text-slate-400 text-xs hover:text-white mb-3 flex items-center gap-1">← Retour</button>
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">Mot de passe oublié</h2>
               <p className="text-slate-300 text-xs mb-4">Un lien de réinitialisation vous sera envoyé par email.</p>
-              {mdpOublieSucces ? (
-                <div className="bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-4 py-4 text-center">
+              {mdpOublieSucces ?
+            <div className="bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-4 py-4 text-center">
                   <p className="text-emerald-300 text-sm font-semibold">✓ Email envoyé !</p>
                   <p className="text-emerald-200 text-xs mt-1">Vérifiez votre boîte mail.</p>
-                  <button onClick={() => { setModeMdpOublie(false); setMdpOublieSucces(false); }} className="mt-3 text-[#F5C518] text-xs underline">Retour à la connexion</button>
-                </div>
-              ) : (
-                <form onSubmit={mdpOublie} className="space-y-4">
+                  <button onClick={() => {setModeMdpOublie(false);setMdpOublieSucces(false);}} className="mt-3 text-[#F5C518] text-xs underline">Retour à la connexion</button>
+                </div> :
+
+            <form onSubmit={mdpOublie} className="space-y-4">
                   <div>
                     <label className="text-slate-200 text-xs font-medium block mb-1.5">Votre email</label>
                     <Input type="email" value={emailOublie} onChange={(e) => setEmailOublie(e.target.value)} placeholder="votre@email.com"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
                   </div>
-                  {erreur && (<div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5"><p className="text-red-300 text-xs">{erreur}</p></div>)}
+                  {erreur && <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2.5"><p className="text-red-300 text-xs">{erreur}</p></div>}
                   <Button type="submit" disabled={chargementOublie} className="w-full h-11 md:h-12 bg-white hover:bg-slate-100 text-[#1a1f5e] font-black text-sm md:text-base rounded-xl transition-all active:scale-95">
                     {chargementOublie ? "Envoi en cours..." : "Recevoir un nouveau mot de passe"}
                   </Button>
                 </form>
-              )}
+            }
             </div>
-          )}
+          }
         </div>
       </div>
 
@@ -255,16 +255,16 @@ export default function Connexion() {
         <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
         <div className="flex items-center gap-2 md:gap-3">
           <a href={String(lienFacebook).replace(/"/g, '')} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
+          className="flex items-center gap-2 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
             <Facebook className="w-3 h-3 md:w-4 md:h-4 text-[#1877F2]" /> <span className="hidden sm:inline">Facebook</span>
           </a>
           <a href={String(lienTiktok).replace(/"/g, '')} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
+          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
             <TikTokIcon size={14} /> <span className="hidden sm:inline">TikTok</span>
           </a>
         </div>
         <p className="text-slate-500 text-[10px] md:text-xs">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
       </div>
-    </div>
-  );
+    </div>);
+
 }
