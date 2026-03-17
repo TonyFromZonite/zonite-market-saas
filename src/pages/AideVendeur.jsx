@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { vendeurApi } from "@/components/vendeurApi";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +12,6 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-
-
 
 const STATUTS = {
   ouvert: { label: "Ouvert", color: "bg-blue-100 text-blue-700" },
@@ -39,7 +36,15 @@ export default function AideVendeur() {
 
   const { data: faqItems = [] } = useQuery({
     queryKey: ["faq_items"],
-    queryFn: () => base44.entities.FaqItem.filter({ actif: true }, "ordre"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("faq_items")
+        .select("*")
+        .eq("actif", true)
+        .order("ordre");
+      if (error) throw error;
+      return data || [];
+    },
   });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ sujet: "", categorie: "", message: "" });
@@ -50,45 +55,77 @@ export default function AideVendeur() {
 
   useEffect(() => {
     const charger = async () => {
-      const u = await base44.auth.me();
-      const sellers = await base44.entities.Seller.filter({ email: u.email });
-      if (sellers.length > 0) setCompteVendeur(sellers[0]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (seller) setCompteVendeur(seller);
     };
     charger();
   }, []);
 
   const { data: tickets = [] } = useQuery({
-    queryKey: ["tickets_vendeur", compteVendeur?.email],
-    queryFn: () => base44.entities.TicketSupport.filter({ vendeur_email: compteVendeur.email }, "-created_date"),
-    enabled: !!compteVendeur,
+    queryKey: ["tickets_vendeur", compteVendeur?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tickets_support")
+        .select("*")
+        .eq("vendeur_id", compteVendeur.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!compteVendeur?.id,
   });
 
   const soumettre = async () => {
-    if (!form.sujet || !form.categorie || !form.message) return;
+    if (!form.sujet || !form.categorie || !form.message || !compteVendeur) return;
     setEnCours(true);
-    await vendeurApi.createTicketSupport({
-      vendeur_email: compteVendeur.email,
-      vendeur_nom: compteVendeur.nom_complet,
-      sujet: form.sujet,
-      categorie: form.categorie,
-      message: form.message,
-      statut: "ouvert",
-      priorite: "normale"
-    });
-    queryClient.invalidateQueries({ queryKey: ["tickets_vendeur"] });
-    setForm({ sujet: "", categorie: "", message: "" });
-    setShowForm(false);
-    setSucces(true);
-    setOnglet("tickets");
-    setEnCours(false);
-    setTimeout(() => setSucces(false), 4000);
+    try {
+      // Create the ticket
+      const { error } = await supabase.from("tickets_support").insert({
+        vendeur_id: compteVendeur.id,
+        vendeur_email: compteVendeur.email,
+        sujet: form.sujet,
+        categorie: form.categorie,
+        message: form.message,
+        statut: "ouvert",
+        priorite: "normale",
+      });
+      if (error) throw error;
+
+      // Notify admin
+      await supabase.from("notifications_admin").insert({
+        titre: "Nouveau ticket support",
+        message: `${compteVendeur.full_name} a ouvert un ticket : ${form.sujet}`,
+        type: "support",
+        vendeur_email: compteVendeur.email,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["tickets_vendeur"] });
+      setForm({ sujet: "", categorie: "", message: "" });
+      setShowForm(false);
+      setSucces(true);
+      setOnglet("tickets");
+    } catch (err) {
+      console.error("Erreur création ticket:", err);
+    } finally {
+      setEnCours(false);
+      setTimeout(() => setSucces(false), 4000);
+    }
   };
 
   // Marquer comme lu quand le vendeur ouvre un ticket avec réponse
   const ouvrirTicket = async (ticket) => {
     setTicketOuvert(ticket);
-    if (ticket.reponse_admin && !ticket.lu_par_vendeur) {
-      await vendeurApi.marquerTicketLu(ticket.id);
+    if (ticket && ticket.reponse_admin && !ticket.lu_par_vendeur) {
+      await supabase
+        .from("tickets_support")
+        .update({ lu_par_vendeur: true })
+        .eq("id", ticket.id);
       queryClient.invalidateQueries({ queryKey: ["tickets_vendeur"] });
     }
   };
@@ -143,7 +180,7 @@ export default function AideVendeur() {
               <div className="text-center py-8 text-slate-400 text-sm">Aucune question disponible pour l'instant.</div>
             )}
             {faqItems.map((item, i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div key={item.id || i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <button
                   onClick={() => setFaqOuverte(faqOuverte === i ? null : i)}
                   className="w-full flex items-center justify-between px-4 py-3.5 text-left gap-3"
@@ -234,7 +271,7 @@ export default function AideVendeur() {
                         </div>
                         <p className="text-sm font-medium text-slate-900 truncate">{ticket.sujet}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {format(new Date(ticket.created_date), "d MMM yyyy", { locale: fr })}
+                          {format(new Date(ticket.created_at), "d MMM yyyy", { locale: fr })}
                         </p>
                       </div>
                       {ticketOuvert?.id === ticket.id ? <ChevronUp className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />}
@@ -251,8 +288,8 @@ export default function AideVendeur() {
                         <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
                           <p className="text-xs text-emerald-600 font-medium mb-1">Réponse de l'équipe ZONITE</p>
                           <p className="text-sm text-slate-700">{ticket.reponse_admin}</p>
-                          {ticket.date_reponse && (
-                            <p className="text-xs text-slate-400 mt-1">{format(new Date(ticket.date_reponse), "d MMM yyyy à HH:mm", { locale: fr })}</p>
+                          {ticket.repondu_at && (
+                            <p className="text-xs text-slate-400 mt-1">{format(new Date(ticket.repondu_at), "d MMM yyyy à HH:mm", { locale: fr })}</p>
                           )}
                         </div>
                       ) : (

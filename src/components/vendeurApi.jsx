@@ -45,4 +45,9 @@ export const vendeurApi = {
     const { error } = await supabase.from("sellers").update(data).eq("id", id);
     if (error) throw error;
   },
+
+  async marquerTicketLu(id) {
+    const { error } = await supabase.from("tickets_support").update({ lu_par_vendeur: true }).eq("id", id);
+    if (error) console.error("marquerTicketLu error:", error);
+  },
 };
