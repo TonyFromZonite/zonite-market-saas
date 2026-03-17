@@ -212,10 +212,18 @@ export default function InscriptionVendeur() {
         role: 'vendeur',
       });
 
-      // 4. Send verification email via edge function
+      // 4. Generate verification code and store it
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('sellers').update({
+        email_verification_code: verificationCode,
+        email_verification_expires_at: expiresAt,
+      }).eq('id', sellerData.id);
+
+      // 5. Send verification email via edge function
       try {
         await supabase.functions.invoke('send-verification-email', {
-          body: { email: form.email.trim().toLowerCase(), full_name: form.nom_complet }
+          body: { email: form.email.trim().toLowerCase(), nom: form.nom_complet, code: verificationCode }
         });
       } catch (e) {
         console.warn("Verification email send failed:", e);
