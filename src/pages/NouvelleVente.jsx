@@ -1,157 +1,143 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { adminApi } from "@/components/adminApi";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import FormulaireVente from "@/components/vente/FormulaireVente";
-import { getRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function NouvelleVente() {
   const [enCours, setEnCours] = useState(false);
   const [succes, setSucces] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: produits = [] } = useQuery({
     queryKey: ["produits"],
-    queryFn: () => listTable("produits"),
+    queryFn: async () => {
+      const { data } = await supabase.from("produits").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
   const { data: vendeurs = [] } = useQuery({
     queryKey: ["vendeurs"],
-    queryFn: () => listTable("sellers"),
-  });
-
-  const { data: livraisons = [] } = useQuery({
-    queryKey: ["livraisons"],
-    queryFn: () => listTable("livraisons"),
+    queryFn: async () => {
+      const { data } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
   const enregistrerVente = async (donnees) => {
     setEnCours(true);
+    try {
+      const produit = donnees.produitSelectionne;
+      const vendeur = donnees.vendeurSelectionne;
+      const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
 
-    const dateVente = new Date().toISOString();
-    const produit = donnees.produitSelectionne;
-    const vendeur = donnees.vendeurSelectionne;
-    const livraison = donnees.livraisonSelectionnee;
+      // 1. Create order in commandes_vendeur
+      const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
+        vendeur_id: vendeur.id,
+        vendeur_email: vendeur.email,
+        produit_id: produit.id,
+        produit_nom: produit.nom,
+        produit_reference: produit.reference || null,
+        variation: donnees.variation || null,
+        quantite: donnees.quantite,
+        prix_unitaire: produit.prix_gros,
+        prix_final_client: donnees.prix_unitaire,
+        montant_total: donnees.montantTotal,
+        frais_livraison: donnees.coutLivraison || 0,
+        livraison_incluse: false,
+        client_nom: donnees.client_nom || "Client admin",
+        client_telephone: donnees.client_telephone || "",
+        client_ville: donnees.ville || "",
+        client_adresse: donnees.client_adresse || "",
+        notes: donnees.notes || "",
+        reference_commande: ref,
+        coursier_id: donnees.coursierId || null,
+        coursier_nom: donnees.coursierNom || null,
+        statut: "en_attente_validation_admin",
+      }).select().single();
 
-    // 1. Créer la vente via backend avec localisation et variation
-    await supabase.functions.invoke('createVente', {
-      produit_id: donnees.produit_id,
-      produit_nom: produit.nom,
-      vendeur_id: donnees.vendeur_id,
-      vendeur_nom: vendeur.nom_complet,
-      livraison_id: donnees.livraison_id || "",
-      livraison_nom: livraison?.nom || "",
-      quantite: donnees.quantite,
-      prix_unitaire: donnees.prix_unitaire,
-      prix_achat_unitaire: produit.prix_achat,
-      montant_total: donnees.montantTotal,
-      cout_livraison: donnees.coutLivraison,
-      commission_vendeur: donnees.commission,
-      taux_commission: donnees.tauxCommission,
-      profit_zonite: donnees.profitZonite,
-      date_vente: dateVente,
-      statut_commande: "en_attente",
-      client_nom: donnees.client_nom,
-      client_telephone: donnees.client_telephone,
-      client_adresse: donnees.client_adresse,
-      notes: donnees.notes,
-      ville: donnees.ville,
-      zone: donnees.zone,
-      variation: donnees.variation,
-    });
+      if (orderError) throw orderError;
 
-    // 2. Décrémenter le stock de la variation spécifique dans la zone
-    const produitActuel = await getRecord("produits", produit.id);
-    const stocksLoc = produitActuel.stocks_par_localisation || [];
-    
-    const updatedStocks = stocksLoc.map(loc => {
-      if (loc.ville === donnees.ville && loc.zone === donnees.zone) {
-        return {
-          ...loc,
-          variations_stock: (loc.variations_stock || []).map(v => {
-            if (v.attributs === donnees.variation) {
-              return {
-                ...v,
-                quantite: Math.max(0, (v.quantite || 0) - donnees.quantite)
-              };
-            }
-            return v;
-          })
-        };
+      // 2. Deduct stock from the selected coursier
+      if (donnees.coursierId) {
+        const updatedSPC = (produit.stocks_par_coursier || []).map((sc) => {
+          if (sc.coursier_id !== donnees.coursierId) return sc;
+          if (donnees.variation) {
+            const newVarStock = (sc.stock_par_variation || []).map((sv) => {
+              if (sv.variation_key !== donnees.variation) return sv;
+              return { ...sv, quantite: Math.max(0, (sv.quantite || 0) - donnees.quantite) };
+            });
+            const newTotal = newVarStock.reduce((t, v) => t + (v.quantite || 0), 0);
+            return { ...sc, stock_par_variation: newVarStock, stock_total: newTotal };
+          } else {
+            return { ...sc, stock_total: Math.max(0, (sc.stock_total || 0) - donnees.quantite) };
+          }
+        });
+        const newStockGlobal = updatedSPC.reduce((t, s) => t + (s.stock_total || 0), 0);
+
+        await supabase.from("produits").update({
+          stocks_par_coursier: updatedSPC,
+          stock_global: newStockGlobal,
+        }).eq("id", produit.id);
+
+        // 3. Record stock movement
+        await supabase.from("mouvements_stock").insert({
+          produit_id: produit.id,
+          type: "sortie",
+          quantite: donnees.quantite,
+          stock_avant: produit.stock_global || 0,
+          stock_apres: newStockGlobal,
+          notes: `Commande ${ref} - ${donnees.variation || "sans variation"} via ${donnees.coursierNom || "admin"}`,
+          reference_id: newOrder?.id || null,
+        });
       }
-      return loc;
-    });
 
-    // Recalculer stock_global
-    const nouveauStockGlobal = updatedStocks.reduce((total, loc) => {
-      const stockLoc = (loc.variations_stock || []).reduce((s, v) => s + (v.quantite || 0), 0);
-      return total + stockLoc;
-    }, 0);
+      // 4. Admin notification
+      await supabase.from("notifications_admin").insert({
+        titre: "🛒 Nouvelle vente admin",
+        message: `Vente de ${donnees.quantite}x ${produit.nom} par ${vendeur.full_name}`,
+        type: "vente",
+        vendeur_email: vendeur.email,
+        reference_id: newOrder?.id || null,
+      });
 
-    await adminApi.updateProduit(produit.id, {
-      stocks_par_localisation: updatedStocks,
-      stock_global: nouveauStockGlobal,
-      total_vendu: (produit.total_vendu || 0) + donnees.quantite,
-      statut: nouveauStockGlobal <= 0 ? "rupture" : "actif",
-    });
+      // 5. Audit
+      await supabase.from("journal_audit").insert({
+        action: "Nouvelle vente enregistrée",
+        module: "vente",
+        details: { text: `${donnees.quantite}x ${produit.nom} (${donnees.variation || "N/A"}) - ${donnees.ville} - ${vendeur.full_name} - Total: ${donnees.montantTotal} FCFA` },
+        entite_id: newOrder?.id || null,
+        entite_type: "commande",
+      });
 
-    // 3. Mouvement stock via backend avec détails localisation
-    await supabase.functions.invoke('createMouvementStock', {
-      produit_id: produit.id,
-      produit_nom: produit.nom,
-      type_mouvement: "sortie",
-      quantite: donnees.quantite,
-      stock_avant: produitActuel.stock_global || 0,
-      stock_apres: nouveauStockGlobal,
-      raison: `Vente - ${donnees.ville}/${donnees.zone} - ${donnees.variation}`,
-    });
-
-    // 4. Mettre à jour le seller (vendeur)
-    await updateRecord("sellers", vendeur.id, {
-      solde_commission: (vendeur.solde_commission || 0) + donnees.commission,
-      total_commissions_gagnees: (vendeur.total_commissions_gagnees || 0) + donnees.commission,
-      nombre_ventes: (vendeur.nombre_ventes || 0) + 1,
-      chiffre_affaires_genere: (vendeur.chiffre_affaires_genere || 0) + donnees.montantTotal,
-    });
-
-    // 5. Journal d'audit via backend avec localisation
-    await supabase.functions.invoke('createAudit', {
-      action: "Nouvelle vente enregistrée",
-      module: "vente",
-      details: `Vente de ${donnees.quantite}x ${produit.nom} (${donnees.variation}) à ${donnees.ville}/${donnees.zone} par ${vendeur.nom_complet} – Total: ${donnees.montantTotal} FCFA`,
-      entite_id: donnees.produit_id,
-    });
-
-    // Invalider les caches
-    queryClient.invalidateQueries({ queryKey: ["produits"] });
-    queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
-    queryClient.invalidateQueries({ queryKey: ["ventes"] });
-
-    setEnCours(false);
-    setSucces(true);
+      queryClient.invalidateQueries({ queryKey: ["produits"] });
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
+      setSucces(true);
+    } catch (err) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setEnCours(false);
+    }
   };
 
   if (succes) {
     return (
-      <div className="max-w-lg mx-auto text-center py-16 animate-slide-in">
+      <div className="max-w-lg mx-auto text-center py-16">
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 text-emerald-600" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Vente Enregistrée !</h2>
-        <p className="text-slate-500 mb-6">
-          La vente a été enregistrée avec succès. Le stock, les commissions et les statistiques ont été mis à jour automatiquement.
-        </p>
+        <p className="text-slate-500 mb-6">La commande a été créée et le stock mis à jour.</p>
         <div className="flex gap-3 justify-center">
-          <Button onClick={() => setSucces(false)} className="bg-[#1a1f5e] hover:bg-[#141952]">
-            Nouvelle Vente
-          </Button>
-          <Link to={createPageUrl("TableauDeBord")}>
-            <Button variant="outline">Tableau de Bord</Button>
-          </Link>
+          <Button onClick={() => setSucces(false)} className="bg-[#1a1f5e] hover:bg-[#141952]">Nouvelle Vente</Button>
+          <Link to={createPageUrl("TableauDeBord")}><Button variant="outline">Tableau de Bord</Button></Link>
         </div>
       </div>
     );
@@ -161,16 +147,8 @@ export default function NouvelleVente() {
     <div className="max-w-3xl mx-auto">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">Enregistrer une Vente</h2>
-        <p className="text-sm text-slate-500 mb-6">
-          Remplissez les informations ci-dessous. Le stock, les commissions et les statistiques seront mis à jour automatiquement.
-        </p>
-        <FormulaireVente
-          produits={produits}
-          vendeurs={vendeurs}
-          livraisons={livraisons}
-          onSubmit={enregistrerVente}
-          enCours={enCours}
-        />
+        <p className="text-sm text-slate-500 mb-6">Le stock et les notifications seront mis à jour automatiquement.</p>
+        <FormulaireVente produits={produits} vendeurs={vendeurs} onSubmit={enregistrerVente} enCours={enCours} />
       </div>
     </div>
   );
