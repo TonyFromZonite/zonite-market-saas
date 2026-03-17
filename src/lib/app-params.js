@@ -36,7 +36,7 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 
 const getAppParams = () => {
 	if (getAppParamValue("clear_access_token") === 'true') {
-		storage.removeItem('base44_access_token');
+		storage.removeItem('app_access_token');
 		storage.removeItem('token');
 	}
 	return {
