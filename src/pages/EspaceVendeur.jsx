@@ -496,29 +496,13 @@ export default function EspaceVendeur() {
         </div>
       </div>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        {[
-          { label: "Accueil", page: "EspaceVendeur", icone: "🏠", feature: "dashboard" },
-          { label: "Commandes", page: "MesCommandesVendeur", icone: "📋", feature: "sales" },
-          { label: "Catalogue", page: "CatalogueVendeur", icone: "📦", feature: "catalog" },
-          { label: "Profil", page: "ProfilVendeur", icone: "👤", feature: "profile" },
-          { label: "Aide", page: "AideVendeur", icone: "❓", feature: "dashboard" },
-        ].map(({ label, page, icone, feature }) => {
-          const canAccess = canAccessFeature(compteVendeur.seller_status, feature, compteVendeur.training_completed);
-          return canAccess ? (
-            <Link key={page} to={createPageUrl(page)} className="flex-1 flex flex-col items-center py-2.5 gap-1 hover:text-[#1a1f5e] transition-colors">
-              <span className="text-xl">{icone}</span>
-              <span className="text-[10px] text-slate-500">{label}</span>
-            </Link>
-          ) : (
-            <button key={page} disabled className="flex-1 flex flex-col items-center py-2.5 gap-1 opacity-40 cursor-not-allowed">
-              <span className="text-xl">{icone}</span>
-              <span className="text-[10px] text-slate-400">{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <VendeurBottomNav items={[
+        { label: "Accueil", page: "EspaceVendeur" },
+        { label: "Commandes", page: "MesCommandesVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) },
+        { label: "Catalogue", page: "CatalogueVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) },
+        { label: "Profil", page: "ProfilVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "profile", compteVendeur.training_completed) },
+        { label: "Aide", page: "AideVendeur" },
+      ]} />
     </div>
   );
 }
