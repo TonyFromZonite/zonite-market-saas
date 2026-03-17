@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
@@ -55,7 +56,7 @@ export default function MesCommandesVendeur() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex items-center gap-3 mb-4">
@@ -115,20 +116,7 @@ export default function MesCommandesVendeur() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        {[
-          { label: "Accueil", page: "EspaceVendeur", icone: "🏠" },
-          { label: "Commandes", page: "MesCommandesVendeur", icone: "📋" },
-          { label: "Catalogue", page: "CatalogueVendeur", icone: "📦" },
-          { label: "Profil", page: "ProfilVendeur", icone: "👤" },
-        ].map(({ label, page, icone }) => (
-          <Link key={page} to={createPageUrl(page)} className="flex-1 flex flex-col items-center py-3 gap-1">
-            <span className="text-xl">{icone}</span>
-            <span className={`text-[10px] ${page === "MesCommandesVendeur" ? "text-[#1a1f5e] font-bold" : "text-slate-600"}`}>{label}</span>
-          </Link>
-        ))}
-      </div>
+      <VendeurBottomNav />
     </div>
   );
 }

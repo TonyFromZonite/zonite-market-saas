@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Bell, ChevronLeft, CheckCheck, Star } from "lucide-react";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 
 const COULEURS = {
@@ -185,21 +186,7 @@ export default function NotificationsVendeur() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        {[
-          { label: "Accueil", page: "EspaceVendeur", icone: "🏠" },
-          { label: "Commandes", page: "MesCommandesVendeur", icone: "📋" },
-          { label: "Catalogue", page: "CatalogueVendeur", icone: "📦" },
-          { label: "Profil", page: "ProfilVendeur", icone: "👤" },
-          { label: "Aide", page: "AideVendeur", icone: "❓" },
-        ].map(({ label, page, icone }) => (
-          <Link key={page} to={createPageUrl(page)} className="flex-1 flex flex-col items-center py-2.5 gap-1">
-            <span className="text-xl">{icone}</span>
-            <span className="text-[10px] text-slate-500">{label}</span>
-          </Link>
-        ))}
-      </div>
+      <VendeurBottomNav />
     </div>
   );
 }

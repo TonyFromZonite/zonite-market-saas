@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 
 const STATUTS = {
   ouvert: { label: "Ouvert", color: "bg-blue-100 text-blue-700" },
@@ -307,20 +308,7 @@ export default function AideVendeur() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex bottom-nav-safe z-50">
-        {[
-          { to: "EspaceVendeur", label: "Accueil", icon: "🏠" },
-          { to: "MesCommandesVendeur", label: "Commandes", icon: "📦" },
-          { to: "CatalogueVendeur", label: "Catalogue", icon: "🛍️" },
-          { to: "ProfilVendeur", label: "Profil", icon: "👤" },
-        ].map(item => (
-          <Link key={item.to} to={createPageUrl(item.to)} className="flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-[#1a1f5e] transition-colors">
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-[10px] mt-0.5">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
+      <VendeurBottomNav />
     </div>
   );
 }
