@@ -41,7 +41,7 @@ export function useSellerAccess() {
     loading,
 
     // Peut accéder à l'espace vendeur (dashboard, profil, notifs, support)
-    canAccessEspace: ["kyc_pending", "active_seller"].includes(status),
+    canAccessEspace: ["kyc_pending", "kyc_rejected", "active_seller"].includes(status),
 
     // Peut faire des actions (commandes, commissions, paiements)
     canDoActions: status === "active_seller",
@@ -51,6 +51,9 @@ export function useSellerAccess() {
 
     // KYC en attente de validation
     isKycPending: status === "kyc_pending",
+
+    // KYC rejeté — resoumission possible
+    isKycRejected: status === "kyc_rejected",
 
     // KYC requis (pas encore soumis)
     isKycRequired: status === "kyc_required",
