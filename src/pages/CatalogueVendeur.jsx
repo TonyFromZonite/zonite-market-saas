@@ -27,7 +27,10 @@ export default function CatalogueVendeur() {
 
   const { data: produits = [], isLoading } = useQuery({
     queryKey: ["produits_catalogue"],
-    queryFn: () => filterTable("produits", { statut: "actif" }),
+    queryFn: async () => {
+      const { data } = await supabase.from("produits").select("*").eq("actif", true).order("nom");
+      return data || [];
+    },
   });
 
   // Blocage doux si KYC en attente
