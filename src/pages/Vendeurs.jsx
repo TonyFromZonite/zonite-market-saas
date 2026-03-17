@@ -237,8 +237,9 @@ function ValidationKYC() {
    const { data: sellers = [], isLoading } = useQuery({
       queryKey: ["sellers"],
       queryFn: async () => {
-        const res = await supabase.functions.invoke('getAllVendeurs', {});
-        return res.data;
+        const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        return data || [];
       },
       refetchInterval: 30000,
     });
