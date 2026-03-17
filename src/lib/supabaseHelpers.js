@@ -1,8 +1,22 @@
 /**
- * Supabase query helpers — replaces base44 entity API surface.
- * Provides list/filter/get/create/update/delete for any table.
+ * Supabase query helpers — optimized with column selection and limits.
  */
 import { supabase } from "@/integrations/supabase/client";
+
+// Default column sets per table to avoid SELECT *
+const TABLE_COLUMNS = {
+  sellers: 'id, email, full_name, username, telephone, ville, quartier, role, seller_status, statut_kyc, solde_commission, total_commissions_gagnees, total_commissions_payees, taux_commission, catalogue_debloque, training_completed, email_verified, photo_profil_url, user_id, created_at, updated_at, kyc_raison_rejet, numero_mobile_money, operateur_mobile_money, experience_vente, motivation, whatsapp, date_naissance, kyc_type_document, kyc_document_recto_url, kyc_document_verso_url, kyc_selfie_url',
+  commandes_vendeur: 'id, vendeur_id, vendeur_email, produit_id, produit_nom, produit_reference, variation, quantite, prix_unitaire, montant_total, prix_final_client, frais_livraison, client_nom, client_telephone, client_ville, client_quartier, client_adresse, statut, notes, notes_admin, coursier_id, coursier_nom, reference_commande, created_at, updated_at',
+  produits: 'id, nom, reference, description, categorie_id, prix_achat, prix_gros, prix_vente, stock_global, seuil_alerte_stock, variations, stocks_par_coursier, images, actif, featured, created_at, updated_at, lien_telegram',
+  ventes: 'id, vendeur_id, vendeur_email, produit_id, commande_id, quantite, montant_total, commission_vendeur, profit_zonite, prix_achat_unitaire, taux_commission_applique, created_at',
+  notifications_admin: 'id, titre, message, type, lu, vendeur_email, reference_id, created_at',
+  notifications_vendeur: 'id, vendeur_id, vendeur_email, titre, message, type, lu, action_url, created_at',
+  tickets_support: 'id, vendeur_id, vendeur_email, sujet, message, statut, priorite, categorie, reponse_admin, repondu_par, repondu_at, lu_par_vendeur, created_at',
+};
+
+function getColumns(table) {
+  return TABLE_COLUMNS[table] || '*';
+}
 
 function parseSortField(sortStr) {
   if (!sortStr) return { column: "created_at", ascending: false };
@@ -12,21 +26,20 @@ function parseSortField(sortStr) {
   return { column: fieldMap[field] || field, ascending: !desc };
 }
 
-export async function listTable(table, sort, limit) {
-  let query = supabase.from(table).select("*");
+export async function listTable(table, sort, limit = 100) {
+  let query = supabase.from(table).select(getColumns(table));
   const sortInfo = parseSortField(sort);
   query = query.order(sortInfo.column, { ascending: sortInfo.ascending });
-  if (limit) query = query.limit(limit);
+  query = query.limit(limit);
   const { data, error } = await query;
   if (error) { console.error(`list ${table}:`, error); return []; }
   return data || [];
 }
 
-export async function filterTable(table, filters, sort, limit) {
-  let query = supabase.from(table).select("*");
+export async function filterTable(table, filters, sort, limit = 100) {
+  let query = supabase.from(table).select(getColumns(table));
   if (filters && typeof filters === "object") {
     for (const [key, val] of Object.entries(filters)) {
-      // Handle special case for produits where statut="actif" means actif=true
       if (table === "produits" && key === "statut" && val === "actif") {
         query = query.eq("actif", true);
       } else {
@@ -37,14 +50,14 @@ export async function filterTable(table, filters, sort, limit) {
   }
   const sortInfo = parseSortField(sort);
   query = query.order(sortInfo.column, { ascending: sortInfo.ascending });
-  if (limit) query = query.limit(limit);
+  query = query.limit(limit);
   const { data, error } = await query;
   if (error) { console.error(`filter ${table}:`, error); return []; }
   return data || [];
 }
 
 export async function getRecord(table, id) {
-  const { data, error } = await supabase.from(table).select("*").eq("id", id).single();
+  const { data, error } = await supabase.from(table).select(getColumns(table)).eq("id", id).single();
   if (error) { console.error(`get ${table}:`, error); return null; }
   return data;
 }

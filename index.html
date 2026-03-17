@@ -4,20 +4,46 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zonite Market</title>
-    <meta name="description" content="Zonite Market - Plateforme de gestion vendeurs" />
+    <meta name="description" content="Zonite Market - Plateforme de gestion vendeurs au Cameroun" />
     <meta name="author" content="Zonite Market" />
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#f5a623" />
+    <meta name="theme-color" content="#1a1f5e" />
 
+    <!-- Preconnect to critical origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://jpopxydfttoseckcakqp.supabase.co" />
+    <link rel="preconnect" href="https://jpopxydfttoseckcakqp.supabase.co" />
 
     <meta property="og:title" content="Zonite Market" />
-    <meta property="og:description" content="Zonite Market - Plateforme de gestion vendeurs" />
+    <meta property="og:description" content="Zonite Market - Plateforme de gestion vendeurs au Cameroun" />
     <meta property="og:type" content="website" />
-
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Inline critical CSS for instant loading screen -->
+    <style>
+      body { margin: 0; }
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #1a1f4e;
+      }
+      #root:empty::after {
+        content: '';
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(245,197,24,0.3);
+        border-top-color: #F5C518;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
 
   <body>
