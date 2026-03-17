@@ -174,7 +174,7 @@ export default function Connexion() {
 
       <div className="w-full flex flex-col items-center mt-3 mb-6 md:mt-4 md:mb-8 relative z-10 px-3">
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
-          <img alt="Logo" className="w-full h-full object-contain p-0.5" src="/lovable-uploads/87d7eb1b-437e-4a6a-b26e-387a91498d34.png" />
+          <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
         <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight">
           {String(nomApp).replace(/"/g, '').split(" ").map((w, i) =>
