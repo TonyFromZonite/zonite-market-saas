@@ -767,6 +767,7 @@ export type Database = {
           training_completed: boolean | null
           updated_at: string
           user_id: string | null
+          username: string | null
           ville: string | null
           whatsapp: string | null
         }
@@ -803,6 +804,7 @@ export type Database = {
           training_completed?: boolean | null
           updated_at?: string
           user_id?: string | null
+          username?: string | null
           ville?: string | null
           whatsapp?: string | null
         }
@@ -839,6 +841,7 @@ export type Database = {
           training_completed?: boolean | null
           updated_at?: string
           user_id?: string | null
+          username?: string | null
           ville?: string | null
           whatsapp?: string | null
         }
@@ -854,6 +857,7 @@ export type Database = {
           nom_role: string | null
           seller_id: string | null
           user_id: string | null
+          username: string | null
         }
         Insert: {
           actif?: boolean | null
@@ -864,6 +868,7 @@ export type Database = {
           nom_role?: string | null
           seller_id?: string | null
           user_id?: string | null
+          username?: string | null
         }
         Update: {
           actif?: boolean | null
@@ -874,6 +879,7 @@ export type Database = {
           nom_role?: string | null
           seller_id?: string | null
           user_id?: string | null
+          username?: string | null
         }
         Relationships: [
           {

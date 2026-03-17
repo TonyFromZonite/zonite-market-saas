@@ -56,8 +56,32 @@ export default function Connexion() {
     setErreur("");
 
     try {
+      let loginEmail = email.trim().toLowerCase();
+
+      // If input doesn't contain @, treat as username and resolve email
+      if (!loginEmail.includes("@")) {
+        const { data: sellerByUsername } = await supabase
+          .from("sellers")
+          .select("email")
+          .eq("username", loginEmail)
+          .maybeSingle();
+
+        const { data: sousAdminByUsername } = await supabase
+          .from("sous_admins")
+          .select("email")
+          .eq("username", loginEmail)
+          .maybeSingle();
+
+        const found = sellerByUsername || sousAdminByUsername;
+        if (!found) {
+          setErreur("Nom d'utilisateur introuvable.");
+          return;
+        }
+        loginEmail = found.email.toLowerCase();
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: loginEmail,
         password: motDePasse
       });
 
@@ -150,7 +174,7 @@ export default function Connexion() {
 
       <div className="w-full flex flex-col items-center mt-3 mb-6 md:mt-4 md:mb-8 relative z-10 px-3">
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
-          <img alt="Logo" className="w-full h-full object-contain p-0.5" src="/lovable-uploads/87d7eb1b-437e-4a6a-b26e-387a91498d34.png" />
+          <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
         <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight">
           {String(nomApp).replace(/"/g, '').split(" ").map((w, i) =>
@@ -187,8 +211,8 @@ export default function Connexion() {
             
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Email</label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com" autoComplete="email"
+                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Email ou nom d'utilisateur</label>
+                  <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com ou username" autoComplete="username"
                 className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
                 </div>
                 <div>
