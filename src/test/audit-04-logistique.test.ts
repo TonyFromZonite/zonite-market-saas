@@ -5,16 +5,14 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    from: vi.fn((table: string) => {
-      const chain = {
-        select: vi.fn().mockReturnValue(chain),
-        eq: vi.fn().mockReturnValue(chain),
-        insert: vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null }),
-        update: vi.fn().mockReturnValue(chain),
-        delete: vi.fn().mockReturnValue(chain),
-        order: vi.fn().mockReturnValue(chain),
-        then: vi.fn(),
-      };
+    from: vi.fn(() => {
+      const chain: any = {};
+      chain.select = vi.fn().mockReturnValue(chain);
+      chain.eq = vi.fn().mockReturnValue(chain);
+      chain.insert = vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null });
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.delete = vi.fn().mockReturnValue(chain);
+      chain.order = vi.fn().mockReturnValue(chain);
       return chain;
     }),
   },
