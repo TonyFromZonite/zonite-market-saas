@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 
 const STATUTS = {

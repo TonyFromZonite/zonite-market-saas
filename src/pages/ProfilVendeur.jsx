@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { LOGO_URL as LOGO } from "@/components/constants";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import BanniereKycPending from "@/components/BanniereKycPending";
 
 export default function ProfilVendeur() {

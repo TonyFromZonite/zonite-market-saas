@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Bell, ChevronLeft, CheckCheck, Star } from "lucide-react";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 
 const COULEURS = {
