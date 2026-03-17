@@ -16,18 +16,25 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : () => <></>;
 
-const LoadingFallback = () => (
+const LoadingScreen = () => (
   <div style={{
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
     height: '100vh',
     background: '#1a1f4e',
-    color: '#f5a623',
-    fontSize: '18px',
-    fontWeight: 600,
+    gap: 16,
   }}>
-    Chargement...
+    <div style={{
+      width: 48,
+      height: 48,
+      border: '3px solid rgba(245,197,24,0.3)',
+      borderTopColor: '#F5C518',
+      borderRadius: '50%',
+      animation: 'spin 0.6s linear infinite',
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
 
@@ -39,7 +46,7 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return <LoadingFallback />;
+    return <LoadingScreen />;
   }
 
   if (authError) {
@@ -52,7 +59,7 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
+    <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={
           <LayoutWrapper currentPageName={mainPageKey}>
