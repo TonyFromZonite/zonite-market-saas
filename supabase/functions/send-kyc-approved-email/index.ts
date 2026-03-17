@@ -15,7 +15,6 @@ serve(async (req) => {
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!resendKey) {
-      console.warn('[send-kyc-approved-email] RESEND_API_KEY not set, skipping send');
       return new Response(JSON.stringify({ success: true, skipped: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -23,26 +22,26 @@ serve(async (req) => {
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
-      from: 'ZONITE <onboarding@resend.dev>',
+      from: 'Zonite Market <hello@zonite.org>',
       to: email,
-      subject: "🎉 Votre compte ZONITE est activé !",
+      subject: "🎉 Votre compte Zonite Market est activé !",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1a1f5e, #2d34a5); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">ZONITE</h1>
+            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">Zonite Market</h1>
           </div>
           <div style="background: white; padding: 30px; border: 1px solid #E2E8F0; border-radius: 0 0 12px 12px;">
             <div style="text-align: center; margin-bottom: 20px;">
               <span style="font-size: 48px;">🎉</span>
             </div>
             <h2 style="color: #1E293B; text-align: center;">Félicitations ${nom} !</h2>
-            <p style="color: #64748B; text-align: center;">Votre compte ZONITE est maintenant <strong style="color: #10B981;">activé</strong>.</p>
+            <p style="color: #64748B; text-align: center;">Bienvenue sur Zonite Market ! Votre compte est maintenant <strong style="color: #10B981;">activé</strong>.</p>
             <p style="color: #64748B; text-align: center;">Vous pouvez dès maintenant accéder au catalogue et passer vos premières commandes.</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="#" style="background: #F5C518; color: #1a1f5e; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Me connecter →</a>
+              <a href="https://zonite.org/Connexion" style="background: #F5C518; color: #1a1f5e; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Me connecter →</a>
             </div>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe ZONITE</p>
+            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe Zonite Market</p>
           </div>
         </div>
       `,
@@ -53,7 +52,7 @@ serve(async (req) => {
       const isValidationError = error.name === 'validation_error' || error.statusCode === 403;
       return new Response(JSON.stringify({ 
         success: isValidationError, skipped: isValidationError,
-        warning: isValidationError ? 'Domain not verified - email not sent' : undefined,
+        warning: isValidationError ? 'Domain not verified' : undefined,
         error: isValidationError ? undefined : error.message 
       }), {
         status: isValidationError ? 200 : 400,
@@ -61,7 +60,6 @@ serve(async (req) => {
       });
     }
 
-    console.log('[send-kyc-approved-email] Sent successfully:', data);
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -1,88 +1,43 @@
 /**
- * pages.config.js - Page routing configuration
- * 
- * This file is AUTO-GENERATED. Do not add imports or modify PAGES manually.
- * Pages are auto-registered when you create files in the ./pages/ folder.
- * 
- * THE ONLY EDITABLE VALUE: mainPage
- * This controls which page is the landing page (shown when users visit the app).
- * 
- * Example file structure:
- * 
- *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
- *   import Settings from './pages/Settings';
- *   
- *   export const PAGES = {
- *       "HomePage": HomePage,
- *       "Dashboard": Dashboard,
- *       "Settings": Settings,
- *   }
- *   
- *   export const pagesConfig = {
- *       mainPage: "HomePage",
- *       Pages: PAGES,
- *   };
- * 
- * Example with Layout (wraps all pages):
- *
- *   import Home from './pages/Home';
- *   import Settings from './pages/Settings';
- *   import __Layout from './Layout.jsx';
- *
- *   export const PAGES = {
- *       "Home": Home,
- *       "Settings": Settings,
- *   }
- *
- *   export const pagesConfig = {
- *       mainPage: "Home",
- *       Pages: PAGES,
- *       Layout: __Layout,
- *   };
- *
- * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
- *
- * The mainPage value must match a key in the PAGES object exactly.
+ * pages.config.js - Page routing configuration with lazy loading
  */
-import AideVendeur from './pages/AideVendeur';
-import CatalogueVendeur from './pages/CatalogueVendeur';
-import Categories from './pages/Categories';
-import Commandes from './pages/Commandes';
-import CommandesVendeurs from './pages/CommandesVendeurs';
-import Commissions from './pages/Commissions';
-import ConfigurationAdminPassword from './pages/ConfigurationAdminPassword';
-import ConfigurationApp from './pages/ConfigurationApp';
-import Connexion from './pages/Connexion';
-import DemandePaiement from './pages/DemandePaiement';
-import EnAttenteValidation from './pages/EnAttenteValidation';
-import EspaceSousAdmin from './pages/EspaceSousAdmin';
-import EspaceVendeur from './pages/EspaceVendeur';
-import GestionCommandes from './pages/GestionCommandes';
-import GestionKYC from './pages/GestionKYC';
-import GestionPermissionsAdmin from './pages/GestionPermissionsAdmin';
-import GestionSousAdmins from './pages/GestionSousAdmins';
-import InscriptionVendeur from './pages/InscriptionVendeur';
-import JournalAudit from './pages/JournalAudit';
-import Livraisons from './pages/Livraisons';
-import MesCommandesVendeur from './pages/MesCommandesVendeur';
-import NotificationsVendeur from './pages/NotificationsVendeur';
-import NouvelleCommandeVendeur from './pages/NouvelleCommandeVendeur';
-import NouvelleVente from './pages/NouvelleVente';
-import PaiementsVendeurs from './pages/PaiementsVendeurs';
-import Produits from './pages/Produits';
-import ProfilVendeur from './pages/ProfilVendeur';
-import RapportsVentes from './pages/RapportsVentes';
-import ResetPassword from './pages/ResetPassword';
-import RetoursAdmin from './pages/RetoursAdmin';
-import SupportAdmin from './pages/SupportAdmin';
-import TableauDeBord from './pages/TableauDeBord';
-import Vendeurs from './pages/Vendeurs';
-import VideoFormation from './pages/VideoFormation';
+import { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
+const AideVendeur = lazy(() => import('./pages/AideVendeur'));
+const CatalogueVendeur = lazy(() => import('./pages/CatalogueVendeur'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Commandes = lazy(() => import('./pages/Commandes'));
+const CommandesVendeurs = lazy(() => import('./pages/CommandesVendeurs'));
+const Commissions = lazy(() => import('./pages/Commissions'));
+const ConfigurationAdminPassword = lazy(() => import('./pages/ConfigurationAdminPassword'));
+const ConfigurationApp = lazy(() => import('./pages/ConfigurationApp'));
+const Connexion = lazy(() => import('./pages/Connexion'));
+const DemandePaiement = lazy(() => import('./pages/DemandePaiement'));
+const EnAttenteValidation = lazy(() => import('./pages/EnAttenteValidation'));
+const EspaceSousAdmin = lazy(() => import('./pages/EspaceSousAdmin'));
+const EspaceVendeur = lazy(() => import('./pages/EspaceVendeur'));
+const GestionCommandes = lazy(() => import('./pages/GestionCommandes'));
+const GestionKYC = lazy(() => import('./pages/GestionKYC'));
+const GestionPermissionsAdmin = lazy(() => import('./pages/GestionPermissionsAdmin'));
+const GestionSousAdmins = lazy(() => import('./pages/GestionSousAdmins'));
+const InscriptionVendeur = lazy(() => import('./pages/InscriptionVendeur'));
+const JournalAudit = lazy(() => import('./pages/JournalAudit'));
+const Livraisons = lazy(() => import('./pages/Livraisons'));
+const MesCommandesVendeur = lazy(() => import('./pages/MesCommandesVendeur'));
+const NotificationsVendeur = lazy(() => import('./pages/NotificationsVendeur'));
+const NouvelleCommandeVendeur = lazy(() => import('./pages/NouvelleCommandeVendeur'));
+const NouvelleVente = lazy(() => import('./pages/NouvelleVente'));
+const PaiementsVendeurs = lazy(() => import('./pages/PaiementsVendeurs'));
+const Produits = lazy(() => import('./pages/Produits'));
+const ProfilVendeur = lazy(() => import('./pages/ProfilVendeur'));
+const RapportsVentes = lazy(() => import('./pages/RapportsVentes'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const RetoursAdmin = lazy(() => import('./pages/RetoursAdmin'));
+const SupportAdmin = lazy(() => import('./pages/SupportAdmin'));
+const TableauDeBord = lazy(() => import('./pages/TableauDeBord'));
+const Vendeurs = lazy(() => import('./pages/Vendeurs'));
+const VideoFormation = lazy(() => import('./pages/VideoFormation'));
 
 export const PAGES = {
     "AideVendeur": AideVendeur,

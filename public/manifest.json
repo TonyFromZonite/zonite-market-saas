@@ -1,7 +1,7 @@
 {
-  "name": "ZONITE",
-  "short_name": "ZONITE",
-  "description": "Plateforme de gestion vendeurs ZONITE",
+  "name": "Zonite Market",
+  "short_name": "Zonite Market",
+  "description": "Plateforme de gestion vendeurs",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

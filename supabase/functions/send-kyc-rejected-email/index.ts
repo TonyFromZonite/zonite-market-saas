@@ -15,7 +15,6 @@ serve(async (req) => {
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!resendKey) {
-      console.warn('[send-kyc-rejected-email] RESEND_API_KEY not set, skipping send');
       return new Response(JSON.stringify({ success: true, skipped: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -23,13 +22,13 @@ serve(async (req) => {
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
-      from: 'ZONITE <onboarding@resend.dev>',
+      from: 'Zonite Market <hello@zonite.org>',
       to: email,
-      subject: "ZONITE - KYC non validé",
+      subject: "Zonite Market - KYC non validé",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1a1f5e, #2d34a5); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">ZONITE</h1>
+            <h1 style="color: #F5C518; margin: 0; font-size: 28px;">Zonite Market</h1>
           </div>
           <div style="background: white; padding: 30px; border: 1px solid #E2E8F0; border-radius: 0 0 12px 12px;">
             <h2 style="color: #1E293B;">Bonjour ${nom},</h2>
@@ -40,7 +39,7 @@ serve(async (req) => {
             </div>
             <p style="color: #64748B;">Vous pouvez resoumettre vos documents depuis votre espace vendeur.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe ZONITE</p>
+            <p style="color: #94A3B8; font-size: 12px; text-align: center;">L'équipe Zonite Market</p>
           </div>
         </div>
       `,
@@ -51,7 +50,7 @@ serve(async (req) => {
       const isValidationError = error.name === 'validation_error' || error.statusCode === 403;
       return new Response(JSON.stringify({ 
         success: isValidationError, skipped: isValidationError,
-        warning: isValidationError ? 'Domain not verified - email not sent' : undefined,
+        warning: isValidationError ? 'Domain not verified' : undefined,
         error: isValidationError ? undefined : error.message 
       }), {
         status: isValidationError ? 200 : 400,
@@ -59,7 +58,6 @@ serve(async (req) => {
       });
     }
 
-    console.log('[send-kyc-rejected-email] Sent successfully:', data);
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
