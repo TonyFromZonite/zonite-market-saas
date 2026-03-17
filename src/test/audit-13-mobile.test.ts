@@ -10,8 +10,8 @@ describe("Audit 13 — Mobile responsive", () => {
     expect(typeof mq.matches).toBe("boolean");
   });
 
-  it("13.2 createPageUrl génère des URLs valides pour navigation mobile", () => {
-    const { createPageUrl } = require("@/utils");
+  it("13.2 createPageUrl génère des URLs valides pour navigation mobile", async () => {
+    const { createPageUrl } = await import("@/utils");
     expect(createPageUrl("EspaceVendeur")).toBe("/EspaceVendeur");
     expect(createPageUrl("MesCommandesVendeur")).toBe("/MesCommandesVendeur");
     expect(createPageUrl("CatalogueVendeur")).toBe("/CatalogueVendeur");

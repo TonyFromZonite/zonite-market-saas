@@ -37,8 +37,8 @@ describe("Audit 4 — Logistique", () => {
     await expect(adminApi.deleteLivraison("lid1")).resolves.not.toThrow();
   });
 
-  it("4.4 createPageUrl génère les routes de gestion logistique", () => {
-    const { createPageUrl } = require("@/utils");
+  it("4.4 createPageUrl génère les routes de gestion logistique", async () => {
+    const { createPageUrl } = await import("@/utils");
     expect(createPageUrl("GestionCoursiers")).toBe("/GestionCoursiers");
     expect(createPageUrl("GestionZones")).toBe("/GestionZones");
     expect(createPageUrl("Livraisons")).toBe("/Livraisons");
