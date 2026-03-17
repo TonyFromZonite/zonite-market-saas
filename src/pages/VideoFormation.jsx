@@ -217,22 +217,27 @@ export default function VideoFormation() {
                       setEnCours(true);
                       setErreur("");
                       try {
-                        // NEW ARCHITECTURE: Use completeTraining endpoint
-                        const response = await supabase.functions.invoke('completeTraining', {
-                          email: compteVendeur.email
-                        });
-                        
-                        if (response.data?.success) {
-                          // ✅ Mettre à jour la session locale avec le nouveau statut
-                          const session = JSON.parse(sessionStorage.getItem('vendeur_session') || '{}');
-                          session.seller_status = 'active_seller';
-                          session.catalogue_debloque = true;
-                          sessionStorage.setItem('vendeur_session', JSON.stringify(session));
-                          // Rediriger après 1 seconde
-                          setTimeout(() => navigate(createPageUrl("EspaceVendeur")), 1000);
-                        } else {
-                          throw new Error(response.data?.error || 'Erreur lors de la finalisation');
-                        }
+                        // Update training_completed and catalogue_debloque directly
+                        const { error: updateError } = await supabase
+                          .from('sellers')
+                          .update({
+                            training_completed: true,
+                            catalogue_debloque: true,
+                            conditions_acceptees: true,
+                          })
+                          .eq('id', compteVendeur.id);
+
+                        if (updateError) throw new Error(updateError.message);
+
+                        // Update local session
+                        const session = JSON.parse(sessionStorage.getItem('vendeur_session') || '{}');
+                        session.training_completed = true;
+                        session.catalogue_debloque = true;
+                        session.conditions_acceptees = true;
+                        sessionStorage.setItem('vendeur_session', JSON.stringify(session));
+                        setCompteVendeur(prev => ({ ...prev, training_completed: true, catalogue_debloque: true }));
+                        // Show success then redirect
+                        setTimeout(() => navigate(createPageUrl("EspaceVendeur")), 1000);
                       } catch (err) {
                         console.error("Finalisation:", err);
                         setErreur(err.message || "Erreur lors de la finalisation. Rechargez la page.");

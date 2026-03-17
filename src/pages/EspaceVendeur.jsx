@@ -60,17 +60,32 @@ export default function EspaceVendeur() {
     if (!kycForm.selfie_url) { setKycErreur("Veuillez uploader votre selfie."); return; }
     setKycEnCours(true);
     setKycErreur("");
-    const response = await supabase.functions.invoke('updateKYCDocuments', {
-      email: compteVendeur.email,
-      photo_identite_url: kycForm.photo_identite_url,
-      photo_identite_verso_url: kycForm.photo_identite_verso_url || "",
-      selfie_url: kycForm.selfie_url,
-    });
+    const { error } = await supabase
+      .from('sellers')
+      .update({
+        kyc_document_recto_url: kycForm.photo_identite_url,
+        kyc_document_verso_url: kycForm.photo_identite_verso_url || null,
+        kyc_selfie_url: kycForm.selfie_url,
+        kyc_type_document: typeDocument,
+        statut_kyc: 'en_attente',
+        seller_status: 'kyc_pending',
+      })
+      .eq('id', compteVendeur.id);
+
     setKycEnCours(false);
-    if (response.data?.success) {
-      setCompteVendeur(prev => ({ ...prev, seller_status: 'kyc_pending' }));
+
+    if (!error) {
+      // Notify admin
+      await supabase.from('notifications_admin').insert({
+        titre: 'Nouveau KYC à valider',
+        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC`,
+        type: 'kyc',
+        vendeur_email: compteVendeur.email,
+        reference_id: compteVendeur.id,
+      });
+      setCompteVendeur(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
     } else {
-      setKycErreur(response.data?.error || "Erreur lors de la soumission.");
+      setKycErreur(error.message || "Erreur lors de la soumission.");
     }
   };
 
