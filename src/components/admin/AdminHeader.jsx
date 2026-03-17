@@ -1,54 +1,82 @@
 import React from "react";
 import { Menu } from "lucide-react";
 import { LOGO_URL as LOGO } from "@/components/constants";
+import { ADMIN_MENU } from "./adminMenuConfig";
 import NotificationCenter from "@/components/NotificationCenter";
 import { getAdminSession, getSousAdminSession } from "@/components/useSessionGuard";
-import { useResponsive } from "@/hooks/useResponsive";
 
-export default function AdminHeader({ onMenuOpen }) {
+export default function AdminHeader({ currentPageName, onMenuOpen, showBurger = false }) {
   const sousAdmin = getSousAdminSession();
   const adminSession = getAdminSession();
-  const { isMobile, width } = useResponsive();
 
-  const roleLabel = adminSession ? "Admin principal" : sousAdmin?.nom_role;
+  const pageTitle =
+    ADMIN_MENU.find((i) => i.page === currentPageName)?.label || "ZONITE";
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 min-h-[64px] items-center justify-between border-b border-border bg-background px-4 shadow-sm">
-      {/* Left: burger + logo */}
-      <div className="flex items-center gap-3">
+    <header style={{
+      height: 56,
+      background: "white",
+      borderBottom: "1px solid #E2E8F0",
+      display: "flex",
+      alignItems: "center",
+      padding: "0 16px",
+      gap: 12,
+      flexShrink: 0,
+      zIndex: 100,
+    }}>
+      {/* Burger mobile */}
+      {showBurger && (
         <button
           onClick={onMenuOpen}
-          type="button"
-          aria-label="Ouvrir le menu admin"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-none bg-transparent text-foreground hover:bg-accent"
+          style={{
+            padding: "6px", marginLeft: -6, borderRadius: 8,
+            color: "#475569", background: "none", border: "none",
+            cursor: "pointer", display: "flex", alignItems: "center",
+          }}
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
+      )}
 
-        <div className="flex items-center gap-2">
-          <img
-            src={LOGO}
-            alt="ZONITE"
-            className="h-8 w-8 rounded-lg object-contain"
-          />
-          {width >= 480 && (
-            <span className="text-lg font-bold text-[#1a1f4e]">Zonite Market</span>
-          )}
-        </div>
-      </div>
+      {/* Logo mobile */}
+      {showBurger && (
+        <img
+          src={LOGO}
+          alt="Zonite"
+          style={{ height: 28, width: 28, borderRadius: 6, objectFit: "contain", flexShrink: 0 }}
+        />
+      )}
 
-      {/* Right: notifications + profile */}
-      <div className="flex items-center gap-2">
+      {/* Titre */}
+      <h1 style={{
+        flex: 1, fontSize: 15, fontWeight: 600, color: "#0F172A",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        margin: 0,
+      }}>
+        {pageTitle}
+      </h1>
+
+      {/* Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <NotificationCenter />
-
-        <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a1f4e] text-sm font-bold text-white">
-            A
-          </div>
-          {width >= 640 && roleLabel && (
-            <span className="text-sm font-medium text-foreground">{roleLabel}</span>
-          )}
-        </div>
+        {adminSession && (
+          <span style={{
+            fontSize: 11, background: "rgba(245,197,24,0.2)", color: "#1a1f5e",
+            fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+            whiteSpace: "nowrap",
+          }}>
+            Admin Principal
+          </span>
+        )}
+        {sousAdmin && (
+          <span style={{
+            fontSize: 11, background: "rgba(245,197,24,0.2)", color: "#1a1f5e",
+            fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+            whiteSpace: "nowrap",
+          }}>
+            {sousAdmin.nom_role}
+          </span>
+        )}
       </div>
     </header>
   );

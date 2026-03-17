@@ -1,12 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronRight, LogOut, X } from "lucide-react";
+import { ChevronRight, X, LogOut } from "lucide-react";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { getMenuVisible } from "./adminMenuConfig";
 import { getAdminSession, getSousAdminSession, clearAllSessions } from "@/components/useSessionGuard";
 import { createPageUrl } from "@/utils";
 
-export default function AdminSidebar({ isOpen, onClose, badges = {}, isMobile = true }) {
+export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop = false }) {
   const location = useLocation();
   const sousAdmin = getSousAdminSession();
   const adminSession = getAdminSession();
@@ -14,99 +14,160 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isMobile = 
   const role = sousAdmin ? "sous_admin" : "admin";
   const permissions = sousAdmin?.permissions || [];
   const menuItems = getMenuVisible(role, permissions);
-  const currentPage = location.pathname.replace("/", "");
 
   const deconnexion = () => {
     clearAllSessions();
     window.location.href = createPageUrl("Connexion");
   };
 
+  const currentPage = location.pathname.replace("/", "");
+
+  // Sur desktop on est toujours visible, sur mobile on utilise l'overlay
+  const sidebarStyle = isDesktop
+    ? {
+        width: 256,
+        height: "100vh",
+        background: "#1a1f5e",
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+      }
+    : {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: 256,
+        height: "100vh",
+        background: "#1a1f5e",
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+        zIndex: 200,
+        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.3s ease",
+      };
+
   return (
     <>
-      {/* Overlay backdrop - mobile only */}
-      {isMobile && (
+      {/* Overlay mobile */}
+      {!isDesktop && isOpen && (
         <div
-          className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
-            isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 199,
+          }}
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`z-50 flex w-60 min-w-[240px] max-w-[86vw] flex-col bg-[#1a1f4e] text-white transition-transform duration-300 ease-out ${
-          isMobile
-            ? "fixed left-0 top-16 bottom-0"
-            : "fixed left-0 top-16 bottom-0"
-        } ${!isOpen ? "-translate-x-full" : "translate-x-0"}`}
-      >
-        {/* Header with role info */}
-        <div className="border-b border-white/10 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img src={LOGO} alt="Zonite" className="h-9 w-9 rounded-lg bg-white/10 p-1 object-contain" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold tracking-wide">ZONITE</p>
-              <p className="truncate text-[11px] text-white/60">
-                {sousAdmin ? sousAdmin.nom_role : "Administration"}
-              </p>
+      <aside style={sidebarStyle}>
+        {/* Logo */}
+        <div style={{
+          height: 64, display: "flex", alignItems: "center",
+          padding: "0 16px", borderBottom: "1px solid rgba(255,255,255,0.1)",
+          flexShrink: 0,
+        }}>
+          <img
+            src={LOGO}
+            alt="Zonite"
+            style={{ height: 36, width: 36, borderRadius: 8, background: "white", padding: 2, objectFit: "contain", flexShrink: 0 }}
+          />
+          <div style={{ marginLeft: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1 }}>ZONITE</div>
+            <div style={{ fontSize: 10, color: "#F5C518", fontWeight: 600, letterSpacing: 2, marginTop: 2 }}>
+              {sousAdmin ? sousAdmin.nom_role.toUpperCase() : "GESTION"}
             </div>
-            {isMobile && (
-              <button
-                type="button"
-                aria-label="Fermer le menu"
-                onClick={onClose}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            )}
           </div>
+          {!isDesktop && (
+            <button
+              onClick={onClose}
+              style={{ marginLeft: "auto", color: "rgba(255,255,255,0.6)", background: "none", border: "none", cursor: "pointer" }}
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
-        {/* Scrollable nav */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2" style={{ scrollbarWidth: "none" }}>
+        {/* Bandeau identité */}
+        {(adminSession || sousAdmin) && (
+          <div style={{
+            padding: "8px 12px",
+            background: "rgba(245,197,24,0.1)",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 10, color: "#F5C518", fontWeight: 600 }}>Connecté en tant que :</div>
+            <div style={{ fontSize: 12, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {sousAdmin ? sousAdmin.nom_complet : "Administrateur Principal"}
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
           {menuItems.map((item) => {
             const estActif = currentPage === item.page || location.pathname === `/${item.page}`;
             const Icon = item.icon;
-            const badge = item.badge ? badges[item.badge] || 0 : 0;
+            const badge = item.badge ? (badges[item.badge] || 0) : 0;
 
             return (
               <Link
                 key={item.id}
                 to={`/${item.page}`}
-                onClick={() => {
-                  if (isMobile) onClose();
+                onClick={onClose}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: estActif ? 700 : 500,
+                  marginBottom: 2,
+                  textDecoration: "none",
+                  background: estActif ? "#F5C518" : "transparent",
+                  color: estActif ? "#1a1f5e" : "#CBD5E1",
+                  transition: "background 0.15s, color 0.15s",
                 }}
-                className={`flex min-h-[42px] items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  estActif
-                    ? "bg-[#f5a623]/20 font-semibold text-[#f5a623]"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
-                }`}
+                onMouseEnter={e => { if (!estActif) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}}
+                onMouseLeave={e => { if (!estActif) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#CBD5E1"; }}}
               >
-                <Icon size={18} className="shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                {badge > 0 ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                <Icon size={16} style={{ flexShrink: 0, color: estActif ? "#1a1f5e" : "#94A3B8" }} />
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                {badge > 0 && (
+                  <span style={{
+                    minWidth: 20, height: 20, background: "#ef4444", color: "white",
+                    fontSize: 10, fontWeight: 700, borderRadius: 10,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "0 4px", flexShrink: 0,
+                  }}>
                     {badge > 9 ? "9+" : badge}
                   </span>
-                ) : estActif ? (
-                  <ChevronRight size={14} className="shrink-0 text-[#f5a623]" />
-                ) : null}
+                )}
+                {estActif && badge === 0 && <ChevronRight size={12} style={{ flexShrink: 0 }} />}
               </Link>
             );
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="border-t border-white/10 p-2">
+        {/* Déconnexion */}
+        <div style={{ padding: 8, borderTop: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
           <button
-            type="button"
             onClick={deconnexion}
-            className="flex min-h-[42px] w-full items-center gap-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "9px 12px", borderRadius: 8, width: "100%",
+              background: "none", border: "none", cursor: "pointer",
+              color: "#94A3B8", fontSize: 13, fontWeight: 500,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#94A3B8"; }}
           >
-            <LogOut size={18} className="shrink-0" />
-            <span className="truncate">Déconnexion</span>
+            <LogOut size={16} />
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
