@@ -60,8 +60,13 @@ serve(async (req) => {
 
     if (error) {
       console.error('[send-commande-status-email] Resend error:', error);
-      return new Response(JSON.stringify({ success: false, error: error.message }), {
-        status: 400,
+      const isValidationError = error.name === 'validation_error' || error.statusCode === 403;
+      return new Response(JSON.stringify({ 
+        success: isValidationError, skipped: isValidationError,
+        warning: isValidationError ? 'Domain not verified - email not sent' : undefined,
+        error: isValidationError ? undefined : error.message 
+      }), {
+        status: isValidationError ? 200 : 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
