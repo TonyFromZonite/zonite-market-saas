@@ -267,19 +267,28 @@ export default function GestionZones() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {villes.map((ville) => {
             const qs = getQuartiersForVille(ville.id);
-            if (qs.length === 0) return null;
             return (
               <Card key={ville.id} className="p-4">
-                <h3 className="font-semibold text-slate-800 mb-2">{ville.nom} <span className="text-slate-400 text-sm">({qs.length})</span></h3>
-                <div className="flex flex-wrap gap-1">
-                  {qs.map((q) => (
-                    <Badge key={q.id} variant="outline" className="text-xs flex items-center gap-1">
-                      {q.nom}
-                      <button onClick={() => { if (confirm(`Supprimer "${q.nom}" ?`)) deleteQuartierMut.mutate(q.id); }}
-                        className="ml-1 text-red-400 hover:text-red-600">×</button>
-                    </Badge>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-800">{ville.nom} <span className="text-slate-400 text-sm">({qs.length})</span></h3>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-primary"
+                    onClick={() => { setFormQuartier({ nom: "", ville_id: ville.id }); setKeepQuartierOpen(true); setDialogQuartier(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Ajouter
+                  </Button>
                 </div>
+                {qs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun quartier — cliquez "Ajouter" ci-dessus</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {qs.map((q) => (
+                      <Badge key={q.id} variant="outline" className="text-xs flex items-center gap-1">
+                        {q.nom}
+                        <button onClick={() => { if (confirm(`Supprimer "${q.nom}" ?`)) deleteQuartierMut.mutate(q.id); }}
+                          className="ml-1 text-red-400 hover:text-red-600">×</button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </Card>
             );
           })}
