@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminBottomNav from "@/components/admin/AdminBottomNav";
 import { getVendeurSession } from "@/components/useSessionGuard";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const PAGES_SANS_LAYOUT_ADMIN = new Set([
   "Connexion",
@@ -13,36 +15,23 @@ const PAGES_SANS_LAYOUT_ADMIN = new Set([
   "EspaceSousAdmin",
 ]);
 
-const DESKTOP_BREAKPOINT = 960;
-
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(
-    typeof window !== "undefined" ? window.innerWidth >= DESKTOP_BREAKPOINT : false
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`);
-    const handleChange = (event) => setIsDesktop(event.matches);
-
-    setIsDesktop(mediaQuery.matches);
-    mediaQuery.addEventListener("change", handleChange);
-
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
-
-  return isDesktop;
-}
-
 export default function Layout({ children, currentPageName }) {
-  const [sidebarOuverte, setSidebarOuverte] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState({ commandes: 0, kyc: 0 });
   const vendeurSession = getVendeurSession();
-  const isDesktop = useIsDesktop();
+  const { isMobile, isDesktop } = useResponsive();
 
+  // On desktop, keep sidebar always open
+  useEffect(() => {
+    if (isDesktop) setSidebarOpen(true);
+    else setSidebarOpen(false);
+  }, [isDesktop]);
+
+  // Load badge counts
   useEffect(() => {
     if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName)) return;
 
-    const chargerBadges = async () => {
+    const loadBadges = async () => {
       try {
         const [{ count: cmdCount }, { count: kycCount }] = await Promise.all([
           supabase
@@ -55,50 +44,47 @@ export default function Layout({ children, currentPageName }) {
             .eq("statut_kyc", "en_attente")
             .neq("role", "admin"),
         ]);
-
         setBadges({ commandes: cmdCount || 0, kyc: kycCount || 0 });
       } catch (_) {}
     };
 
-    chargerBadges();
+    loadBadges();
   }, [currentPageName]);
 
-  useEffect(() => {
-    if (isDesktop) {
-      setSidebarOuverte(false);
-    }
-  }, [isDesktop]);
-
+  // Pages without admin layout
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
     return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 text-foreground">
-      <div className="flex min-h-screen w-full">
-        {isDesktop ? (
-          <AdminSidebar isOpen={true} onClose={() => {}} badges={badges} isDesktop={true} />
-        ) : (
-          <AdminSidebar
-            isOpen={sidebarOuverte}
-            onClose={() => setSidebarOuverte(false)}
-            badges={badges}
-            isDesktop={false}
-          />
-        )}
+    <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
+      {/* Header - always on top */}
+      <AdminHeader onMenuOpen={() => setSidebarOpen((prev) => !prev)} />
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <AdminHeader
-            currentPageName={currentPageName}
-            onMenuOpen={() => setSidebarOuverte(true)}
-            showBurger={!isDesktop}
-          />
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <AdminSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          badges={badges}
+          isMobile={!isDesktop}
+        />
 
-          <main className="flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 md:px-6">
-            {children}
-          </main>
-        </div>
+        {/* Main content */}
+        <main
+          className="flex-1 overflow-auto"
+          style={{
+            marginLeft: isDesktop ? "240px" : 0,
+            padding: isMobile ? "16px" : "24px",
+            paddingBottom: isMobile ? "80px" : "24px",
+          }}
+        >
+          {children}
+        </main>
       </div>
+
+      {/* Bottom nav on mobile */}
+      <AdminBottomNav onOpenSidebar={() => setSidebarOpen(true)} />
     </div>
   );
 }
