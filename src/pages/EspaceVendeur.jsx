@@ -130,16 +130,12 @@ export default function EspaceVendeur() {
           return unsubscribe;
         }
         
-        // Otherwise, fetch from database via backend function (bypasse les restrictions RLS)
+        // Fetch seller data from database
         const emailVendeur = session.email;
         try {
-          const resp = await supabase.functions.invoke('vendeurActions', {
-            action: 'getSellerByEmail',
-            vendeur_email: emailVendeur,
-            payload: {},
-          });
-          const sellerData = resp.data?.seller;
-          if (sellerData) {
+          const sellers = await filterTable("sellers", { email: emailVendeur });
+          if (sellers.length > 0) {
+            const sellerData = sellers[0];
             setCompteVendeur(sellerData);
             // Enrichir la session avec les données complètes
             sessionStorage.setItem("vendeur_session", JSON.stringify({ ...session, ...sellerData, role: 'vendeur' }));
@@ -153,17 +149,12 @@ export default function EspaceVendeur() {
             setChargement(false);
             return unsubscribe;
           } else {
+            console.warn('Aucun vendeur trouvé pour:', emailVendeur);
             window.location.href = createPageUrl("Connexion");
           }
-        } catch (_) {
-          // Fallback direct si la fonction échoue
-          const sellers = await filterTable("sellers", { email: emailVendeur });
-          if (sellers.length > 0) {
-            setCompteVendeur(sellers[0]);
-            setChargement(false);
-          } else {
-            window.location.href = createPageUrl("Connexion");
-          }
+        } catch (err) {
+          console.error('Erreur chargement vendeur:', err);
+          window.location.href = createPageUrl("Connexion");
         }
       } catch (error) {
         console.error('Erreur chargement espace vendeur:', error);
