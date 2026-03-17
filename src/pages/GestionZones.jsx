@@ -95,6 +95,8 @@ export default function GestionZones() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["zones_livraison"] }),
   });
 
+  const [keepQuartierOpen, setKeepQuartierOpen] = useState(false);
+
   const createQuartierMut = useMutation({
     mutationFn: async (data) => {
       const { error } = await supabase.from("quartiers").insert(data);
@@ -102,9 +104,13 @@ export default function GestionZones() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quartiers"] });
-      setDialogQuartier(false);
-      setFormQuartier({ nom: "", ville_id: "" });
-      toast({ title: "Succès", description: "Quartier ajouté" });
+      toast({ title: "✓ Quartier ajouté", description: `"${formQuartier.nom}" a été créé avec succès` });
+      if (keepQuartierOpen) {
+        setFormQuartier((f) => ({ ...f, nom: "" }));
+      } else {
+        setDialogQuartier(false);
+        setFormQuartier({ nom: "", ville_id: "" });
+      }
     },
     onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
@@ -261,19 +267,28 @@ export default function GestionZones() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {villes.map((ville) => {
             const qs = getQuartiersForVille(ville.id);
-            if (qs.length === 0) return null;
             return (
               <Card key={ville.id} className="p-4">
-                <h3 className="font-semibold text-slate-800 mb-2">{ville.nom} <span className="text-slate-400 text-sm">({qs.length})</span></h3>
-                <div className="flex flex-wrap gap-1">
-                  {qs.map((q) => (
-                    <Badge key={q.id} variant="outline" className="text-xs flex items-center gap-1">
-                      {q.nom}
-                      <button onClick={() => { if (confirm(`Supprimer "${q.nom}" ?`)) deleteQuartierMut.mutate(q.id); }}
-                        className="ml-1 text-red-400 hover:text-red-600">×</button>
-                    </Badge>
-                  ))}
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-800">{ville.nom} <span className="text-slate-400 text-sm">({qs.length})</span></h3>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-primary"
+                    onClick={() => { setFormQuartier({ nom: "", ville_id: ville.id }); setKeepQuartierOpen(true); setDialogQuartier(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Ajouter
+                  </Button>
                 </div>
+                {qs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Aucun quartier — cliquez "Ajouter" ci-dessus</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {qs.map((q) => (
+                      <Badge key={q.id} variant="outline" className="text-xs flex items-center gap-1">
+                        {q.nom}
+                        <button onClick={() => { if (confirm(`Supprimer "${q.nom}" ?`)) deleteQuartierMut.mutate(q.id); }}
+                          className="ml-1 text-red-400 hover:text-red-600">×</button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -336,7 +351,7 @@ export default function GestionZones() {
       </Dialog>
 
       {/* Dialog Quartier */}
-      <Dialog open={dialogQuartier} onOpenChange={setDialogQuartier}>
+      <Dialog open={dialogQuartier} onOpenChange={(open) => { setDialogQuartier(open); if (!open) setKeepQuartierOpen(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Nouveau Quartier</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); if (formQuartier.nom.trim() && formQuartier.ville_id) createQuartierMut.mutate(formQuartier); }} className="space-y-4">
@@ -351,11 +366,24 @@ export default function GestionZones() {
             </div>
             <div className="space-y-2">
               <Label>Nom du quartier *</Label>
-              <Input value={formQuartier.nom} onChange={(e) => setFormQuartier((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Bastos" required />
+              <Input value={formQuartier.nom} onChange={(e) => setFormQuartier((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Bastos" required autoFocus />
             </div>
+            {/* Show existing quartiers for selected ville */}
+            {formQuartier.ville_id && getQuartiersForVille(formQuartier.ville_id).length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Quartiers existants :</Label>
+                <div className="flex flex-wrap gap-1">
+                  {getQuartiersForVille(formQuartier.ville_id).map((q) => (
+                    <Badge key={q.id} variant="secondary" className="text-xs">{q.nom}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setDialogQuartier(false)} className="flex-1">Annuler</Button>
-              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]" disabled={createQuartierMut.isPending}>Ajouter</Button>
+              <Button type="button" variant="outline" onClick={() => { setDialogQuartier(false); setKeepQuartierOpen(false); }} className="flex-1">Fermer</Button>
+              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]" disabled={createQuartierMut.isPending}>
+                {createQuartierMut.isPending ? "Ajout..." : "Ajouter"}
+              </Button>
             </div>
           </form>
         </DialogContent>
