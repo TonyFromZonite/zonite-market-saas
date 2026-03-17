@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
 import { adminApi } from "@/components/adminApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -37,18 +37,20 @@ export default function SupportAdmin() {
   const [reponse, setReponse] = useState("");
   const [nouveauStatut, setNouveauStatut] = useState("");
   const [enCours, setEnCours] = useState(false);
-  // FAQ state
   const [faqEdit, setFaqEdit] = useState(null);
   const [faqForm, setFaqForm] = useState({ question: "", reponse: "" });
   const [faqEnCours, setFaqEnCours] = useState(false);
-  // Notifications state
   const [notifFiltreType, setNotifFiltreType] = useState("tous");
   const [notifFiltreVendeur, setNotifFiltreVendeur] = useState("");
   const queryClient = useQueryClient();
 
   const { data: faqItems = [], isLoading: faqLoading } = useQuery({
     queryKey: ["faq_items"],
-    queryFn: () => base44.entities.FaqItem.list("ordre"),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("faq_items").select("*").order("ordre");
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const ouvrirFaqEdit = (item) => {
@@ -87,13 +89,17 @@ export default function SupportAdmin() {
 
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["tickets_support"],
-    queryFn: () => base44.entities.TicketSupport.list("-created_date", 200),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tickets_support").select("*").order("created_at", { ascending: false }).limit(200);
+      if (error) throw error;
+      return data || [];
+    },
     refetchInterval: 30000,
   });
 
   const ticketsFiltres = tickets.filter(t => {
     const matchStatut = filtreStatut === "tous" || t.statut === filtreStatut;
-    const matchRecherche = !recherche || t.sujet?.toLowerCase().includes(recherche.toLowerCase()) || t.vendeur_nom?.toLowerCase().includes(recherche.toLowerCase());
+    const matchRecherche = !recherche || t.sujet?.toLowerCase().includes(recherche.toLowerCase()) || t.vendeur_email?.toLowerCase().includes(recherche.toLowerCase());
     return matchStatut && matchRecherche;
   });
 
@@ -101,7 +107,11 @@ export default function SupportAdmin() {
 
   const { data: toutesNotifs = [], isLoading: notifsLoading } = useQuery({
     queryKey: ["toutes_notifs_admin"],
-    queryFn: () => base44.entities.NotificationVendeur.list("-created_date", 200),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("notifications_vendeur").select("*").order("created_at", { ascending: false }).limit(200);
+      if (error) throw error;
+      return data || [];
+    },
     enabled: onglet === "notifications",
   });
 
@@ -112,12 +122,12 @@ export default function SupportAdmin() {
   });
 
   const toggleImportante = async (notif) => {
-    await adminApi.updateNotificationVendeur(notif.id, { importante: !notif.importante });
+    await adminApi.updateNotificationVendeur(notif.id, { lu: !notif.lu });
     queryClient.invalidateQueries({ queryKey: ["toutes_notifs_admin"] });
   };
 
   const marquerLueAdmin = async (notif) => {
-    await adminApi.updateNotificationVendeur(notif.id, { lue: !notif.lue });
+    await adminApi.updateNotificationVendeur(notif.id, { lu: !notif.lu });
     queryClient.invalidateQueries({ queryKey: ["toutes_notifs_admin"] });
   };
 
@@ -130,27 +140,44 @@ export default function SupportAdmin() {
   const envoyerReponse = async () => {
     if (!reponse.trim()) return;
     setEnCours(true);
-    const sousAdminSession = JSON.parse(sessionStorage.getItem('sousAdminSession') || 'null');
-    const adminSession = JSON.parse(sessionStorage.getItem('adminSession') || 'null');
-    const adminEmail = sousAdminSession?.email || adminSession?.email || '';
-    await adminApi.updateTicketSupport(ticketSelectionne.id, {
-      reponse_admin: reponse,
-      statut: nouveauStatut || "en_cours",
-      admin_email: adminEmail,
-      date_reponse: new Date().toISOString(),
-      lu_par_vendeur: false,
-    });
+    try {
+      const sousAdminSession = JSON.parse(sessionStorage.getItem('sousAdminSession') || 'null');
+      const adminSession = JSON.parse(sessionStorage.getItem('adminSession') || 'null');
+      const adminEmail = sousAdminSession?.email || adminSession?.email || '';
+      await adminApi.updateTicketSupport(ticketSelectionne.id, {
+        reponse_admin: reponse,
+        statut: nouveauStatut || "en_cours",
+        admin_email: adminEmail,
+        date_reponse: new Date().toISOString(),
+        lu_par_vendeur: false,
+      });
 
-    // Notifier le vendeur
-    await adminApi.createNotificationVendeur({
-      vendeur_email: ticketSelectionne.vendeur_email,
-      titre: "Réponse à votre ticket",
-      message: `Votre ticket "${ticketSelectionne.sujet}" a reçu une réponse. Consultez votre espace Aide.`,
-      type: "info",
-    });
+      // Look up vendeur_id from the ticket
+      const vendeurId = ticketSelectionne.vendeur_id;
+      if (vendeurId) {
+        await adminApi.createNotificationVendeur({
+          vendeur_id: vendeurId,
+          vendeur_email: ticketSelectionne.vendeur_email,
+          titre: "Réponse à votre ticket",
+          message: `Votre ticket "${ticketSelectionne.sujet}" a reçu une réponse. Consultez votre espace Aide.`,
+          type: "info",
+        });
+      }
 
-    queryClient.invalidateQueries({ queryKey: ["tickets_support"] });
-    setTicketSelectionne(prev => ({ ...prev, reponse_admin: reponse, statut: nouveauStatut || "en_cours" }));
+      // Create admin notification for audit
+      await supabase.from("notifications_admin").insert({
+        titre: "Ticket répondu",
+        message: `Réponse envoyée au ticket "${ticketSelectionne.sujet}" de ${ticketSelectionne.vendeur_email}`,
+        type: "info",
+        vendeur_email: ticketSelectionne.vendeur_email,
+        reference_id: ticketSelectionne.id,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["tickets_support"] });
+      setTicketSelectionne(prev => ({ ...prev, reponse_admin: reponse, statut: nouveauStatut || "en_cours" }));
+    } catch (e) {
+      console.error("Erreur envoi réponse:", e);
+    }
     setEnCours(false);
   };
 
@@ -293,7 +320,7 @@ export default function SupportAdmin() {
           ) : (
             <div className="space-y-2">
               {notifsFiltrees.map(n => (
-                <div key={n.id} className={`bg-white rounded-xl border p-4 flex items-start gap-3 transition-opacity ${n.lue ? "opacity-60" : "border-slate-200"} ${n.importante ? "border-l-4 border-l-yellow-400" : ""}`}>
+                <div key={n.id} className={`bg-white rounded-xl border p-4 flex items-start gap-3 transition-opacity ${n.lu ? "opacity-60" : "border-slate-200"}`}>
                   <span className="text-xl flex-shrink-0">
                     {n.type === "succes" ? "✅" : n.type === "alerte" ? "⚠️" : n.type === "paiement" ? "💰" : "ℹ️"}
                   </span>
@@ -302,17 +329,13 @@ export default function SupportAdmin() {
                     <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{n.vendeur_email}</span>
-                      <span className="text-[10px] text-slate-400">{new Date(n.created_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                      {!n.lue && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+                      <span className="text-[10px] text-slate-400">{new Date(n.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      {!n.lu && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => toggleImportante(n)} title={n.importante ? "Retirer l'importance" : "Marquer importante"}
-                      className={`p-1.5 rounded-lg transition-colors ${n.importante ? "text-yellow-500 hover:bg-yellow-50" : "text-slate-300 hover:bg-slate-100"}`}>
-                      <Star className="w-4 h-4" fill={n.importante ? "currentColor" : "none"} />
-                    </button>
-                    <button onClick={() => marquerLueAdmin(n)} title={n.lue ? "Marquer non lue" : "Marquer lue"}
-                      className={`p-1.5 rounded-lg transition-colors ${n.lue ? "text-slate-400 hover:bg-slate-100" : "text-blue-600 hover:bg-blue-50"}`}>
+                    <button onClick={() => marquerLueAdmin(n)} title={n.lu ? "Marquer non lue" : "Marquer lue"}
+                      className={`p-1.5 rounded-lg transition-colors ${n.lu ? "text-slate-400 hover:bg-slate-100" : "text-blue-600 hover:bg-blue-50"}`}>
                       <CheckCheck className="w-4 h-4" />
                     </button>
                   </div>
@@ -352,97 +375,79 @@ export default function SupportAdmin() {
               <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-40" />
               <p className="text-sm">Aucun ticket</p>
             </div>
-          ) : ticketsFiltres.map(ticket => (
-            <div
-              key={ticket.id}
-              onClick={() => ouvrirTicket(ticket)}
-              className={`bg-white rounded-xl border p-4 cursor-pointer hover:shadow-sm transition-all ${ticketSelectionne?.id === ticket.id ? "border-[#1a1f5e] ring-1 ring-[#1a1f5e]/10" : "border-slate-200"}`}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUTS[ticket.statut]?.color}`}>
-                    {STATUTS[ticket.statut]?.label}
+          ) : (
+            ticketsFiltres.map(ticket => (
+              <div key={ticket.id} onClick={() => ouvrirTicket(ticket)}
+                className={`bg-white rounded-xl border p-4 cursor-pointer hover:shadow-md transition-all ${ticketSelectionne?.id === ticket.id ? "border-[#1a1f5e] ring-2 ring-[#1a1f5e]/10" : "border-slate-200"}`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h4 className="text-sm font-semibold text-slate-900 line-clamp-1">{ticket.sujet}</h4>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${STATUTS[ticket.statut]?.color || "bg-slate-100 text-slate-600"}`}>
+                    {STATUTS[ticket.statut]?.label || ticket.statut}
                   </span>
-                  <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                    {CATEGORIES[ticket.categorie] || ticket.categorie}
-                  </span>
-                  {!ticket.reponse_admin && ticket.statut === "ouvert" && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">Sans réponse</span>
-                  )}
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-2 mb-2">{ticket.message}</p>
+                <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1"><User className="w-3 h-3" />{ticket.vendeur_email}</span>
+                  {ticket.priorite && <span className={PRIORITES[ticket.priorite]?.color}>{PRIORITES[ticket.priorite]?.label}</span>}
+                  {ticket.categorie && <span className="bg-slate-100 px-1.5 py-0.5 rounded">{CATEGORIES[ticket.categorie] || ticket.categorie}</span>}
+                  <span>{new Date(ticket.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>
                 </div>
               </div>
-              <p className="text-sm font-semibold text-slate-900 mb-1 line-clamp-1">{ticket.sujet}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <User className="w-3 h-3" />
-                  <span>{ticket.vendeur_nom || ticket.vendeur_email}</span>
-                </div>
-                <span className="text-xs text-slate-400">
-                  {format(new Date(ticket.created_date), "d MMM", { locale: fr })}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Détail du ticket */}
-        {ticketSelectionne ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 sticky top-4 self-start">
-            <div>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUTS[ticketSelectionne.statut]?.color}`}>
-                  {STATUTS[ticketSelectionne.statut]?.label}
-                </span>
-                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                  {CATEGORIES[ticketSelectionne.categorie]}
-                </span>
+        {ticketSelectionne && (
+          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 sticky top-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900">{ticketSelectionne.sujet}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${STATUTS[ticketSelectionne.statut]?.color}`}>
+                    {STATUTS[ticketSelectionne.statut]?.label}
+                  </span>
+                  {ticketSelectionne.priorite && <span className={`text-xs ${PRIORITES[ticketSelectionne.priorite]?.color}`}>{PRIORITES[ticketSelectionne.priorite]?.label}</span>}
+                </div>
               </div>
-              <h3 className="font-bold text-slate-900 text-base mb-1">{ticketSelectionne.sujet}</h3>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <User className="w-3 h-3" />
-                <span>{ticketSelectionne.vendeur_nom} — {ticketSelectionne.vendeur_email}</span>
+              <button onClick={() => setTicketSelectionne(null)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700">{ticketSelectionne.message}</div>
+
+            <div className="text-xs text-slate-400 space-y-1">
+              <p>Vendeur : {ticketSelectionne.vendeur_email}</p>
+              <p>Créé le : {new Date(ticketSelectionne.created_at).toLocaleString("fr-FR")}</p>
+              {ticketSelectionne.categorie && <p>Catégorie : {CATEGORIES[ticketSelectionne.categorie] || ticketSelectionne.categorie}</p>}
+            </div>
+
+            {ticketSelectionne.reponse_admin && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs font-medium text-blue-700 mb-1">Réponse admin :</p>
+                <p className="text-sm text-blue-900">{ticketSelectionne.reponse_admin}</p>
+                {ticketSelectionne.repondu_par && <p className="text-[10px] text-blue-500 mt-1">Par : {ticketSelectionne.repondu_par}</p>}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {format(new Date(ticketSelectionne.created_date), "d MMMM yyyy à HH:mm", { locale: fr })}
-              </p>
-            </div>
+            )}
 
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs text-slate-500 font-medium mb-2">Message du vendeur</p>
-              <p className="text-sm text-slate-700 whitespace-pre-line">{ticketSelectionne.message}</p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-700">Votre réponse</label>
-              <Textarea value={reponse} onChange={e => setReponse(e.target.value)} rows={4} placeholder="Rédigez votre réponse..." />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-700">Statut</label>
-              <Select value={nouveauStatut} onValueChange={setNouveauStatut}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(STATUTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={envoyerReponse} disabled={enCours || !reponse.trim()} className="w-full bg-[#1a1f5e] hover:bg-[#141952]">
-              {enCours ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <MessageSquare className="w-4 h-4 mr-2" />}
-              Envoyer la réponse
-            </Button>
-          </div>
-        ) : (
-          <div className="hidden lg:flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-200 p-12 text-slate-400">
-            <div className="text-center">
-              <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Sélectionnez un ticket</p>
+            <div className="border-t border-slate-200 pt-4 space-y-3">
+              <Textarea value={reponse} onChange={e => setReponse(e.target.value)} rows={4} placeholder="Rédigez votre réponse..." className="text-sm" />
+              <div className="flex items-center gap-3">
+                <Select value={nouveauStatut} onValueChange={setNouveauStatut}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button onClick={envoyerReponse} disabled={enCours || !reponse.trim()} className="bg-[#1a1f5e] hover:bg-[#141952] flex-1">
+                  {enCours ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Envoyer la réponse
+                </Button>
+              </div>
             </div>
           </div>
         )}
-      </div></div>}
+      </div>
+      </div>}
     </div>
   );
 }
