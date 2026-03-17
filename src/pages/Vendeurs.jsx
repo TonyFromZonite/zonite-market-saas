@@ -380,8 +380,9 @@ function CommissionsTab() {
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({ 
     queryKey: ["vendeurs"], 
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getAllVendeurs', {});
-      return res.data;
+      const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     }
   });
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
