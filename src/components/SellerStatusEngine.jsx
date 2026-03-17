@@ -95,6 +95,7 @@ export const getRestrictionMessage = (sellerStatus, feature) => {
     [SELLER_STATUSES.PENDING_VERIFICATION]: "Veuillez vérifier votre email pour continuer.",
     [SELLER_STATUSES.KYC_REQUIRED]: `Veuillez soumettre votre dossier KYC pour accéder à ${feature}.`,
     [SELLER_STATUSES.KYC_PENDING]: "Votre dossier KYC est en révision. Veuillez patienter.",
+    [SELLER_STATUSES.KYC_REJECTED]: "Votre dossier KYC a été rejeté. Veuillez resoumettre vos documents.",
     [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: "Veuillez regarder et valider la vidéo de formation avant d'accéder aux autres fonctionnalités.",
   };
 
