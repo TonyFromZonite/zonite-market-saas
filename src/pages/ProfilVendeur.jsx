@@ -246,19 +246,7 @@ export default function ProfilVendeur() {
         </Button>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        {[
-          { label: "Accueil", page: "EspaceVendeur", icone: "🏠" },
-          { label: "Commandes", page: "MesCommandesVendeur", icone: "📋" },
-          { label: "Catalogue", page: "CatalogueVendeur", icone: "📦" },
-          { label: "Profil", page: "ProfilVendeur", icone: "👤" },
-        ].map(({ label, page, icone }) => (
-          <Link key={page} to={createPageUrl(page)} className="flex-1 flex flex-col items-center py-3 gap-1">
-            <span className="text-xl">{icone}</span>
-            <span className={`text-[10px] ${page === "ProfilVendeur" ? "text-[#1a1f5e] font-bold" : "text-slate-600"}`}>{label}</span>
-          </Link>
-        ))}
-      </div>
+      <VendeurBottomNav />
     </div>
   );
 }

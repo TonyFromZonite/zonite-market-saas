@@ -17,7 +17,12 @@ export default function VendeurBottomNav({ items = DEFAULT_ITEMS }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
       <div className="bottom-nav-safe mx-auto grid w-full max-w-screen-md grid-cols-5">
-        {items.map(({ label, page, icon: Icon, disabled = false }) => {
+        {items.map((item) => {
+          const fallback = DEFAULT_ITEMS.find((defaultItem) => defaultItem.page === item.page) || {};
+          const label = item.label || fallback.label;
+          const page = item.page || fallback.page;
+          const Icon = item.icon || fallback.icon;
+          const disabled = item.disabled || false;
           const href = createPageUrl(page);
           const isActive = location.pathname === href;
 
