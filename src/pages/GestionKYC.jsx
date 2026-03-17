@@ -59,7 +59,7 @@ export default function GestionKYC() {
       if (statut === 'valide') {
         try {
           await supabase.functions.invoke('send-kyc-approved-email', {
-            body: { email: compteSelectionne.email, full_name: compteSelectionne.full_name }
+            body: { email: compteSelectionne.email, nom: compteSelectionne.full_name }
           });
         } catch (e) { console.warn("Email send failed:", e); }
       } else if (statut === 'rejete') {
