@@ -127,8 +127,11 @@ export type Database = {
           client_quartier: string | null
           client_telephone: string
           client_ville: string | null
+          coursier_id: string | null
+          coursier_nom: string | null
           created_at: string
           date_livraison_effective: string | null
+          date_livraison_estimee: string | null
           date_livraison_prevue: string | null
           frais_livraison: number | null
           id: string
@@ -156,8 +159,11 @@ export type Database = {
           client_quartier?: string | null
           client_telephone: string
           client_ville?: string | null
+          coursier_id?: string | null
+          coursier_nom?: string | null
           created_at?: string
           date_livraison_effective?: string | null
+          date_livraison_estimee?: string | null
           date_livraison_prevue?: string | null
           frais_livraison?: number | null
           id?: string
@@ -185,8 +191,11 @@ export type Database = {
           client_quartier?: string | null
           client_telephone?: string
           client_ville?: string | null
+          coursier_id?: string | null
+          coursier_nom?: string | null
           created_at?: string
           date_livraison_effective?: string | null
+          date_livraison_estimee?: string | null
           date_livraison_prevue?: string | null
           frais_livraison?: number | null
           id?: string
@@ -209,6 +218,13 @@ export type Database = {
           vendeur_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "commandes_vendeur_coursier_id_fkey"
+            columns: ["coursier_id"]
+            isOneToOne: false
+            referencedRelation: "coursiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commandes_vendeur_livreur_id_fkey"
             columns: ["livreur_id"]
