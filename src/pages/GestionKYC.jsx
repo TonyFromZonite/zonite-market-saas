@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,25 +21,69 @@ export default function GestionKYC() {
   const queryClient = useQueryClient();
 
   const { data: comptes = [], isLoading } = useQuery({
-    queryKey: ["vendeurs"],
+    queryKey: ["vendeurs-kyc"],
     queryFn: async () => {
-      // Récupérer les vendeurs via le backend admin
-      const { data } = await base44.functions.invoke('getAllVendeurs', {});
-      return Array.isArray(data) ? data : [];
+      const { data, error } = await supabase
+        .from('sellers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
-    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
+    refetchInterval: 30000,
   });
 
   const validerKYC = async (statut) => {
     setEnCours(true);
     try {
-      const { data } = await base44.functions.invoke('validateKYC', {
-        seller_id: compteSelectionne.id,
-        statut,
-        notes: notes || '',
-      });
-      if (!data.success) throw new Error(data.error || 'Erreur lors de la validation');
-      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      const updates = {
+        statut_kyc: statut,
+        kyc_raison_rejet: statut === 'rejete' ? notes : null,
+      };
+
+      if (statut === 'valide') {
+        updates.seller_status = 'active_seller';
+        updates.catalogue_debloque = true;
+      } else if (statut === 'rejete') {
+        updates.seller_status = 'kyc_rejected';
+      }
+
+      const { error } = await supabase
+        .from('sellers')
+        .update(updates)
+        .eq('id', compteSelectionne.id);
+
+      if (error) throw error;
+
+      // Send email notification
+      if (statut === 'valide') {
+        try {
+          await supabase.functions.invoke('send-kyc-approved-email', {
+            body: { email: compteSelectionne.email, full_name: compteSelectionne.full_name }
+          });
+        } catch (e) { console.warn("Email send failed:", e); }
+      } else if (statut === 'rejete') {
+        try {
+          await supabase.functions.invoke('send-kyc-rejected-email', {
+            body: { email: compteSelectionne.email, full_name: compteSelectionne.full_name, raison: notes }
+          });
+        } catch (e) { console.warn("Email send failed:", e); }
+      }
+
+      // Notify vendor
+      if (compteSelectionne.id) {
+        await supabase.from('notifications_vendeur').insert({
+          vendeur_id: compteSelectionne.id,
+          vendeur_email: compteSelectionne.email,
+          titre: statut === 'valide' ? 'KYC Validé !' : 'KYC Rejeté',
+          message: statut === 'valide' 
+            ? 'Votre dossier KYC a été validé. Votre compte est maintenant actif !'
+            : `Votre dossier KYC a été rejeté. Raison : ${notes || 'Non spécifiée'}`,
+          type: 'kyc',
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["vendeurs-kyc"] });
       setCompteSelectionne(null);
       setNotes("");
     } catch (e) {
@@ -58,14 +102,10 @@ export default function GestionKYC() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Validation KYC</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestion centralisée des dossiers KYC vendeurs
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Gestion centralisée des dossiers KYC vendeurs</p>
         </div>
         {enAttente.length > 0 && (
-          <Badge className="bg-yellow-500 text-white text-lg px-4 py-2">
-            {enAttente.length} en attente
-          </Badge>
+          <Badge className="bg-yellow-500 text-white text-lg px-4 py-2">{enAttente.length} en attente</Badge>
         )}
       </div>
 
@@ -92,10 +132,10 @@ export default function GestionKYC() {
               <div key={c.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <span className="text-blue-700 font-bold text-sm">{c.nom_complet?.[0]?.toUpperCase()}</span>
+                    <span className="text-blue-700 font-bold text-sm">{c.full_name?.[0]?.toUpperCase()}</span>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">{c.nom_complet}</p>
+                    <p className="font-medium text-slate-900">{c.full_name}</p>
                     <p className="text-sm text-slate-500">{c.ville}{c.quartier ? `, ${c.quartier}` : ""}</p>
                     <p className="text-xs text-slate-400">{c.email}</p>
                   </div>
@@ -118,12 +158,12 @@ export default function GestionKYC() {
             {traites.map(c => (
               <div key={c.id} className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-slate-900">{c.nom_complet}</p>
+                  <p className="font-medium text-slate-900">{c.full_name}</p>
                   <p className="text-sm text-slate-500">{c.ville} • {c.telephone}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge className={`${STATUTS_KYC[c.statut_kyc]?.couleur} border-0`}>{STATUTS_KYC[c.statut_kyc]?.label}</Badge>
-                  <Button size="sm" variant="ghost" onClick={() => { setCompteSelectionne(c); setNotes(c.notes_admin || ""); }}>
+                  <Button size="sm" variant="ghost" onClick={() => { setCompteSelectionne(c); setNotes(c.kyc_raison_rejet || ""); }}>
                     <Eye className="w-4 h-4" />
                   </Button>
                 </div>
@@ -136,7 +176,7 @@ export default function GestionKYC() {
       <Dialog open={!!compteSelectionne} onOpenChange={() => setCompteSelectionne(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Dossier KYC : {compteSelectionne?.nom_complet}</DialogTitle>
+            <DialogTitle>Dossier KYC : {compteSelectionne?.full_name}</DialogTitle>
           </DialogHeader>
           {compteSelectionne && (
             <div className="space-y-4">
@@ -150,7 +190,7 @@ export default function GestionKYC() {
                 <div className="text-right">
                   <p className="text-xs text-slate-500">Date inscription</p>
                   <p className="text-xs font-medium text-slate-900">
-                    {new Date(compteSelectionne.created_date).toLocaleDateString('fr-FR')}
+                    {new Date(compteSelectionne.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
               </div>
@@ -169,18 +209,46 @@ export default function GestionKYC() {
                 <div><p className="text-slate-400">Opérateur</p><p className="font-medium">{compteSelectionne.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"}</p></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {compteSelectionne.photo_identite_url && (
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Pièce d'identité</p>
-                    <img src={compteSelectionne.photo_identite_url} alt="ID" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.photo_identite_url)} />
-                  </div>
-                )}
-                {compteSelectionne.selfie_url && (
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Selfie</p>
-                    <img src={compteSelectionne.selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.selfie_url)} />
-                  </div>
+              {/* KYC Documents - using correct column names */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-700">Documents KYC</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {compteSelectionne.kyc_document_recto_url && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Pièce d'identité (Recto)</p>
+                      <img 
+                        src={compteSelectionne.kyc_document_recto_url} 
+                        alt="Document recto" 
+                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
+                        onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} 
+                      />
+                    </div>
+                  )}
+                  {compteSelectionne.kyc_document_verso_url && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Pièce d'identité (Verso)</p>
+                      <img 
+                        src={compteSelectionne.kyc_document_verso_url} 
+                        alt="Document verso" 
+                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
+                        onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} 
+                      />
+                    </div>
+                  )}
+                  {compteSelectionne.kyc_selfie_url && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Selfie</p>
+                      <img 
+                        src={compteSelectionne.kyc_selfie_url} 
+                        alt="Selfie" 
+                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
+                        onClick={() => window.open(compteSelectionne.kyc_selfie_url)} 
+                      />
+                    </div>
+                  )}
+                </div>
+                {!compteSelectionne.kyc_document_recto_url && !compteSelectionne.kyc_selfie_url && (
+                  <p className="text-sm text-slate-400 italic">Aucun document KYC soumis</p>
                 )}
               </div>
 

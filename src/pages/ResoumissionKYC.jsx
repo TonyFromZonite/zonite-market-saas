@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
+import { getVendeurSession } from "@/components/useSessionGuard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, Upload, AlertCircle, ChevronLeft } from "lucide-react";
@@ -22,15 +23,36 @@ export default function ResoumissionKYC() {
   useEffect(() => {
     const chargerVendeur = async () => {
       try {
-        const user = await base44.auth.me();
-        const sellers = await base44.asServiceRole.entities.Seller.filter({ email: user.email });
-        if (sellers.length > 0) {
-          setVendeur(sellers[0]);
-          // Charger les documents existants
+        const session = getVendeurSession();
+        if (!session) return;
+
+        const { data: authUser } = await supabase.auth.getUser();
+        let seller = null;
+
+        if (authUser?.user) {
+          const { data } = await supabase
+            .from('sellers')
+            .select('*')
+            .eq('user_id', authUser.user.id)
+            .maybeSingle();
+          seller = data;
+        }
+
+        if (!seller && session.email) {
+          const { data } = await supabase
+            .from('sellers')
+            .select('*')
+            .eq('email', session.email)
+            .maybeSingle();
+          seller = data;
+        }
+
+        if (seller) {
+          setVendeur(seller);
           setForm({
-            photo_identite_url: sellers[0].photo_identite_url || "",
-            photo_identite_verso_url: sellers[0].photo_identite_verso_url || "",
-            selfie_url: sellers[0].selfie_url || "",
+            photo_identite_url: seller.kyc_document_recto_url || "",
+            photo_identite_verso_url: seller.kyc_document_verso_url || "",
+            selfie_url: seller.kyc_selfie_url || "",
           });
         }
       } catch (e) {
@@ -44,41 +66,64 @@ export default function ResoumissionKYC() {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setUploadEnCours(p => ({ ...p, [key]: true }));
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: fichier });
-      setForm(p => ({ ...p, [champ]: file_url }));
+      const ext = fichier.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `kyc/${vendeur?.email || 'unknown'}/${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('kyc-documents')
+        .upload(path, fichier, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('kyc-documents')
+        .getPublicUrl(uploadData.path);
+
+      setForm(p => ({ ...p, [champ]: urlData.publicUrl }));
+    } catch (e) {
+      setErreur("Erreur upload: " + e.message);
     } finally {
       setUploadEnCours(p => ({ ...p, [key]: false }));
     }
   };
 
   const soumettre = async () => {
-    if (!form.photo_identite_url) {
-      setErreur("Veuillez uploader votre pièce d'identité."); return;
-    }
-    if (typeDocument === "cni" && !form.photo_identite_verso_url) {
-      setErreur("Veuillez uploader le verso de votre CNI."); return;
-    }
-    if (!form.selfie_url) {
-      setErreur("Veuillez uploader votre selfie."); return;
-    }
+    if (!form.photo_identite_url) { setErreur("Veuillez uploader votre pièce d'identité."); return; }
+    if (typeDocument === "cni" && !form.photo_identite_verso_url) { setErreur("Veuillez uploader le verso de votre CNI."); return; }
+    if (!form.selfie_url) { setErreur("Veuillez uploader votre selfie."); return; }
 
     setEnCours(true);
     setErreur("");
 
     try {
-      const response = await base44.functions.invoke('resubmitKYC', {
-        photo_identite_url: form.photo_identite_url,
-        photo_identite_verso_url: form.photo_identite_verso_url || "",
-        selfie_url: form.selfie_url,
+      const { error } = await supabase
+        .from('sellers')
+        .update({
+          kyc_document_recto_url: form.photo_identite_url,
+          kyc_document_verso_url: form.photo_identite_verso_url || null,
+          kyc_selfie_url: form.selfie_url,
+          kyc_type_document: typeDocument,
+          statut_kyc: 'en_attente',
+          seller_status: 'kyc_pending',
+          kyc_raison_rejet: null,
+        })
+        .eq('id', vendeur.id);
+
+      if (error) throw error;
+
+      // Notify admin
+      await supabase.from('notifications_admin').insert({
+        titre: 'KYC Resoumis',
+        message: `${vendeur.full_name} (${vendeur.email}) a resoumis son KYC`,
+        type: 'kyc',
+        vendeur_email: vendeur.email,
+        reference_id: vendeur.id,
       });
 
-      if (response.data?.success) {
-        setSucces(true);
-      } else {
-        setErreur(response.data?.error || "Erreur lors de la resoumission.");
-      }
+      setSucces(true);
     } catch (error) {
-      setErreur(error.response?.data?.error || error.message || "Erreur lors de la resoumission.");
+      setErreur(error.message || "Erreur lors de la resoumission.");
     } finally {
       setEnCours(false);
     }
@@ -163,18 +208,12 @@ export default function ResoumissionKYC() {
           <div>
             <Label className="text-slate-200 text-xs mb-2 block">Type de document *</Label>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setTypeDocument("cni"); setForm(p => ({...p, photo_identite_verso_url: ""})); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}
-              >
+              <button type="button" onClick={() => { setTypeDocument("cni"); setForm(p => ({...p, photo_identite_verso_url: ""})); }}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
                 🪪 CNI
               </button>
-              <button
-                type="button"
-                onClick={() => { setTypeDocument("passeport"); setForm(p => ({...p, photo_identite_verso_url: ""})); }}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}
-              >
+              <button type="button" onClick={() => { setTypeDocument("passeport"); setForm(p => ({...p, photo_identite_verso_url: ""})); }}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
                 📘 Passeport
               </button>
             </div>

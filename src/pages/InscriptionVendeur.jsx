@@ -1,13 +1,12 @@
-import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, Loader2, Upload, Eye, EyeOff, ChevronLeft } from "lucide-react";
+import { CheckCircle2, Loader2, Upload, Eye, EyeOff, ChevronLeft, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-
 import { LOGO_URL as LOGO } from "@/components/constants";
 
 const ETAPES = [
@@ -16,69 +15,135 @@ const ETAPES = [
   { num: 3, label: "Mon profil" },
 ];
 
-// Générer un mot de passe aléatoire lisible (fallback si vendeur ne choisit pas)
-function genererMdp() {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
+// Password validation
+const validatePassword = (password) => {
+  if (password.length < 8) return "Le mot de passe doit avoir au moins 8 caractères";
+  if (!/[A-Z]/.test(password)) return "Doit contenir au moins une majuscule";
+  if (!/[0-9]/.test(password)) return "Doit contenir au moins un chiffre";
+  return null;
+};
+
+// Username validation
+const validateUsernameFormat = (username) => {
+  const clean = username.toLowerCase().trim();
+  if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+    return "Nom utilisateur invalide (3-20 caractères, lettres/chiffres/_)";
+  }
+  return null;
+};
 
 export default function InscriptionVendeur() {
   const [etape, setEtape] = useState(1);
-  const [typeDocument, setTypeDocument] = useState("cni"); // "cni" ou "passeport"
+  const [typeDocument, setTypeDocument] = useState("cni");
   const [form, setForm] = useState({
-    // Étape 1 - Compte
+    username: "",
     nom_complet: "",
     email: "",
     telephone: "",
     mot_de_passe: "",
     confirmer_mdp: "",
-    // Étape 2 - Vérification email
     verification_code: "",
-    // Étape 3 - Profil vendeur
     ville: "",
     quartier: "",
     numero_mobile_money: "",
     operateur_mobile_money: "orange_money",
     experience_vente: "",
-    // Étape 4 - KYC
-    photo_identite_url: "",      // passeport ou CNI recto
-    photo_identite_verso_url: "", // CNI verso uniquement
+    photo_identite_url: "",
+    photo_identite_verso_url: "",
     selfie_url: "",
   });
   const [mdpVisible, setMdpVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [uploadEnCours, setUploadEnCours] = useState({ id: false, idVerso: false, selfie: false });
   const [erreur, setErreur] = useState("");
+  const [erreurMdp, setErreurMdp] = useState("");
   const [succes, setSucces] = useState(false);
-  const [emailVerifie, setEmailVerifie] = useState(null); // null = pas verifié, true = ok, false = déjà utilisé
-  const [vendeurEmail, setVendeurEmail] = useState(""); // Email du vendeur en cours d'inscription
+  const [emailVerifie, setEmailVerifie] = useState(null);
+  const [usernameStatus, setUsernameStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
+  const [vendeurEmail, setVendeurEmail] = useState("");
   const [reenvoyerDisable, setReenvoyerDisable] = useState(false);
+  const [sellerId, setSellerId] = useState(null);
 
   const modifier = (champ, val) => setForm(p => ({ ...p, [champ]: val }));
 
-  // Vérifier l'unicité de l'email en temps réel
-  const verifierEmail = async (email) => {
-    if (!email || !email.includes("@")) {
-      setEmailVerifie(null);
+  // Debounced username check
+  useEffect(() => {
+    const username = form.username.toLowerCase().trim();
+    if (!username || username.length < 3) {
+      setUsernameStatus(null);
       return;
     }
-    try {
-      const response = await base44.functions.invoke('checkEmailExists', { email });
-      setEmailVerifie(!response.data.exists);
-    } catch (e) {
-      setEmailVerifie(null);
+    const formatErr = validateUsernameFormat(username);
+    if (formatErr) {
+      setUsernameStatus('invalid');
+      return;
     }
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
+      setUsernameStatus(data ? 'taken' : 'available');
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [form.username]);
+
+  // Real-time password validation
+  useEffect(() => {
+    if (!form.mot_de_passe) { setErreurMdp(""); return; }
+    const err = validatePassword(form.mot_de_passe);
+    setErreurMdp(err || "");
+  }, [form.mot_de_passe]);
+
+  // Email uniqueness check
+  const verifierEmail = async (email) => {
+    if (!email || !email.includes("@")) { setEmailVerifie(null); return; }
+    try {
+      const { data } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+      setEmailVerifie(!data);
+    } catch { setEmailVerifie(null); }
   };
 
+  // Upload file to Supabase Storage
   const uploadFichier = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setUploadEnCours(p => ({ ...p, [key]: true }));
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: fichier });
-    modifier(champ, file_url);
+    try {
+      const ext = fichier.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `kyc/${vendeurEmail || form.email}/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('kyc-documents')
+        .upload(path, fichier, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('kyc-documents')
+        .getPublicUrl(uploadData.path);
+      
+      modifier(champ, urlData.publicUrl);
+    } catch (e) {
+      setErreur("Erreur lors de l'upload du fichier: " + e.message);
+    }
     setUploadEnCours(p => ({ ...p, [key]: false }));
   };
 
   const validerEtape1 = async () => {
+    // Username validation
+    const usernameClean = form.username.toLowerCase().trim();
+    const usernameErr = validateUsernameFormat(usernameClean);
+    if (usernameErr) { setErreur(usernameErr); return; }
+    if (usernameStatus === 'taken') { setErreur("Ce nom d'utilisateur est déjà pris"); return; }
+    if (usernameStatus !== 'available') { setErreur("Veuillez choisir un nom d'utilisateur valide"); return; }
+
     if (!form.nom_complet || !form.email || !form.telephone) {
       setErreur("Nom complet, email et téléphone sont obligatoires."); return;
     }
@@ -86,11 +151,10 @@ export default function InscriptionVendeur() {
       setErreur("L'email saisi n'est pas valide."); return;
     }
     if (emailVerifie === false) {
-      setErreur("Cet email est déjà utilisé. Veuillez en choisir un autre."); return;
+      setErreur("Cet email est déjà utilisé."); return;
     }
-    if (form.mot_de_passe.length < 6) {
-      setErreur("Le mot de passe doit contenir au moins 6 caractères."); return;
-    }
+    const pwdErr = validatePassword(form.mot_de_passe);
+    if (pwdErr) { setErreur(pwdErr); return; }
     if (form.mot_de_passe !== form.confirmer_mdp) {
       setErreur("Les mots de passe ne correspondent pas."); return;
     }
@@ -99,27 +163,66 @@ export default function InscriptionVendeur() {
     setErreur("");
 
     try {
-      const response = await base44.functions.invoke('registerVendeur', {
-        email: form.email,
-        nom_complet: form.nom_complet,
-        telephone: form.telephone,
-        mot_de_passe: form.mot_de_passe,
-        ville: form.ville,
-        quartier: form.quartier,
-        numero_mobile_money: form.numero_mobile_money,
-        operateur_mobile_money: form.operateur_mobile_money,
-        photo_identite_url: "",
-        photo_identite_verso_url: "",
-        selfie_url: "",
+      // 1. Sign up via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email.trim().toLowerCase(),
+        password: form.mot_de_passe,
+        options: {
+          data: {
+            role: 'vendeur',
+            full_name: form.nom_complet,
+          }
+        }
       });
 
-      if (response.data?.success) {
-        setVendeurEmail(form.email);
-        setErreur("");
-        setEtape(2);
-      } else {
-        setErreur(response.data?.error || "Erreur lors de l'inscription");
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          setErreur("Cet email est déjà utilisé.");
+        } else {
+          setErreur(authError.message);
+        }
+        return;
       }
+
+      // 2. Insert into sellers table
+      const { data: sellerData, error: sellerError } = await supabase
+        .from('sellers')
+        .insert({
+          user_id: authData.user.id,
+          email: form.email.trim().toLowerCase(),
+          full_name: form.nom_complet,
+          username: usernameClean,
+          telephone: form.telephone,
+          role: 'user',
+          seller_status: 'pending_verification',
+        })
+        .select('id')
+        .single();
+
+      if (sellerError) {
+        setErreur("Erreur lors de la création du compte: " + sellerError.message);
+        return;
+      }
+
+      setSellerId(sellerData.id);
+
+      // 3. Insert user role
+      await supabase.from('user_roles').insert({
+        user_id: authData.user.id,
+        role: 'vendeur',
+      });
+
+      // 4. Send verification email via edge function
+      try {
+        await supabase.functions.invoke('send-verification-email', {
+          body: { email: form.email.trim().toLowerCase(), full_name: form.nom_complet }
+        });
+      } catch (e) {
+        console.warn("Verification email send failed:", e);
+      }
+
+      setVendeurEmail(form.email.trim().toLowerCase());
+      setEtape(2);
     } catch (error) {
       setErreur(error.message || "Erreur lors de l'inscription");
     } finally {
@@ -131,23 +234,41 @@ export default function InscriptionVendeur() {
     if (!form.verification_code || form.verification_code.length !== 6) {
       setErreur("Veuillez entrer un code à 6 chiffres"); return;
     }
-
     setEnCours(true);
     setErreur("");
 
     try {
-      const response = await base44.functions.invoke('verifyEmailCode', {
-        email: vendeurEmail,
-        verification_code: form.verification_code,
-      });
+      // Verify the code against sellers table
+      const { data: seller, error } = await supabase
+        .from('sellers')
+        .select('id, email_verification_code, email_verification_expires_at')
+        .eq('email', vendeurEmail)
+        .single();
 
-      if (response.data?.success) {
-        // Email vérifié → passer à l'étape profil
-        setEtape(3);
-        setErreur("");
-      } else {
-        setErreur(response.data?.error || "Code invalide ou expiré");
+      if (error || !seller) {
+        setErreur("Compte introuvable"); return;
       }
+
+      if (seller.email_verification_code !== form.verification_code) {
+        setErreur("Code invalide"); return;
+      }
+
+      if (seller.email_verification_expires_at && new Date(seller.email_verification_expires_at) < new Date()) {
+        setErreur("Code expiré. Demandez un nouveau code."); return;
+      }
+
+      // Mark email as verified
+      await supabase
+        .from('sellers')
+        .update({ 
+          email_verified: true,
+          email_verification_code: null,
+          seller_status: 'kyc_required'
+        })
+        .eq('id', seller.id);
+
+      setSellerId(seller.id);
+      setEtape(3);
     } catch (error) {
       setErreur(error.message || "Erreur lors de la vérification");
     } finally {
@@ -158,10 +279,12 @@ export default function InscriptionVendeur() {
   const renvoyerCode = async () => {
     setReenvoyerDisable(true);
     try {
-      await base44.functions.invoke('resendVerificationCode', { email: vendeurEmail });
+      await supabase.functions.invoke('send-verification-email', {
+        body: { email: vendeurEmail, full_name: form.nom_complet }
+      });
       setErreur("Code renvoyé par email");
-      setTimeout(() => setReenvoyerDisable(false), 30000); // 30 secondes
-    } catch (error) {
+      setTimeout(() => setReenvoyerDisable(false), 30000);
+    } catch {
       setErreur("Erreur lors de l'envoi du code");
       setReenvoyerDisable(false);
     }
@@ -173,19 +296,25 @@ export default function InscriptionVendeur() {
     }
     setEnCours(true);
     setErreur("");
-    const response = await base44.functions.invoke('vendeurActions', {
-      action: 'updateProfil',
-      vendeur_email: vendeurEmail,
-      payload: {
-        ville: form.ville,
-        quartier: form.quartier,
-        numero_mobile_money: form.numero_mobile_money,
-        operateur_mobile_money: form.operateur_mobile_money,
+
+    try {
+      const { error } = await supabase
+        .from('sellers')
+        .update({
+          ville: form.ville,
+          quartier: form.quartier,
+          numero_mobile_money: form.numero_mobile_money,
+          operateur_mobile_money: form.operateur_mobile_money,
+          experience_vente: form.experience_vente || null,
+        })
+        .eq('email', vendeurEmail);
+
+      if (error) {
+        setErreur("Erreur lors de la sauvegarde du profil: " + error.message);
+        return;
       }
-    });
-    setEnCours(false);
-    if (response.data?.success || !response.data?.error) {
-      // Succès → session avec toutes les données disponibles + redirect vers EspaceVendeur
+
+      // Set session and redirect
       sessionStorage.setItem("vendeur_session", JSON.stringify({
         email: vendeurEmail,
         nom_complet: form.nom_complet,
@@ -194,8 +323,10 @@ export default function InscriptionVendeur() {
         email_verified: true,
       }));
       window.location.href = createPageUrl("EspaceVendeur");
-    } else {
-      setErreur(response.data?.error || "Erreur lors de la sauvegarde du profil.");
+    } catch (error) {
+      setErreur(error.message || "Erreur lors de la sauvegarde du profil.");
+    } finally {
+      setEnCours(false);
     }
   };
 
@@ -213,22 +344,40 @@ export default function InscriptionVendeur() {
     setErreur("");
 
     try {
-       // Mettre à jour le compte existant avec les documents KYC
-       // Le compte seller existe déjà depuis l'étape 1, juste mettre à jour les docs
-       const response = await base44.functions.invoke('updateKYCDocuments', {
-         email: vendeurEmail,
-         photo_identite_url: form.photo_identite_url,
-         photo_identite_verso_url: form.photo_identite_verso_url || "",
-         selfie_url: form.selfie_url,
-       });
+      const { error } = await supabase
+        .from('sellers')
+        .update({
+          kyc_document_recto_url: form.photo_identite_url,
+          kyc_document_verso_url: form.photo_identite_verso_url || null,
+          kyc_selfie_url: form.selfie_url,
+          kyc_type_document: typeDocument,
+          statut_kyc: 'en_attente',
+          seller_status: 'kyc_pending',
+        })
+        .eq('email', vendeurEmail);
 
-      if (response.data?.success) {
-        setSucces(true);
-      } else {
-        setErreur(response.data?.error || "Erreur lors de la soumission. Veuillez réessayer.");
+      if (error) throw error;
+
+      // Notify admin
+      const { data: sellerData } = await supabase
+        .from('sellers')
+        .select('id, full_name')
+        .eq('email', vendeurEmail)
+        .single();
+
+      if (sellerData) {
+        await supabase.from('notifications_admin').insert({
+          titre: 'Nouveau KYC à valider',
+          message: `${sellerData.full_name} (${vendeurEmail}) a soumis son KYC`,
+          type: 'kyc',
+          vendeur_email: vendeurEmail,
+          reference_id: sellerData.id,
+        });
       }
+
+      setSucces(true);
     } catch (error) {
-      setErreur(error.response?.data?.error || error.message || "Erreur lors de la soumission. Veuillez réessayer.");
+      setErreur(error.message || "Erreur lors de la soumission.");
     } finally {
       setEnCours(false);
     }
@@ -245,18 +394,12 @@ export default function InscriptionVendeur() {
           <p className="text-sm text-slate-500 mb-3">
             Votre compte a été créé et vos identifiants ont été envoyés par email.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 mb-3">
-            <p className="font-semibold mb-1">📧 Email reçu :</p>
-            <p>Identifiants de connexion + instructions</p>
-          </div>
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800 mb-5">
             <p className="font-semibold mb-1">⏳ Prochaine étape :</p>
-            <p>Notre équipe va vérifier votre dossier KYC sous <strong>24 à 48h</strong>. Vous recevrez un email de confirmation.</p>
+            <p>Notre équipe va vérifier votre dossier KYC sous <strong>24 à 48h</strong>.</p>
           </div>
           <Link to={createPageUrl("Connexion")}>
-            <Button className="w-full bg-[#1a1f5e] hover:bg-[#141952]">
-              Me connecter
-            </Button>
+            <Button className="w-full bg-[#1a1f5e] hover:bg-[#141952]">Me connecter</Button>
           </Link>
         </div>
       </div>
@@ -284,7 +427,6 @@ export default function InscriptionVendeur() {
       </div>
 
       <div className="w-full max-w-md">
-        {/* Titre */}
         <div className="mb-6">
           <h1 className="text-2xl font-black text-white">Créer mon compte vendeur</h1>
           <p className="text-slate-300 text-sm mt-1">Rejoignez le réseau de vente ZONITE</p>
@@ -319,40 +461,76 @@ export default function InscriptionVendeur() {
         {etape === 1 && (
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 space-y-4">
             <h2 className="text-white font-bold">Mes informations de connexion</h2>
+            
+            {/* USERNAME - FIRST FIELD */}
+            <div>
+              <Label className="text-slate-200 text-xs">Nom d'utilisateur * <span className="text-slate-400">(lettres, chiffres, _)</span></Label>
+              <div className="relative">
+                <Input 
+                  value={form.username} 
+                  onChange={e => modifier("username", e.target.value.replace(/\s/g, '').toLowerCase())} 
+                  placeholder="mon_pseudo" 
+                  maxLength={20}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1 pr-10" 
+                />
+                {form.username.length >= 3 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5">
+                    {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+                    {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                    {(usernameStatus === 'taken' || usernameStatus === 'invalid') && <XCircle className="w-4 h-4 text-red-400" />}
+                  </div>
+                )}
+              </div>
+              {form.username.length >= 3 && usernameStatus === 'taken' && (
+                <p className="text-red-400 text-xs mt-1">✗ Ce nom d'utilisateur est déjà pris</p>
+              )}
+              {form.username.length >= 3 && usernameStatus === 'invalid' && (
+                <p className="text-red-400 text-xs mt-1">✗ 3-20 caractères, lettres/chiffres/_ uniquement</p>
+              )}
+              {form.username.length >= 3 && usernameStatus === 'available' && (
+                <p className="text-emerald-400 text-xs mt-1">✓ Disponible</p>
+              )}
+            </div>
+
             <div>
               <Label className="text-slate-200 text-xs">Nom complet *</Label>
               <Input value={form.nom_complet} onChange={e => modifier("nom_complet", e.target.value)} placeholder="Jean Dupont" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
             </div>
             <div>
-               <Label className="text-slate-200 text-xs">Email * <span className="text-slate-400">(servira d'identifiant)</span></Label>
-               <div className="relative">
-                 <Input type="email" value={form.email} onChange={e => { modifier("email", e.target.value); verifierEmail(e.target.value); }} placeholder="votre@email.com" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
-                 {form.email && emailVerifie !== null && (
-                   <div className={`text-xs mt-1 font-medium ${emailVerifie ? "text-emerald-400" : "text-red-400"}`}>
-                     {emailVerifie ? "✓ Email disponible" : "✗ Email déjà utilisé"}
-                   </div>
-                 )}
-               </div>
+              <Label className="text-slate-200 text-xs">Email * <span className="text-slate-400">(servira d'identifiant)</span></Label>
+              <div className="relative">
+                <Input type="email" value={form.email} onChange={e => { modifier("email", e.target.value); verifierEmail(e.target.value); }} placeholder="votre@email.com" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
+                {form.email && emailVerifie !== null && (
+                  <div className={`text-xs mt-1 font-medium ${emailVerifie ? "text-emerald-400" : "text-red-400"}`}>
+                    {emailVerifie ? "✓ Email disponible" : "✗ Email déjà utilisé"}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-slate-200 text-xs">Téléphone *</Label>
               <Input value={form.telephone} onChange={e => modifier("telephone", e.target.value)} placeholder="+237 6XX XXX XXX" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
             </div>
             <div>
-              <Label className="text-slate-200 text-xs">Mot de passe * <span className="text-slate-400">(min. 6 caractères)</span></Label>
+              <Label className="text-slate-200 text-xs">Mot de passe * <span className="text-slate-400">(min. 8 caractères, 1 majuscule, 1 chiffre)</span></Label>
               <div className="relative mt-1">
                 <Input type={mdpVisible ? "text" : "password"} value={form.mot_de_passe} onChange={e => modifier("mot_de_passe", e.target.value)} placeholder="••••••••" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 pr-12" />
                 <button type="button" onClick={() => setMdpVisible(!mdpVisible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                   {mdpVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {erreurMdp && <p className="text-red-400 text-xs mt-1">✗ {erreurMdp}</p>}
+              {form.mot_de_passe && !erreurMdp && <p className="text-emerald-400 text-xs mt-1">✓ Mot de passe valide</p>}
             </div>
             <div>
               <Label className="text-slate-200 text-xs">Confirmer le mot de passe *</Label>
               <Input type="password" value={form.confirmer_mdp} onChange={e => modifier("confirmer_mdp", e.target.value)} placeholder="••••••••" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
+              {form.confirmer_mdp && form.mot_de_passe !== form.confirmer_mdp && (
+                <p className="text-red-400 text-xs mt-1">✗ Les mots de passe ne correspondent pas</p>
+              )}
             </div>
-            <Button onClick={validerEtape1} className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
-              Continuer →
+            <Button onClick={validerEtape1} disabled={enCours} className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
+              {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer →"}
             </Button>
           </div>
         )}
@@ -390,7 +568,7 @@ export default function InscriptionVendeur() {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => { setEtape(1); setErreur(""); setVendeurEmail(""); }} 
+                onClick={() => { setEtape(1); setErreur(""); }} 
                 className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-11"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
@@ -451,7 +629,7 @@ export default function InscriptionVendeur() {
           </div>
         )}
 
-        {/* ÉTAPE 4 : KYC — SUPPRIMÉE, maintenant dans EspaceVendeur */}
+        {/* ÉTAPE 4 : KYC */}
         {etape === 4 && (
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 space-y-4">
             <div>
@@ -459,28 +637,20 @@ export default function InscriptionVendeur() {
               <p className="text-slate-300 text-xs mt-0.5">Ces documents permettent à notre équipe de valider votre compte.</p>
             </div>
 
-            {/* Type de document */}
             <div>
               <Label className="text-slate-200 text-xs mb-2 block">Type de document *</Label>
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setTypeDocument("cni"); modifier("photo_identite_verso_url", ""); }}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}
-                >
+                <button type="button" onClick={() => { setTypeDocument("cni"); modifier("photo_identite_verso_url", ""); }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
                   🪪 CNI
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setTypeDocument("passeport"); modifier("photo_identite_verso_url", ""); }}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}
-                >
+                <button type="button" onClick={() => { setTypeDocument("passeport"); modifier("photo_identite_verso_url", ""); }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
                   📘 Passeport
                 </button>
               </div>
             </div>
 
-            {/* Recto (ou page principale pour passeport) */}
             <div>
               <Label className="text-slate-200 text-xs mb-1.5 block">
                 {typeDocument === "cni" ? "CNI — Recto *" : "Passeport — Page principale *"}
@@ -492,7 +662,6 @@ export default function InscriptionVendeur() {
                   <div className="text-center">
                     <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
                     <p className="text-emerald-300 text-xs font-medium">Photo uploadée ✓</p>
-                    <p className="text-slate-400 text-[10px]">Cliquez pour changer</p>
                   </div>
                 ) : (
                   <div className="text-center">
@@ -505,7 +674,6 @@ export default function InscriptionVendeur() {
               </label>
             </div>
 
-            {/* Verso CNI uniquement */}
             {typeDocument === "cni" && (
               <div>
                 <Label className="text-slate-200 text-xs mb-1.5 block">CNI — Verso *</Label>
@@ -516,7 +684,6 @@ export default function InscriptionVendeur() {
                     <div className="text-center">
                       <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
                       <p className="text-emerald-300 text-xs font-medium">Verso uploadé ✓</p>
-                      <p className="text-slate-400 text-[10px]">Cliquez pour changer</p>
                     </div>
                   ) : (
                     <div className="text-center">
@@ -530,22 +697,16 @@ export default function InscriptionVendeur() {
               </div>
             )}
 
-            {/* Selfie */}
             <div>
               <Label className="text-slate-200 text-xs mb-1.5 block">Selfie avec votre pièce d'identité *</Label>
-
-              {/* Exemple visuel */}
               <div className="mb-2 bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center gap-3">
                 <div className="relative flex-shrink-0 w-20 h-20">
-                  {/* Illustration selfie avec ID */}
                   <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/20 flex flex-col items-center justify-center overflow-hidden relative">
-                    {/* Visage */}
                     <div className="w-10 h-10 rounded-full bg-amber-300 flex items-center justify-center mb-1 relative">
                       <div className="w-5 h-2 bg-amber-400 rounded-full absolute bottom-2" />
                       <div className="w-1.5 h-1.5 bg-slate-700 rounded-full absolute" style={{top:'10px',left:'9px'}} />
                       <div className="w-1.5 h-1.5 bg-slate-700 rounded-full absolute" style={{top:'10px',right:'9px'}} />
                     </div>
-                    {/* Carte ID */}
                     <div className="w-14 h-8 rounded bg-blue-400 border border-blue-300 flex items-center justify-center shadow-md">
                       <div className="w-4 h-4 rounded-full bg-blue-200 mr-1" />
                       <div className="flex flex-col gap-0.5">
@@ -553,7 +714,6 @@ export default function InscriptionVendeur() {
                         <div className="w-4 h-1 bg-white/60 rounded" />
                       </div>
                     </div>
-                    {/* Checkmark vert */}
                     <div className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-[8px] font-bold">✓</span>
                     </div>
@@ -577,7 +737,6 @@ export default function InscriptionVendeur() {
                   <div className="text-center">
                     <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
                     <p className="text-emerald-300 text-xs font-medium">Selfie uploadé ✓</p>
-                    <p className="text-slate-400 text-[10px]">Cliquez pour changer</p>
                   </div>
                 ) : (
                   <div className="text-center">
