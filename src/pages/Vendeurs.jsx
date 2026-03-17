@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
