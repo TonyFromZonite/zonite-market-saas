@@ -7,8 +7,8 @@ import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
 const MESSAGES_MOTIVATION = [
-  "Chaque vente est une victoire !  Allons-y  🚀"
-];
+"Chaque vente est une victoire !  Allons-y  🚀"];
+
 
 
 const TikTokIcon = ({ size = 20 }) =>
@@ -182,9 +182,9 @@ export default function Connexion() {
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">
                 {mode === MODE_ADMIN ? "Connexion Administrateur" : "Connexion Vendeur"}
               </h2>
-              <p className="text-slate-300 text-xs mb-4">
-                {mode === MODE_ADMIN ? "Sous-admins : utilisez vos identifiants attribués." : "Entrez vos identifiants reçus par email."}
-              </p>
+              
+
+            
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Email</label>
