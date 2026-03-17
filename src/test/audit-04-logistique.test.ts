@@ -1,0 +1,48 @@
+/**
+ * AUDIT 4 — Logistique (4 tests)
+ */
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    from: vi.fn((table: string) => {
+      const chain = {
+        select: vi.fn().mockReturnValue(chain),
+        eq: vi.fn().mockReturnValue(chain),
+        insert: vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null }),
+        update: vi.fn().mockReturnValue(chain),
+        delete: vi.fn().mockReturnValue(chain),
+        order: vi.fn().mockReturnValue(chain),
+        then: vi.fn(),
+      };
+      return chain;
+    }),
+  },
+}));
+
+import { adminApi } from "@/components/adminApi";
+
+describe("Audit 4 — Logistique", () => {
+  it("4.1 createLivraison appelle supabase.from('livraisons').insert", async () => {
+    await expect(
+      adminApi.createLivraison({ nom: "Livreur Test", telephone: "690000000" })
+    ).resolves.not.toThrow();
+  });
+
+  it("4.2 updateLivraison met à jour un livreur existant", async () => {
+    await expect(
+      adminApi.updateLivraison("lid1", { nom: "Livreur Modifié" })
+    ).resolves.not.toThrow();
+  });
+
+  it("4.3 deleteLivraison supprime un livreur", async () => {
+    await expect(adminApi.deleteLivraison("lid1")).resolves.not.toThrow();
+  });
+
+  it("4.4 createPageUrl génère les routes de gestion logistique", () => {
+    const { createPageUrl } = require("@/utils");
+    expect(createPageUrl("GestionCoursiers")).toBe("/GestionCoursiers");
+    expect(createPageUrl("GestionZones")).toBe("/GestionZones");
+    expect(createPageUrl("Livraisons")).toBe("/Livraisons");
+  });
+});
