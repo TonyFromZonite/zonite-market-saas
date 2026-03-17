@@ -16,6 +16,7 @@ export const STATUS_LABELS = {
   pending_verification: "Email à vérifier",
   kyc_required: "Vérification d'identité requise",
   kyc_pending: "Dossier KYC en révision",
+  kyc_rejected: "Dossier KYC rejeté",
   kyc_approved_training_required: "Formation obligatoire",
   active_seller: "Vendeur actif",
 };
