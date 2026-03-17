@@ -3,159 +3,136 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Truck, Plus, Edit2, Trash2, MapPin, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Truck, Plus, Edit2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { createRecord, deleteRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+const initForm = { nom: "", telephone: "", email: "", ville_id: "", adresse_entrepot: "", zones_livraison_ids: [], frais_livraison_defaut: 0 };
 
 export default function GestionCoursiers() {
-  const [dialogOuvert, setDialogOuvert] = useState(false);
-  const [coursierEnCours, setCoursierEnCours] = useState(null);
-  const [formData, setFormData] = useState({
-    nom: "",
-    telephone: "",
-    email: "",
-    type: "independant",
-    vehicule: "",
-    statut: "actif",
-    notes: ""
-  });
-  const [zonesSelectionnees, setZonesSelectionnees] = useState([]);
-
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [dialogOuvert, setDialogOuvert] = useState(false);
+  const [coursierEdit, setCoursierEdit] = useState(null);
+  const [form, setForm] = useState(initForm);
+
+  const { data: villes = [] } = useQuery({
+    queryKey: ["villes_cameroun"],
+    queryFn: async () => {
+      const { data } = await supabase.from("villes_cameroun").select("*").eq("actif", true).order("nom");
+      return data || [];
+    },
+  });
+
+  const { data: zonesLivraison = [] } = useQuery({
+    queryKey: ["zones_livraison"],
+    queryFn: async () => {
+      const { data } = await supabase.from("zones_livraison").select("*").eq("actif", true).order("nom");
+      return data || [];
+    },
+  });
 
   const { data: coursiers = [] } = useQuery({
     queryKey: ["coursiers"],
-    queryFn: () => listTable("livraisons")
+    queryFn: async () => {
+      const { data } = await supabase.from("coursiers").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
-  const { data: zones = [] } = useQuery({
-    queryKey: ["zones"],
-    queryFn: () => listTable("zones")
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data) => createRecord("livraisons", data),
+  const createMut = useMutation({
+    mutationFn: async (data) => {
+      const { error } = await supabase.from("coursiers").insert(data);
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
-      fermerDialog();
-    }
+      setDialogOuvert(false);
+      toast({ title: "Succès", description: "Coursier créé" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateRecord("livraisons", id, data),
+  const updateMut = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const { error } = await supabase.from("coursiers").update(data).eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
-      fermerDialog();
-    }
+      setDialogOuvert(false);
+      toast({ title: "Succès", description: "Coursier mis à jour" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => deleteRecord("livraisons", id),
+  const deleteMut = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("coursiers").delete().eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
-    }
+      toast({ title: "Coursier supprimé" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: async ({ id, actif }) => {
+      const { error } = await supabase.from("coursiers").update({ actif }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coursiers"] }),
   });
 
   const ouvrirDialog = (coursier = null) => {
     if (coursier) {
-      setCoursierEnCours(coursier);
-      setFormData({
+      setCoursierEdit(coursier);
+      setForm({
         nom: coursier.nom || "",
         telephone: coursier.telephone || "",
         email: coursier.email || "",
-        type: coursier.type || "independant",
-        vehicule: coursier.vehicule || "",
-        statut: coursier.statut || "actif",
-        notes: coursier.notes || ""
+        ville_id: coursier.ville_id || "",
+        adresse_entrepot: coursier.adresse_entrepot || "",
+        zones_livraison_ids: coursier.zones_livraison_ids || [],
+        frais_livraison_defaut: coursier.frais_livraison_defaut || 0,
       });
-      setZonesSelectionnees(coursier.zones_couvertes || []);
     } else {
-      setCoursierEnCours(null);
-      setFormData({
-        nom: "",
-        telephone: "",
-        email: "",
-        type: "independant",
-        vehicule: "",
-        statut: "actif",
-        notes: ""
-      });
-      setZonesSelectionnees([]);
+      setCoursierEdit(null);
+      setForm(initForm);
     }
     setDialogOuvert(true);
   };
 
-  const fermerDialog = () => {
-    setDialogOuvert(false);
-    setCoursierEnCours(null);
-  };
-
-  const ajouterZone = () => {
-    setZonesSelectionnees([...zonesSelectionnees, {
-      zone_id: "",
-      zone_nom: "",
-      villes: [],
-      prix_standard: 0,
-      prix_express: 0,
-      delai_standard: "24-48h",
-      delai_express: "2-4h"
-    }]);
-  };
-
-  const modifierZone = (index, champ, valeur) => {
-    const nouvelles = [...zonesSelectionnees];
-    nouvelles[index] = { ...nouvelles[index], [champ]: valeur };
-    
-    if (champ === "zone_id") {
-      const zone = zones.find(z => z.id === valeur);
-      if (zone) {
-        nouvelles[index].zone_nom = zone.nom;
-        nouvelles[index].villes = zone.villes || [];
-      }
-    }
-    
-    setZonesSelectionnees(nouvelles);
-  };
-
-  const supprimerZone = (index) => {
-    setZonesSelectionnees(zonesSelectionnees.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    const data = {
-      ...formData,
-      zones_couvertes: zonesSelectionnees.filter(z => z.zone_id)
-    };
-
-    if (coursierEnCours) {
-      updateMutation.mutate({ id: coursierEnCours.id, data });
+    if (!form.nom.trim()) return;
+    const data = { ...form, frais_livraison_defaut: parseFloat(form.frais_livraison_defaut) || 0 };
+    if (coursierEdit) {
+      updateMut.mutate({ id: coursierEdit.id, data });
     } else {
-      createMutation.mutate(data);
+      createMut.mutate(data);
     }
   };
 
-  const supprimerCoursier = (id) => {
-    if (confirm("Supprimer ce coursier ?")) {
-      deleteMutation.mutate(id);
-    }
+  const toggleZone = (zoneId) => {
+    setForm((f) => ({
+      ...f,
+      zones_livraison_ids: f.zones_livraison_ids.includes(zoneId)
+        ? f.zones_livraison_ids.filter((id) => id !== zoneId)
+        : [...f.zones_livraison_ids, zoneId],
+    }));
   };
+
+  const getVilleName = (id) => villes.find((v) => v.id === id)?.nom || "—";
+  const getZoneNames = (ids) => zonesLivraison.filter((z) => (ids || []).includes(z.id)).map((z) => z.nom);
+  const zonesForVille = form.ville_id ? zonesLivraison.filter((z) => z.ville_id === form.ville_id) : [];
 
   return (
     <div className="space-y-6">
@@ -165,267 +142,118 @@ export default function GestionCoursiers() {
             <Truck className="w-7 h-7 text-[#1a1f5e]" />
             Gestion des Coursiers
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gérer les coursiers et leurs zones de livraison
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Sociétés de livraison et entrepôts au Cameroun</p>
         </div>
-        <Button
-          onClick={() => ouvrirDialog()}
-          className="bg-[#1a1f5e] hover:bg-[#141952]"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nouveau Coursier
+        <Button onClick={() => ouvrirDialog()} className="bg-[#1a1f5e] hover:bg-[#141952]">
+          <Plus className="w-4 h-4 mr-2" /> Nouveau Coursier
         </Button>
       </div>
 
-      {/* Liste Coursiers */}
+      {/* List */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {coursiers.map((coursier) => (
-          <Card key={coursier.id} className="p-4 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-900">{coursier.nom}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={coursier.statut === "actif" ? "default" : "secondary"}>
-                    {coursier.statut}
-                  </Badge>
-                  <Badge variant="outline">{coursier.type}</Badge>
+        {coursiers.map((c) => {
+          const zoneNames = getZoneNames(c.zones_livraison_ids);
+          return (
+            <Card key={c.id} className="p-4 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-900">{c.nom}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={c.actif ? "default" : "secondary"}>{c.actif ? "Actif" : "Inactif"}</Badge>
+                    <span className="text-xs text-slate-500">{getVilleName(c.ville_id)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => toggleMut.mutate({ id: c.id, actif: !c.actif })}>
+                    <div className={`w-3 h-3 rounded-full ${c.actif ? "bg-emerald-500" : "bg-slate-300"}`} />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => ouvrirDialog(c)}><Edit2 className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" className="text-red-600" onClick={() => {
+                    if (confirm("Supprimer ce coursier ?")) deleteMut.mutate(c.id);
+                  }}><Trash2 className="w-4 h-4" /></Button>
                 </div>
               </div>
-              <div className="flex gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => ouvrirDialog(coursier)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => supprimerCoursier(coursier.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+              <div className="space-y-1 text-sm text-slate-600">
+                {c.telephone && <p>📞 {c.telephone}</p>}
+                {c.adresse_entrepot && <p>📦 {c.adresse_entrepot}</p>}
+                <p className="text-xs">Frais défaut: {(c.frais_livraison_defaut || 0).toLocaleString()} FCFA</p>
               </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <p className="text-slate-600">{coursier.telephone}</p>
-              {coursier.vehicule && (
-                <p className="text-slate-600">Véhicule: {coursier.vehicule}</p>
-              )}
-              
-              {coursier.zones_couvertes && coursier.zones_couvertes.length > 0 && (
+              {zoneNames.length > 0 && (
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs text-slate-500 font-medium mb-2">
-                    Zones couvertes ({coursier.zones_couvertes.length})
-                  </p>
-                  <div className="space-y-1">
-                    {coursier.zones_couvertes.slice(0, 2).map((zc, idx) => (
-                      <div key={idx} className="bg-blue-50 rounded p-2">
-                        <p className="font-medium text-xs text-blue-900">{zc.zone_nom}</p>
-                        <p className="text-xs text-blue-700">
-                          {zc.prix_standard?.toLocaleString()} FCFA
-                        </p>
-                      </div>
-                    ))}
-                    {coursier.zones_couvertes.length > 2 && (
-                      <p className="text-xs text-slate-500">
-                        +{coursier.zones_couvertes.length - 2} zones
-                      </p>
-                    )}
+                  <p className="text-xs text-slate-500 mb-1">Zones couvertes:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {zoneNames.map((n, i) => <Badge key={i} variant="outline" className="text-xs">{n}</Badge>)}
                   </div>
                 </div>
               )}
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Dialog Formulaire */}
+      {coursiers.length === 0 && <p className="text-center text-slate-400 py-8">Aucun coursier créé.</p>}
+
+      {/* Dialog */}
       <Dialog open={dialogOuvert} onOpenChange={setDialogOuvert}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {coursierEnCours ? "Modifier le Coursier" : "Nouveau Coursier"}
-            </DialogTitle>
+            <DialogTitle>{coursierEdit ? "Modifier le Coursier" : "Nouveau Coursier"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Nom de la société *</Label>
+              <Input value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Yango Livraison Yaoundé" required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Nom *</Label>
-                <Input
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Téléphone *</Label>
-                <Input
-                  value={formData.telephone}
-                  onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                  required
-                />
+                <Label>Téléphone</Label>
+                <Input value={form.telephone} onChange={(e) => setForm((f) => ({ ...f, telephone: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(v) => setFormData({ ...formData, type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="independant">Indépendant</SelectItem>
-                    <SelectItem value="agence">Agence</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Véhicule</Label>
-                <Input
-                  value={formData.vehicule}
-                  onChange={(e) => setFormData({ ...formData, vehicule: e.target.value })}
-                  placeholder="Moto, Voiture..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Statut</Label>
-                <Select
-                  value={formData.statut}
-                  onValueChange={(v) => setFormData({ ...formData, statut: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="actif">Actif</SelectItem>
-                    <SelectItem value="inactif">Inactif</SelectItem>
-                    <SelectItem value="suspendu">Suspendu</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={2}
-              />
+              <Label>Ville de l'entrepôt *</Label>
+              <Select value={form.ville_id} onValueChange={(v) => setForm((f) => ({ ...f, ville_id: v, zones_livraison_ids: [] }))}>
+                <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
+                <SelectContent>
+                  {villes.map((v) => <SelectItem key={v.id} value={v.id}>{v.nom}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-
-            {/* Zones Couvertes */}
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <Label>Zones Couvertes et Tarification</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={ajouterZone}
-                  variant="outline"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Ajouter Zone
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {zonesSelectionnees.map((zc, idx) => (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">Zone {idx + 1}</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => supprimerZone(idx)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label>Zone *</Label>
-                        <Select
-                          value={zc.zone_id}
-                          onValueChange={(v) => modifierZone(idx, "zone_id", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choisir une zone" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {zones.filter(z => z.statut === "actif").map(z => (
-                              <SelectItem key={z.id} value={z.id}>
-                                {z.nom}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Prix Standard (FCFA) *</Label>
-                        <Input
-                          type="number"
-                          value={zc.prix_standard}
-                          onChange={(e) => modifierZone(idx, "prix_standard", parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Prix Express (FCFA)</Label>
-                        <Input
-                          type="number"
-                          value={zc.prix_express}
-                          onChange={(e) => modifierZone(idx, "prix_express", parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Délai Standard</Label>
-                        <Input
-                          value={zc.delai_standard}
-                          onChange={(e) => modifierZone(idx, "delai_standard", e.target.value)}
-                          placeholder="24-48h"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-2">
+              <Label>Adresse de l'entrepôt</Label>
+              <Input value={form.adresse_entrepot} onChange={(e) => setForm((f) => ({ ...f, adresse_entrepot: e.target.value }))} />
             </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={fermerDialog}
-                className="flex-1"
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]"
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                {coursierEnCours ? "Mettre à jour" : "Créer"}
+            {form.ville_id && (
+              <div className="space-y-2">
+                <Label>Zones de livraison couvertes</Label>
+                <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  {zonesForVille.length === 0 ? (
+                    <p className="text-xs text-slate-400">Aucune zone pour cette ville. Créez-en dans Gestion Zones.</p>
+                  ) : (
+                    zonesForVille.map((z) => (
+                      <div key={z.id} className="flex items-center gap-2">
+                        <Checkbox checked={form.zones_livraison_ids.includes(z.id)} onCheckedChange={() => toggleZone(z.id)} />
+                        <span className="text-sm">{z.nom}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Frais de livraison par défaut (FCFA)</Label>
+              <Input type="number" min="0" value={form.frais_livraison_defaut}
+                onChange={(e) => setForm((f) => ({ ...f, frais_livraison_defaut: e.target.value }))} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOuvert(false)} className="flex-1">Annuler</Button>
+              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]"
+                disabled={createMut.isPending || updateMut.isPending}>
+                {coursierEdit ? "Mettre à jour" : "Créer"}
               </Button>
             </div>
           </form>
