@@ -171,4 +171,82 @@ export const adminApi = {
     const { error } = await supabase.from("faq_items").delete().eq("id", id);
     if (error) throw error;
   },
+
+  // Sous-admins
+  async createSousAdmin(data) {
+    const { data: result, error } = await supabase.from("sous_admins").insert({
+      full_name: data.nom_complet || data.full_name,
+      nom_role: data.nom_role,
+      username: data.username,
+      email: data.email,
+      actif: data.actif ?? true,
+    }).select().single();
+    if (error) throw error;
+    return result;
+  },
+  async updateSousAdmin(id, data) {
+    const updateData = {};
+    if (data.full_name !== undefined || data.nom_complet !== undefined) updateData.full_name = data.full_name || data.nom_complet;
+    if (data.nom_role !== undefined) updateData.nom_role = data.nom_role;
+    if (data.username !== undefined) updateData.username = data.username;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.actif !== undefined) updateData.actif = data.actif;
+    const { error } = await supabase.from("sous_admins").update(updateData).eq("id", id);
+    if (error) throw error;
+  },
+  async deleteSousAdmin(id) {
+    // Also delete associated permissions
+    await supabase.from("admin_permissions").delete().eq("sous_admin_id", id);
+    const { error } = await supabase.from("sous_admins").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  // Admin permissions
+  async listAdminPermissions() {
+    const { data, error } = await supabase.from("admin_permissions").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return { result: data || [] };
+  },
+  async createAdminPermissions(data) {
+    const { data: result, error } = await supabase.from("admin_permissions").insert({
+      sous_admin_email: data.sous_admin_email || data.admin_email,
+      sous_admin_id: data.sous_admin_id || null,
+      modules_autorises: data.modules_autorises || data.permissions || [],
+    }).select().single();
+    if (error) throw error;
+    return result;
+  },
+  async updateAdminPermissions(id, data) {
+    const updateData = {};
+    if (data.modules_autorises !== undefined || data.permissions !== undefined) {
+      updateData.modules_autorises = data.modules_autorises || data.permissions;
+    }
+    if (data.sous_admin_email !== undefined || data.admin_email !== undefined) {
+      updateData.sous_admin_email = data.sous_admin_email || data.admin_email;
+    }
+    const { error } = await supabase.from("admin_permissions").update(updateData).eq("id", id);
+    if (error) throw error;
+  },
+  async deleteAdminPermissions(id) {
+    const { error } = await supabase.from("admin_permissions").delete().eq("id", id);
+    if (error) throw error;
+  },
+  async getPermissionsForSousAdmin(sousAdminId) {
+    const { data } = await supabase.from("admin_permissions").select("*").eq("sous_admin_id", sousAdminId).maybeSingle();
+    return data;
+  },
+  async upsertPermissionsForSousAdmin(sousAdminId, email, modules) {
+    const { data: existing } = await supabase.from("admin_permissions").select("id").eq("sous_admin_id", sousAdminId).maybeSingle();
+    if (existing) {
+      const { error } = await supabase.from("admin_permissions").update({ modules_autorises: modules }).eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("admin_permissions").insert({
+        sous_admin_id: sousAdminId,
+        sous_admin_email: email,
+        modules_autorises: modules,
+      });
+      if (error) throw error;
+    }
+  },
 };

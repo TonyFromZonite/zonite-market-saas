@@ -21,7 +21,7 @@ import {
 import { Search, ChevronLeft, ChevronRight, Shield, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import RapportsVentes from "./RapportsVentes";
-import { listTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const MODULES = {
   vente: { label: "Vente", couleur: "bg-blue-100 text-blue-700" },
@@ -40,6 +40,14 @@ const ONGLETS = [
   { key: "rapports", label: "Rapports Ventes", icone: TrendingUp },
 ];
 
+// Extract text from details JSONB
+const formatDetails = (details) => {
+  if (!details) return "—";
+  if (typeof details === "string") return details;
+  if (details.text) return details.text;
+  try { return JSON.stringify(details); } catch { return "—"; }
+};
+
 export default function JournalAudit() {
   const [ongletActif, setOngletActif] = useState("journal");
   const [recherche, setRecherche] = useState("");
@@ -48,11 +56,20 @@ export default function JournalAudit() {
 
   const { data: journaux = [], isLoading } = useQuery({
     queryKey: ["journal_audit"],
-    queryFn: () => listTable("journal_audit", "-created_date", 500),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("journal_audit")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const journauxFiltres = journaux.filter((j) => {
-    const texte = `${j.action} ${j.details} ${j.utilisateur}`.toLowerCase();
+    const detailsText = formatDetails(j.details);
+    const texte = `${j.action} ${detailsText} ${j.utilisateur || ""}`.toLowerCase();
     const matchRecherche = !recherche || texte.includes(recherche.toLowerCase());
     const matchModule = filtreModule === "tous" || j.module === filtreModule;
     return matchRecherche && matchModule;
@@ -139,7 +156,7 @@ export default function JournalAudit() {
               {journauxPage.map((j) => (
                 <TableRow key={j.id} className="hover:bg-slate-50">
                   <TableCell className="text-sm text-slate-600 whitespace-nowrap">
-                    {formaterDate(j.created_date)}
+                    {formaterDate(j.created_at)}
                   </TableCell>
                   <TableCell>
                     <Badge className={`text-xs ${MODULES[j.module]?.couleur || "bg-slate-100 text-slate-600"}`}>
@@ -147,8 +164,10 @@ export default function JournalAudit() {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium text-sm">{j.action}</TableCell>
-                  <TableCell className="text-sm text-slate-600 max-w-xs truncate">{j.details}</TableCell>
-                  <TableCell className="text-sm text-slate-500">{j.utilisateur || j.created_by || "—"}</TableCell>
+                  <TableCell className="text-sm text-slate-600 max-w-xs truncate">
+                    {formatDetails(j.details)}
+                  </TableCell>
+                  <TableCell className="text-sm text-slate-500">{j.utilisateur || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
