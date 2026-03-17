@@ -287,8 +287,15 @@ export default function InscriptionVendeur() {
   const renvoyerCode = async () => {
     setReenvoyerDisable(true);
     try {
+      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('sellers').update({
+        email_verification_code: newCode,
+        email_verification_expires_at: expiresAt,
+      }).eq('email', vendeurEmail);
+
       await supabase.functions.invoke('send-verification-email', {
-        body: { email: vendeurEmail, full_name: form.nom_complet }
+        body: { email: vendeurEmail, nom: form.nom_complet, code: newCode }
       });
       setErreur("Code renvoyé par email");
       setTimeout(() => setReenvoyerDisable(false), 30000);
