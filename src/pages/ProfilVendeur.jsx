@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2 } from "lucide-react";
-
 import { LOGO_URL as LOGO } from "@/components/constants";
 import BanniereKycPending from "@/components/BanniereKycPending";
 
 export default function ProfilVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [chargement, setChargement] = useState(true);
-
-  // Changement de mot de passe
   const [ouvrirChangeMdp, setOuvrirChangeMdp] = useState(false);
   const [ancienMdp, setAncienMdp] = useState("");
   const [nouveauMdp, setNouveauMdp] = useState("");
@@ -33,8 +30,30 @@ export default function ProfilVendeur() {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
-      if (sellers.length > 0) setCompteVendeur(sellers[0]);
+
+      // Try to load by user_id first (from Supabase auth), fallback to email
+      const { data: authUser } = await supabase.auth.getUser();
+      let seller = null;
+
+      if (authUser?.user) {
+        const { data } = await supabase
+          .from('sellers')
+          .select('*')
+          .eq('user_id', authUser.user.id)
+          .maybeSingle();
+        seller = data;
+      }
+
+      if (!seller && session.email) {
+        const { data } = await supabase
+          .from('sellers')
+          .select('*')
+          .eq('email', session.email)
+          .maybeSingle();
+        seller = data;
+      }
+
+      if (seller) setCompteVendeur(seller);
       setChargement(false);
     };
     charger();
@@ -52,25 +71,19 @@ export default function ProfilVendeur() {
     if (nouveauMdp !== confirmerMdp) { setErreurMdp("Les mots de passe ne correspondent pas."); return; }
     setSaveMdpEnCours(true);
     try {
-      // ✅ Utilise le nouveau endpoint dédié sans session Base44 requise
-      const emailVendeur = compteVendeur?.email;
-      const response = await base44.functions.invoke('changePasswordVendeur', {
-        email: emailVendeur,
-        oldPassword: ancienMdp,
-        newPassword: nouveauMdp,
-      });
-      if (response.data.success) {
+      const { error } = await supabase.auth.updateUser({ password: nouveauMdp });
+      if (error) {
+        setErreurMdp(error.message || "Erreur lors du changement de mot de passe.");
+      } else {
         setSuccesMdp(true);
         setAncienMdp(""); setNouveauMdp(""); setConfirmerMdp("");
         setTimeout(() => {
-          sessionStorage.removeItem("vendeur_session");
+          clearAllSessions();
           window.location.href = createPageUrl("Connexion");
         }, 2500);
-      } else {
-        setErreurMdp(response.data.error || "Erreur lors du changement de mot de passe.");
       }
     } catch (err) {
-      setErreurMdp(err.response?.data?.error || "Erreur lors du changement de mot de passe.");
+      setErreurMdp("Erreur lors du changement de mot de passe.");
     }
     setSaveMdpEnCours(false);
   };
@@ -78,6 +91,8 @@ export default function ProfilVendeur() {
   if (chargement) return (
     <div className="p-4 space-y-4">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}</div>
   );
+
+  const displayName = compteVendeur?.full_name || "Vendeur";
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
@@ -92,10 +107,13 @@ export default function ProfilVendeur() {
         </div>
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-[#F5C518] rounded-2xl flex items-center justify-center text-[#1a1f5e] text-2xl font-bold">
-            {compteVendeur?.nom_complet?.[0]?.toUpperCase() || "V"}
+            {displayName[0]?.toUpperCase() || "V"}
           </div>
           <div>
-            <p className="font-bold text-lg">{compteVendeur?.nom_complet || "Vendeur"}</p>
+            <p className="font-bold text-lg">{displayName}</p>
+            {compteVendeur?.username && (
+              <p className="text-slate-300 text-xs">@{compteVendeur.username}</p>
+            )}
             <Badge className={`text-xs border-0 mt-1 ${compteVendeur?.seller_status === "active_seller" ? "bg-emerald-500 text-white" : "bg-yellow-500 text-white"}`}>
               {compteVendeur?.seller_status === "active_seller" ? "✓ Compte actif" : "En attente"}
             </Badge>
@@ -104,7 +122,6 @@ export default function ProfilVendeur() {
       </div>
 
       <div className="px-4 -mt-5 space-y-4">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Ventes", val: compteVendeur?.nombre_ventes || 0, icone: ShoppingBag },
@@ -118,12 +135,11 @@ export default function ProfilVendeur() {
           ))}
         </div>
 
-        {/* Infos */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-semibold text-slate-900 mb-3 text-sm">Informations personnelles</h2>
           <div className="space-y-3">
             {[
-              { icone: User, label: "Nom", val: compteVendeur?.nom_complet },
+              { icone: User, label: "Nom", val: displayName },
               { icone: Phone, label: "Téléphone", val: compteVendeur?.telephone },
               { icone: MapPin, label: "Localisation", val: `${compteVendeur?.ville || ""}${compteVendeur?.quartier ? `, ${compteVendeur.quartier}` : ""}` },
               { icone: Wallet, label: "Mobile Money", val: `${compteVendeur?.numero_mobile_money || "—"} (${compteVendeur?.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"})` },
@@ -141,7 +157,6 @@ export default function ProfilVendeur() {
           </div>
         </div>
 
-        {/* Statut KYC */}
         <div className={`rounded-2xl p-4 shadow-sm ${compteVendeur?.statut_kyc === "rejete" ? "bg-red-50 border border-red-200" : "bg-white"}`}>
           <h2 className="font-semibold text-slate-900 mb-2 text-sm">Statut du compte</h2>
           <div className="space-y-2 text-sm">
@@ -158,12 +173,11 @@ export default function ProfilVendeur() {
           </div>
           {compteVendeur?.statut_kyc === "rejete" && (
             <div className="mt-3 p-2 bg-red-100 rounded text-xs text-red-700">
-              {compteVendeur?.notes_admin || "Votre dossier KYC a été rejeté. Contactez le support."}
+              {compteVendeur?.kyc_raison_rejet || "Votre dossier KYC a été rejeté. Contactez le support."}
             </div>
           )}
         </div>
 
-        {/* Changer mot de passe */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <button
             onClick={() => { setOuvrirChangeMdp(!ouvrirChangeMdp); setErreurMdp(""); setSuccesMdp(false); }}
@@ -218,7 +232,6 @@ export default function ProfilVendeur() {
           )}
         </div>
 
-        {/* Actions */}
         {(compteVendeur?.solde_commission || 0) >= 5000 && (
           <Link to={createPageUrl("DemandePaiement")}>
             <Button className="w-full bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">
@@ -227,12 +240,11 @@ export default function ProfilVendeur() {
           </Link>
         )}
 
-        <Button variant="outline" onClick={() => { clearAllSessions(); window.location.href = createPageUrl("Connexion"); }} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+        <Button variant="outline" onClick={() => { clearAllSessions(); supabase.auth.signOut(); window.location.href = createPageUrl("Connexion"); }} className="w-full border-red-200 text-red-600 hover:bg-red-50">
           <LogOut className="w-4 h-4 mr-2" /> Se déconnecter
         </Button>
       </div>
 
-      {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {[
           { label: "Accueil", page: "EspaceVendeur", icone: "🏠" },
