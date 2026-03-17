@@ -253,7 +253,7 @@ export default function EspaceVendeur() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {/* Restriction message modal */}
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
