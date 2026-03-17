@@ -56,8 +56,32 @@ export default function Connexion() {
     setErreur("");
 
     try {
+      let loginEmail = email.trim().toLowerCase();
+
+      // If input doesn't contain @, treat as username and resolve email
+      if (!loginEmail.includes("@")) {
+        const { data: sellerByUsername } = await supabase
+          .from("sellers")
+          .select("email")
+          .eq("username", loginEmail)
+          .maybeSingle();
+
+        const { data: sousAdminByUsername } = await supabase
+          .from("sous_admins")
+          .select("email")
+          .eq("username", loginEmail)
+          .maybeSingle();
+
+        const found = sellerByUsername || sousAdminByUsername;
+        if (!found) {
+          setErreur("Nom d'utilisateur introuvable.");
+          return;
+        }
+        loginEmail = found.email.toLowerCase();
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: loginEmail,
         password: motDePasse
       });
 
