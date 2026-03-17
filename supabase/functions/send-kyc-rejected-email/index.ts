@@ -23,7 +23,7 @@ serve(async (req) => {
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
-      from: 'ZONITE <noreply@zonite.com>',
+      from: 'ZONITE <onboarding@resend.dev>',
       to: email,
       subject: "ZONITE - KYC non validé",
       html: `
