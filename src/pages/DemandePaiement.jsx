@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS_PAIEMENT = {
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
