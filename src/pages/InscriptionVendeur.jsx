@@ -339,8 +339,9 @@ export default function InscriptionVendeur() {
         return;
       }
 
-      // Set session and redirect
+      // Set session with seller ID and redirect
       sessionStorage.setItem("vendeur_session", JSON.stringify({
+        id: sellerId,
         email: vendeurEmail,
         nom_complet: form.nom_complet,
         role: 'vendeur',
