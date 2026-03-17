@@ -88,7 +88,7 @@ export default function EspaceVendeur() {
               sessionStorage.setItem("vendeur_session", JSON.stringify(session));
             }
           } catch (_) {
-            // Pas connecté à Base44
+            // Pas connecté
           }
         }
         
