@@ -58,26 +58,16 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      // If input doesn't contain @, treat as username and resolve email
+      // If input doesn't contain @, treat as username and resolve email via RPC (bypasses RLS)
       if (!loginEmail.includes("@")) {
-        const { data: sellerByUsername } = await supabase
-          .from("sellers")
-          .select("email")
-          .eq("username", loginEmail)
-          .maybeSingle();
+        const { data: resolvedEmail, error: rpcError } = await supabase
+          .rpc("resolve_username_to_email", { _username: loginEmail });
 
-        const { data: sousAdminByUsername } = await supabase
-          .from("sous_admins")
-          .select("email")
-          .eq("username", loginEmail)
-          .maybeSingle();
-
-        const found = sellerByUsername || sousAdminByUsername;
-        if (!found) {
+        if (rpcError || !resolvedEmail) {
           setErreur("Nom d'utilisateur introuvable.");
           return;
         }
-        loginEmail = found.email.toLowerCase();
+        loginEmail = resolvedEmail.toLowerCase();
       }
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
