@@ -43,7 +43,7 @@ export default function GestionKYC() {
 
       if (statut === 'valide') {
         updates.seller_status = 'active_seller';
-        updates.catalogue_debloque = true;
+        // catalogue_debloque reste false — débloqué uniquement après la formation
       } else if (statut === 'rejete') {
         updates.seller_status = 'kyc_rejected';
       }
