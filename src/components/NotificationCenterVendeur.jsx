@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/integrations/supabase/client";
 import { Bell, X, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
 
 const ICONES_TYPE = {
@@ -21,42 +19,44 @@ const ICONES_TYPE = {
   retour_produit: "↩️",
   support_ticket: "💬",
   systeme: "⚙️",
+  info: "ℹ️",
 };
 
 export default function NotificationCenterVendeur() {
   const [ouvert, setOuvert] = useState(false);
+  const [sellerId, setSellerId] = useState(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    const getSellerId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("sellers").select("id").eq("user_id", user.id).single();
+      if (data) setSellerId(data.id);
+    };
+    getSellerId();
+  }, []);
+
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ["notifications-vendeur"],
+    queryKey: ["notifications-vendeur", sellerId],
     queryFn: async () => {
-      const user = await base44.auth.me();
-      const notifs = await base44.entities.Notification.filter(
-        { destinataire_email: user.email },
-        "-created_date",
-        30
-      );
-      return notifs;
+      const { data, error } = await supabase
+        .from("notifications_vendeur")
+        .select("*")
+        .eq("vendeur_id", sellerId)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data || [];
     },
-    refetchInterval: 15000, // Rafraîchir toutes les 15 secondes
+    enabled: !!sellerId,
+    refetchInterval: 15000,
   });
 
   const marquerCommeLueMutation = useMutation({
     mutationFn: async (notifId) => {
-      await base44.entities.Notification.update(notifId, {
-        lue: true,
-        date_lecture: new Date().toISOString(),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications-vendeur"] });
-    },
-  });
-
-  const supprimerMutation = useMutation({
-    mutationFn: async (notifId) => {
-      await base44.entities.Notification.delete(notifId);
+      await supabase.from("notifications_vendeur").update({ lu: true }).eq("id", notifId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications-vendeur"] });
@@ -64,16 +64,16 @@ export default function NotificationCenterVendeur() {
   });
 
   const handleClickNotification = (notif) => {
-    if (!notif.lue) {
+    if (!notif.lu) {
       marquerCommeLueMutation.mutate(notif.id);
     }
-    if (notif.lien) {
+    if (notif.action_url) {
       setOuvert(false);
-      navigate(notif.lien);
+      navigate(notif.action_url);
     }
   };
 
-  const nbNonLues = notifications.filter((n) => !n.lue).length;
+  const nbNonLues = notifications.filter((n) => !n.lu).length;
 
   return (
     <div className="relative">
@@ -91,19 +91,13 @@ export default function NotificationCenterVendeur() {
 
       {ouvert && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOuvert(false)}
-          />
+          <div className="fixed inset-0 z-40" onClick={() => setOuvert(false)} />
           <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 max-h-[80vh] flex flex-col">
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="font-bold text-slate-900">
                 Notifications ({nbNonLues} non lues)
               </h3>
-              <button
-                onClick={() => setOuvert(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
+              <button onClick={() => setOuvert(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -125,7 +119,7 @@ export default function NotificationCenterVendeur() {
                       key={notif.id}
                       onClick={() => handleClickNotification(notif)}
                       className={`border rounded-lg p-3 cursor-pointer hover:shadow-md transition-all ${
-                        !notif.lue
+                        !notif.lu
                           ? "bg-blue-50 border-blue-200 border-l-4 border-l-blue-500"
                           : "bg-white border-slate-200"
                       }`}
@@ -135,29 +129,12 @@ export default function NotificationCenterVendeur() {
                           {ICONES_TYPE[notif.type] || "📢"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p
-                              className={`text-sm font-medium ${
-                                !notif.lue ? "text-slate-900" : "text-slate-600"
-                              }`}
-                            >
-                              {notif.titre}
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                supprimerMutation.mutate(notif.id);
-                              }}
-                              className="text-slate-400 hover:text-red-500 flex-shrink-0"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {notif.message}
+                          <p className={`text-sm font-medium ${!notif.lu ? "text-slate-900" : "text-slate-600"}`}>
+                            {notif.titre}
                           </p>
+                          <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
                           <p className="text-xs text-slate-400 mt-1">
-                            {new Date(notif.created_date).toLocaleString("fr-FR", {
+                            {new Date(notif.created_at).toLocaleString("fr-FR", {
                               day: "2-digit",
                               month: "short",
                               hour: "2-digit",

@@ -128,4 +128,38 @@ export const adminApi = {
     const { error } = await supabase.from("config_app").update(updates).eq("id", id);
     if (error) throw error;
   },
+
+  // Tickets support
+  async updateTicketSupport(id, data) {
+    const updateData = {};
+    if (data.reponse_admin !== undefined) updateData.reponse_admin = data.reponse_admin;
+    if (data.statut !== undefined) updateData.statut = data.statut;
+    if (data.lu_par_vendeur !== undefined) updateData.lu_par_vendeur = data.lu_par_vendeur;
+    if (data.admin_email || data.repondu_par) updateData.repondu_par = data.admin_email || data.repondu_par;
+    if (data.date_reponse || data.repondu_at) updateData.repondu_at = data.date_reponse || data.repondu_at;
+    const { error } = await supabase.from("tickets_support").update(updateData).eq("id", id);
+    if (error) throw error;
+  },
+
+  // Notifications vendeur update
+  async updateNotificationVendeur(id, data) {
+    const updateData = {};
+    if (data.lu !== undefined || data.lue !== undefined) updateData.lu = data.lu ?? data.lue;
+    const { error } = await supabase.from("notifications_vendeur").update(updateData).eq("id", id);
+    if (error) throw error;
+  },
+
+  // FAQ
+  async createFaqItem(data) {
+    const { error } = await supabase.from("faq_items").insert(data);
+    if (error) throw error;
+  },
+  async updateFaqItem(id, data) {
+    const { error } = await supabase.from("faq_items").update(data).eq("id", id);
+    if (error) throw error;
+  },
+  async deleteFaqItem(id) {
+    const { error } = await supabase.from("faq_items").delete().eq("id", id);
+    if (error) throw error;
+  },
 };
