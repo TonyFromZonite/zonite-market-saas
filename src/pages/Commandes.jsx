@@ -96,7 +96,7 @@ export default function Commandes() {
       // Réduire commission vendeur
       const { data: allSellers } = await supabase.from("sellers").select("*");
       const allSellersArr = allSellers || [];
-      const vendeur = allSellers.find(v => v.id === vente.vendeur_id);
+      const vendeur = allSellersArr.find(v => v.id === vente.vendeur_id);
       if (vendeur) {
         await adminApi.updateVendeur(vendeur.id, {
           solde_commission: Math.max(0, (vendeur.solde_commission || 0) - (vente.commission_vendeur || 0)),
