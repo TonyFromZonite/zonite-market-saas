@@ -109,13 +109,6 @@ export const ADMIN_MENU = [
     roles: ["admin"],
   },
   {
-    id: "audit_complet",
-    label: "Audit & Intégrité",
-    icon: Database,
-    page: "AuditComplet",
-    roles: ["admin"],
-  },
-  {
     id: "permissions",
     label: "Permissions Admin",
     icon: Shield,
