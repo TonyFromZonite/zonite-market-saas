@@ -95,6 +95,8 @@ export default function GestionZones() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["zones_livraison"] }),
   });
 
+  const [keepQuartierOpen, setKeepQuartierOpen] = useState(false);
+
   const createQuartierMut = useMutation({
     mutationFn: async (data) => {
       const { error } = await supabase.from("quartiers").insert(data);
@@ -102,9 +104,13 @@ export default function GestionZones() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quartiers"] });
-      setDialogQuartier(false);
-      setFormQuartier({ nom: "", ville_id: "" });
-      toast({ title: "Succès", description: "Quartier ajouté" });
+      toast({ title: "✓ Quartier ajouté", description: `"${formQuartier.nom}" a été créé avec succès` });
+      if (keepQuartierOpen) {
+        setFormQuartier((f) => ({ ...f, nom: "" }));
+      } else {
+        setDialogQuartier(false);
+        setFormQuartier({ nom: "", ville_id: "" });
+      }
     },
     onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
