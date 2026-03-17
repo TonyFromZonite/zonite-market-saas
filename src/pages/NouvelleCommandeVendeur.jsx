@@ -93,7 +93,7 @@ export default function NouvelleCommandeVendeur() {
   // Build variation key from selections
   const getVariationKey = () => {
     if (variations.length === 0) return "";
-    return variations.map((v) => `${v.nom}:${selectedVariations[v.id] || ""}`).join(" / ");
+    return variations.map((v) => `${v.nom}:${selectedVariations[v.nom] || ""}`).join("|");
   };
 
   const variationKey = getVariationKey();
