@@ -49,13 +49,8 @@ serve(async (req) => {
 
     if (error) {
       console.error('[send-kyc-approved-email] Resend error:', error);
-      const isValidationError = error.name === 'validation_error' || error.statusCode === 403;
-      return new Response(JSON.stringify({ 
-        success: isValidationError, skipped: isValidationError,
-        warning: isValidationError ? 'Domain not verified' : undefined,
-        error: isValidationError ? undefined : error.message 
-      }), {
-        status: isValidationError ? 200 : 400,
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

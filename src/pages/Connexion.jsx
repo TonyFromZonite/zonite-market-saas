@@ -7,10 +7,7 @@ import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
 const MESSAGES_MOTIVATION = [
-  "Chaque vente est une victoire. Allons-y ! 🚀",
-  "Votre succès commence ici. Bienvenue ! 💪",
-  "Les champions se connectent tôt. C'est votre heure ! 🏆",
-  "Prêt à performer aujourd'hui ? On vous attend ! 🔥",
+  "Chaque vente est une victoire. Allons-y 🚀",
 ];
 
 const TikTokIcon = ({ size = 20 }) => (
