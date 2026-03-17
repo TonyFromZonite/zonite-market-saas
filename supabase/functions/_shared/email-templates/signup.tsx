@@ -33,6 +33,7 @@ export const SignupEmail = ({
     <Body style={main}>
       <Container style={container}>
         <div style={header}>
+          <Img src="https://jpopxydfttoseckcakqp.supabase.co/storage/v1/object/public/email-assets/logo.png" alt="Zonite Market" width="80" height="80" style={logo} />
           <Heading style={brandTitle}>Zonite Market</Heading>
           <Text style={brandSubtitle}>Plateforme de vente</Text>
         </div>
