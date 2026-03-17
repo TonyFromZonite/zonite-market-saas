@@ -1276,6 +1276,10 @@ export type Database = {
       get_seller_role: { Args: { _user_id: string }; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_admin_or_sous_admin: { Args: { _user_id: string }; Returns: boolean }
+      resolve_username_to_email: {
+        Args: { _username: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
