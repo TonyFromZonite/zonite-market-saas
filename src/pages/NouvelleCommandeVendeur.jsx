@@ -89,34 +89,39 @@ export default function NouvelleCommandeVendeur() {
     setErreur("");
 
     try {
-      // Appeler fonction backend ATOMIQUE (transaction stock + commande)
-       const { data } = await supabase.functions.invoke('createOrderAtomically', {
-         vendeur_id: compteVendeur.id,
-         vendeur_nom: compteVendeur.nom_complet,
-         vendeur_email: compteVendeur.email,
+      const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
+      const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
+        vendeur_id: compteVendeur.id,
+        vendeur_email: compteVendeur.email,
         produit_id: form.produit_id,
         produit_nom: produitSelectionne.nom,
-        ville: localisation.ville,
-        zone: localisation.zone,
+        produit_reference: produitSelectionne.reference || null,
         variation: localisation.variation,
         quantite: qte,
-        prix_gros: prixGros,
+        prix_unitaire: prixGros,
         prix_final_client: prixFinal,
-        commission_vendeur: commission,
+        montant_total: prixFinal * qte,
         livraison_incluse: form.livraison_incluse,
         client_nom: form.client_nom,
         client_telephone: form.client_telephone,
-        client_ville: form.client_ville,
-        client_quartier: form.client_quartier,
+        client_ville: form.client_ville || localisation.ville,
+        client_quartier: form.client_quartier || localisation.zone,
         client_adresse: form.client_adresse,
         notes: form.notes,
-      });
+        reference_commande: ref,
+        statut: "en_attente_validation_admin",
+      }).select().single();
 
-      if (!data.success) {
-        setErreur(data.error || "Erreur lors de la création");
-        setEnCours(false);
-        return;
-      }
+      if (orderError) throw orderError;
+
+      // Insert admin notification
+      await supabase.from("notifications_admin").insert({
+        titre: "🛒 Nouvelle commande",
+        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom}`,
+        type: "commande",
+        vendeur_email: compteVendeur.email,
+        reference_id: newOrder?.id || null,
+      });
 
       queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
       setEnCours(false);

@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS_PAIEMENT = {
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -67,13 +68,21 @@ export default function DemandePaiement() {
 
     await vendeurApi.createDemandePaiement({
       vendeur_id: compteVendeur.id,
-      vendeur_nom: compteVendeur.nom_complet,
       vendeur_email: compteVendeur.email,
       montant,
       numero_mobile_money: form.numero_mobile_money,
       operateur: form.operateur === "orange_money" ? "Orange Money" : "MTN MoMo",
       statut: "en_attente",
     });
+
+    // Insert admin notification for payment request
+    const formater_ = n => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
+    await supabase.from("notifications_admin").insert({
+      titre: "💰 Demande de paiement",
+      message: `${compteVendeur.full_name} demande ${formater_(montant)}`,
+      type: "paiement",
+      vendeur_email: compteVendeur.email,
+    }).catch(() => {}); // Non-blocking
 
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement"] });
     setEnCours(false);
