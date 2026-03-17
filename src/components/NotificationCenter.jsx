@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, X, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,27 +7,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
-import { deleteRecord, filterTable, getCurrentUser, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const ICONES_TYPE = {
-  kyc_soumis: "👤",
-  kyc_valide: "✅",
-  kyc_rejete: "❌",
-  nouvelle_vente: "🛒",
-  commande_validee: "✓",
-  commande_livree: "📦",
-  stock_faible: "⚠️",
-  paiement_demande: "💰",
-  paiement_effectue: "💵",
-  retour_produit: "↩️",
-  support_ticket: "💬",
-  systeme: "⚙️",
-};
-
-const COULEURS_PRIORITE = {
-  normale: "bg-slate-100 border-slate-200",
-  importante: "bg-yellow-50 border-yellow-200",
-  urgente: "bg-red-50 border-red-200",
+  kyc: "👤",
+  info: "ℹ️",
+  succes: "✅",
+  alerte: "⚠️",
+  paiement: "💰",
+  support: "💬",
+  commande: "📦",
 };
 
 export default function NotificationCenter() {
@@ -35,70 +24,77 @@ export default function NotificationCenter() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Get current seller from session
+  const session = JSON.parse(sessionStorage.getItem("vendeur_session") || "{}");
+  const vendeurId = session.id;
+
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications_vendeur", vendeurId],
     queryFn: async () => {
-      const user = await getCurrentUser();
-      const notifs = await filterTable("notifications_vendeur", 
-        { destinataire_email: user.email },
-        "-created_date",
-        50
-      );
-      return notifs;
+      if (!vendeurId) return [];
+      const { data, error } = await supabase
+        .from("notifications_vendeur")
+        .select("*")
+        .eq("vendeur_id", vendeurId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
     },
-    refetchInterval: 10000, // Rafraîchir toutes les 10 secondes
-    enabled: ouvert,
+    refetchInterval: 15000,
+    enabled: !!vendeurId,
   });
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!vendeurId) return;
+    const channel = supabase
+      .channel("notifs_vendeur_realtime")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications_vendeur",
+        filter: `vendeur_id=eq.${vendeurId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["notifications_vendeur", vendeurId] });
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [vendeurId, queryClient]);
 
   const marquerCommeLueMutation = useMutation({
     mutationFn: async (notifId) => {
-      await updateRecord("notifications_vendeur", notifId, {
-        lue: true,
-        date_lecture: new Date().toISOString(),
-      });
+      await supabase.from("notifications_vendeur").update({ lu: true }).eq("id", notifId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications_vendeur", vendeurId] }),
   });
 
   const supprimerMutation = useMutation({
     mutationFn: async (notifId) => {
-      await deleteRecord("notifications_vendeur", notifId);
+      await supabase.from("notifications_vendeur").delete().eq("id", notifId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications_vendeur", vendeurId] }),
   });
 
   const marquerToutCommeLuMutation = useMutation({
     mutationFn: async () => {
-      const nonLues = notifications.filter((n) => !n.lue);
+      const nonLues = notifications.filter((n) => !n.lu);
       await Promise.all(
-        nonLues.map((n) =>
-          updateRecord("notifications_vendeur", n.id, {
-            lue: true,
-            date_lecture: new Date().toISOString(),
-          })
-        )
+        nonLues.map((n) => supabase.from("notifications_vendeur").update({ lu: true }).eq("id", n.id))
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications_vendeur", vendeurId] }),
   });
 
   const handleClickNotification = (notif) => {
-    if (!notif.lue) {
-      marquerCommeLueMutation.mutate(notif.id);
-    }
-    if (notif.lien) {
+    if (!notif.lu) marquerCommeLueMutation.mutate(notif.id);
+    if (notif.action_url) {
       setOuvert(false);
-      navigate(notif.lien);
+      navigate(notif.action_url);
     }
   };
 
-  const nbNonLues = notifications.filter((n) => !n.lue).length;
+  const nbNonLues = notifications.filter((n) => !n.lu).length;
 
   return (
     <Sheet open={ouvert} onOpenChange={setOuvert}>
@@ -118,14 +114,8 @@ export default function NotificationCenter() {
           <div className="flex items-center justify-between">
             <SheetTitle>Notifications ({nbNonLues} non lues)</SheetTitle>
             {nbNonLues > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => marquerToutCommeLuMutation.mutate()}
-                disabled={marquerToutCommeLuMutation.isPending}
-              >
-                <Check className="w-4 h-4 mr-1" />
-                Tout marquer lu
+              <Button variant="ghost" size="sm" onClick={() => marquerToutCommeLuMutation.mutate()} disabled={marquerToutCommeLuMutation.isPending}>
+                <Check className="w-4 h-4 mr-1" />Tout marquer lu
               </Button>
             )}
           </div>
@@ -144,44 +134,20 @@ export default function NotificationCenter() {
           ) : (
             <div className="space-y-2">
               {notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  onClick={() => handleClickNotification(notif)}
-                  className={`border rounded-lg p-3 cursor-pointer hover:shadow-md transition-all ${
-                    COULEURS_PRIORITE[notif.priorite]
-                  } ${!notif.lue ? "border-l-4 border-l-blue-500" : ""}`}
-                >
+                <div key={notif.id} onClick={() => handleClickNotification(notif)}
+                  className={`border rounded-lg p-3 cursor-pointer hover:shadow-md transition-all bg-white border-slate-200 ${!notif.lu ? "border-l-4 border-l-blue-500" : ""}`}>
                   <div className="flex items-start gap-3">
-                    <div className="text-2xl flex-shrink-0">
-                      {ICONES_TYPE[notif.type] || "📢"}
-                    </div>
+                    <div className="text-2xl flex-shrink-0">{ICONES_TYPE[notif.type] || "📢"}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={`text-sm font-medium ${
-                            !notif.lue ? "text-slate-900" : "text-slate-600"
-                          }`}
-                        >
-                          {notif.titre}
-                        </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            supprimerMutation.mutate(notif.id);
-                          }}
-                          className="text-slate-400 hover:text-red-500 flex-shrink-0"
-                        >
+                        <p className={`text-sm font-medium ${!notif.lu ? "text-slate-900" : "text-slate-600"}`}>{notif.titre}</p>
+                        <button onClick={(e) => { e.stopPropagation(); supprimerMutation.mutate(notif.id); }} className="text-slate-400 hover:text-red-500 flex-shrink-0">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
                       <p className="text-xs text-slate-400 mt-2">
-                        {new Date(notif.created_date).toLocaleString("fr-FR", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(notif.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                   </div>

@@ -79,7 +79,7 @@ export default function EspaceVendeur() {
         // Essayer d'abord la session stockée
         let session = getVendeurSession();
         
-        // Si pas de session mais connecté à Base44, créer une session vendeur
+        // Si pas de session mais connecté, créer une session vendeur
         if (!session) {
           try {
             const user = await getCurrentUser();
@@ -88,7 +88,7 @@ export default function EspaceVendeur() {
               sessionStorage.setItem("vendeur_session", JSON.stringify(session));
             }
           } catch (_) {
-            // Pas connecté à Base44
+            // Pas connecté
           }
         }
         

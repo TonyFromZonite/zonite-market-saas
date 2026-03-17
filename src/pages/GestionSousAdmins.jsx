@@ -92,7 +92,7 @@ export default function GestionSousAdmins() {
         permissions: form.permissions,
         statut: form.statut,
         notes: form.notes,
-        mot_de_passe_clair: form.mot_de_passe, // transmis pour créer le compte Base44 + email
+        mot_de_passe_clair: form.mot_de_passe,
       };
       if (form.mot_de_passe) {
         const response = await supabase.functions.invoke('hashPassword', {

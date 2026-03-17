@@ -7,7 +7,7 @@ import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
 const MESSAGES_MOTIVATION = [
-"Chaque vente est une victoire !  Allons-y  🚀"];
+"Chaque vente est une victoire.\nAllons-y 🚀"];
 
 
 

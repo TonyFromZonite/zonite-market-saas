@@ -298,6 +298,5 @@ export default function TableauDeBord() {
     return <DashboardAdmin />;
   }
 
-  // Vérifier si connecté via Base44 auth
   return <DashboardAdmin />;
 }

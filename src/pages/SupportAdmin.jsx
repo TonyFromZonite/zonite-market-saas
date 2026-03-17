@@ -97,6 +97,25 @@ export default function SupportAdmin() {
     refetchInterval: 30000,
   });
 
+  // Realtime: listen for new tickets
+  React.useEffect(() => {
+    const channel = supabase
+      .channel("new_tickets_admin")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "tickets_support",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["tickets_support"] });
+      })
+      .subscribe();
+
+    // Mark support notifications as read when page opens
+    supabase.from("notifications_admin").update({ lu: true }).eq("type", "support").eq("lu", false).then(() => {});
+
+    return () => supabase.removeChannel(channel);
+  }, [queryClient]);
+
   const ticketsFiltres = tickets.filter(t => {
     const matchStatut = filtreStatut === "tous" || t.statut === filtreStatut;
     const matchRecherche = !recherche || t.sujet?.toLowerCase().includes(recherche.toLowerCase()) || t.vendeur_email?.toLowerCase().includes(recherche.toLowerCase());
