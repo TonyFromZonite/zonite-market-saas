@@ -4,6 +4,7 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
+  Img,
   Button,
   Container,
   Head,
@@ -33,6 +34,7 @@ export const EmailChangeEmail = ({
     <Body style={main}>
       <Container style={container}>
         <div style={header}>
+          <Img src="https://jpopxydfttoseckcakqp.supabase.co/storage/v1/object/public/email-assets/logo.png" alt="Zonite Market" width="80" height="80" style={logo} />
           <Heading style={brandTitle}>Zonite Market</Heading>
           <Text style={brandSubtitle}>Plateforme de vente</Text>
         </div>
@@ -90,3 +92,4 @@ const button = {
 const footer = { fontSize: '12px', color: '#94A3B8', margin: '30px 0 0' }
 const divider = { border: 'none', borderTop: '1px solid #E2E8F0', margin: '20px 0' }
 const brand = { fontSize: '12px', color: '#94A3B8', textAlign: 'center' as const, margin: '0' }
+const logo = { margin: '0 auto 15px', borderRadius: '12px' }
