@@ -256,6 +256,53 @@ export type Database = {
         }
         Relationships: []
       }
+      coursiers: {
+        Row: {
+          actif: boolean | null
+          adresse_entrepot: string | null
+          created_at: string
+          email: string | null
+          frais_livraison_defaut: number | null
+          id: string
+          nom: string
+          telephone: string | null
+          ville_id: string | null
+          zones_livraison_ids: Json | null
+        }
+        Insert: {
+          actif?: boolean | null
+          adresse_entrepot?: string | null
+          created_at?: string
+          email?: string | null
+          frais_livraison_defaut?: number | null
+          id?: string
+          nom: string
+          telephone?: string | null
+          ville_id?: string | null
+          zones_livraison_ids?: Json | null
+        }
+        Update: {
+          actif?: boolean | null
+          adresse_entrepot?: string | null
+          created_at?: string
+          email?: string | null
+          frais_livraison_defaut?: number | null
+          id?: string
+          nom?: string
+          telephone?: string | null
+          ville_id?: string | null
+          zones_livraison_ids?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coursiers_ville_id_fkey"
+            columns: ["ville_id"]
+            isOneToOne: false
+            referencedRelation: "villes_cameroun"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demandes_paiement_vendeur: {
         Row: {
           created_at: string
@@ -614,6 +661,7 @@ export type Database = {
           reference: string | null
           seuil_alerte_stock: number | null
           stock_global: number | null
+          stocks_par_coursier: Json | null
           stocks_par_localisation: Json | null
           updated_at: string
           variations: Json | null
@@ -636,6 +684,7 @@ export type Database = {
           reference?: string | null
           seuil_alerte_stock?: number | null
           stock_global?: number | null
+          stocks_par_coursier?: Json | null
           stocks_par_localisation?: Json | null
           updated_at?: string
           variations?: Json | null
@@ -658,6 +707,7 @@ export type Database = {
           reference?: string | null
           seuil_alerte_stock?: number | null
           stock_global?: number | null
+          stocks_par_coursier?: Json | null
           stocks_par_localisation?: Json | null
           updated_at?: string
           variations?: Json | null
@@ -668,6 +718,38 @@ export type Database = {
             columns: ["categorie_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quartiers: {
+        Row: {
+          actif: boolean | null
+          created_at: string
+          id: string
+          nom: string
+          ville_id: string
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom: string
+          ville_id: string
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom?: string
+          ville_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quartiers_ville_id_fkey"
+            columns: ["ville_id"]
+            isOneToOne: false
+            referencedRelation: "villes_cameroun"
             referencedColumns: ["id"]
           },
         ]
@@ -1086,6 +1168,30 @@ export type Database = {
           },
         ]
       }
+      villes_cameroun: {
+        Row: {
+          actif: boolean | null
+          created_at: string
+          id: string
+          nom: string
+          region: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom: string
+          region?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom?: string
+          region?: string | null
+        }
+        Relationships: []
+      }
       zones: {
         Row: {
           actif: boolean | null
@@ -1109,6 +1215,41 @@ export type Database = {
           ville?: string
         }
         Relationships: []
+      }
+      zones_livraison: {
+        Row: {
+          actif: boolean | null
+          created_at: string
+          id: string
+          nom: string
+          quartiers_ids: Json | null
+          ville_id: string
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom: string
+          quartiers_ids?: Json | null
+          ville_id: string
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string
+          id?: string
+          nom?: string
+          quartiers_ids?: Json | null
+          ville_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zones_livraison_ville_id_fkey"
+            columns: ["ville_id"]
+            isOneToOne: false
+            referencedRelation: "villes_cameroun"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
