@@ -211,8 +211,8 @@ export default function Connexion() {
             
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Email</label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com" autoComplete="email"
+                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Email ou nom d'utilisateur</label>
+                  <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com ou username" autoComplete="username"
                 className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
                 </div>
                 <div>
