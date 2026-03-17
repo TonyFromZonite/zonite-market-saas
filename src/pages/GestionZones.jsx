@@ -3,285 +3,359 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { MapPin, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MapPin, Plus, Edit2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { createRecord, deleteRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function GestionZones() {
-  const [dialogOuvert, setDialogOuvert] = useState(false);
-  const [zoneEnCours, setZoneEnCours] = useState(null);
-  const [formData, setFormData] = useState({
-    nom: "",
-    villes: "",
-    points_livraison: "",
-    description: "",
-    statut: "actif"
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [dialogZone, setDialogZone] = useState(false);
+  const [dialogQuartier, setDialogQuartier] = useState(false);
+  const [zoneEdit, setZoneEdit] = useState(null);
+  const [villeFiltre, setVilleFiltre] = useState("all");
+  const [expandedVille, setExpandedVille] = useState(null);
+  const [formZone, setFormZone] = useState({ nom: "", ville_id: "", quartiers_ids: [] });
+  const [formQuartier, setFormQuartier] = useState({ nom: "", ville_id: "" });
+
+  // Queries
+  const { data: villes = [] } = useQuery({
+    queryKey: ["villes_cameroun"],
+    queryFn: async () => {
+      const { data } = await supabase.from("villes_cameroun").select("*").eq("actif", true).order("nom");
+      return data || [];
+    },
   });
 
-  const queryClient = useQueryClient();
+  const { data: quartiers = [] } = useQuery({
+    queryKey: ["quartiers"],
+    queryFn: async () => {
+      const { data } = await supabase.from("quartiers").select("*").eq("actif", true).order("nom");
+      return data || [];
+    },
+  });
 
   const { data: zones = [], isLoading } = useQuery({
-    queryKey: ["zones"],
-    queryFn: () => listTable("zones")
+    queryKey: ["zones_livraison"],
+    queryFn: async () => {
+      const { data } = await supabase.from("zones_livraison").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => createRecord("zones", data),
+  // Mutations
+  const createZoneMut = useMutation({
+    mutationFn: async (data) => {
+      const { error } = await supabase.from("zones_livraison").insert(data);
+      if (error) throw error;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["zones"] });
-      fermerDialog();
-    }
+      queryClient.invalidateQueries({ queryKey: ["zones_livraison"] });
+      setDialogZone(false);
+      toast({ title: "Succès", description: "Zone créée avec succès" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateRecord("zones", id, data),
+  const updateZoneMut = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const { error } = await supabase.from("zones_livraison").update(data).eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["zones"] });
-      fermerDialog();
-    }
+      queryClient.invalidateQueries({ queryKey: ["zones_livraison"] });
+      setDialogZone(false);
+      toast({ title: "Succès", description: "Zone mise à jour" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => deleteRecord("zones", id),
+  const deleteZoneMut = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("zones_livraison").delete().eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["zones"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["zones_livraison"] });
+      toast({ title: "Zone supprimée" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
   });
 
-  const ouvrirDialog = (zone = null) => {
+  const toggleZoneMut = useMutation({
+    mutationFn: async ({ id, actif }) => {
+      const { error } = await supabase.from("zones_livraison").update({ actif }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["zones_livraison"] }),
+  });
+
+  const createQuartierMut = useMutation({
+    mutationFn: async (data) => {
+      const { error } = await supabase.from("quartiers").insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quartiers"] });
+      setDialogQuartier(false);
+      setFormQuartier({ nom: "", ville_id: "" });
+      toast({ title: "Succès", description: "Quartier ajouté" });
+    },
+    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteQuartierMut = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from("quartiers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quartiers"] });
+      toast({ title: "Quartier supprimé" });
+    },
+  });
+
+  // Handlers
+  const ouvrirDialogZone = (zone = null) => {
     if (zone) {
-      setZoneEnCours(zone);
-      setFormData({
-        nom: zone.nom || "",
-        villes: (zone.villes || []).join(", "),
-        points_livraison: (zone.points_livraison || []).join(", "),
-        description: zone.description || "",
-        statut: zone.statut || "actif"
-      });
+      setZoneEdit(zone);
+      setFormZone({ nom: zone.nom, ville_id: zone.ville_id, quartiers_ids: zone.quartiers_ids || [] });
     } else {
-      setZoneEnCours(null);
-      setFormData({
-        nom: "",
-        villes: "",
-        points_livraison: "",
-        description: "",
-        statut: "actif"
-      });
+      setZoneEdit(null);
+      setFormZone({ nom: "", ville_id: "", quartiers_ids: [] });
     }
-    setDialogOuvert(true);
+    setDialogZone(true);
   };
 
-  const fermerDialog = () => {
-    setDialogOuvert(false);
-    setZoneEnCours(null);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmitZone = (e) => {
     e.preventDefault();
-    
-    const data = {
-      nom: formData.nom,
-      villes: formData.villes.split(",").map(v => v.trim()).filter(Boolean),
-      points_livraison: formData.points_livraison.split(",").map(p => p.trim()).filter(Boolean),
-      description: formData.description,
-      statut: formData.statut
-    };
-
-    if (zoneEnCours) {
-      updateMutation.mutate({ id: zoneEnCours.id, data });
+    if (!formZone.nom.trim() || !formZone.ville_id) return;
+    const data = { nom: formZone.nom, ville_id: formZone.ville_id, quartiers_ids: formZone.quartiers_ids };
+    if (zoneEdit) {
+      updateZoneMut.mutate({ id: zoneEdit.id, data });
     } else {
-      createMutation.mutate(data);
+      createZoneMut.mutate(data);
     }
   };
 
-  const supprimerZone = (id) => {
-    if (confirm("Supprimer cette zone de livraison ?")) {
-      deleteMutation.mutate(id);
-    }
+  const toggleQuartier = (qId) => {
+    setFormZone((f) => ({
+      ...f,
+      quartiers_ids: f.quartiers_ids.includes(qId) ? f.quartiers_ids.filter((id) => id !== qId) : [...f.quartiers_ids, qId],
+    }));
   };
+
+  const getVilleName = (villeId) => villes.find((v) => v.id === villeId)?.nom || "—";
+  const getQuartiersForVille = (villeId) => quartiers.filter((q) => q.ville_id === villeId);
+  const getQuartierNames = (ids) => quartiers.filter((q) => (ids || []).includes(q.id)).map((q) => q.nom);
+
+  // Group zones by ville
+  const zonesParVille = {};
+  zones.forEach((z) => {
+    const ville = getVilleName(z.ville_id);
+    if (!zonesParVille[ville]) zonesParVille[ville] = [];
+    zonesParVille[ville].push(z);
+  });
+
+  const filteredVilles = villeFiltre === "all" ? Object.keys(zonesParVille).sort() : [villeFiltre].filter((v) => zonesParVille[v]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <MapPin className="w-7 h-7 text-[#1a1f5e]" />
-            Gestion des Zones de Livraison
+            Zones de Livraison & Quartiers
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Définir les zones géographiques pour organiser la logistique
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Gérer les zones par ville et leurs quartiers</p>
         </div>
-        <Button
-          onClick={() => ouvrirDialog()}
-          className="bg-[#1a1f5e] hover:bg-[#141952]"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nouvelle Zone
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setDialogQuartier(true)}>
+            <Plus className="w-4 h-4 mr-1" /> Quartier
+          </Button>
+          <Button onClick={() => ouvrirDialogZone()} className="bg-[#1a1f5e] hover:bg-[#141952]">
+            <Plus className="w-4 h-4 mr-2" /> Nouvelle Zone
+          </Button>
+        </div>
       </div>
 
-      {/* Liste des Zones */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {zones.map((zone) => (
-          <Card key={zone.id} className="p-4 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-900 mb-1">{zone.nom}</h3>
-                <Badge variant={zone.statut === "actif" ? "default" : "secondary"}>
-                  {zone.statut}
-                </Badge>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => ouvrirDialog(zone)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => supprimerZone(zone.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+      {/* Filtre par ville */}
+      <div className="flex gap-3 items-center">
+        <Label className="text-sm">Filtrer par ville :</Label>
+        <Select value={villeFiltre} onValueChange={setVilleFiltre}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les villes</SelectItem>
+            {villes.map((v) => <SelectItem key={v.id} value={v.nom}>{v.nom}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Zones grouped by ville */}
+      {filteredVilles.length === 0 && (
+        <p className="text-center text-slate-400 py-8">Aucune zone de livraison créée.</p>
+      )}
+
+      {filteredVilles.map((ville) => (
+        <Card key={ville} className="overflow-hidden">
+          <button
+            onClick={() => setExpandedVille(expandedVille === ville ? null : ville)}
+            className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#1a1f5e]" />
+              <span className="font-bold text-slate-900">{ville}</span>
+              <Badge variant="secondary">{zonesParVille[ville].length} zone{zonesParVille[ville].length > 1 ? "s" : ""}</Badge>
             </div>
+            {expandedVille === ville ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
 
-            {zone.description && (
-              <p className="text-sm text-slate-600 mb-3">{zone.description}</p>
-            )}
-
-            <div className="space-y-2 text-sm">
-              {zone.villes && zone.villes.length > 0 && (
-                <div>
-                  <p className="text-xs text-slate-500 font-medium mb-1">Villes</p>
-                  <div className="flex flex-wrap gap-1">
-                    {zone.villes.map((ville, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {ville}
-                      </Badge>
-                    ))}
+          {(expandedVille === ville || expandedVille === null) && (
+            <div className="border-t divide-y">
+              {zonesParVille[ville].map((zone) => {
+                const qNames = getQuartierNames(zone.quartiers_ids);
+                return (
+                  <div key={zone.id} className="p-4 flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-slate-800">{zone.nom}</span>
+                        <Badge variant={zone.actif ? "default" : "secondary"} className="text-xs">
+                          {zone.actif ? "Actif" : "Inactif"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {qNames.length > 0 ? qNames.map((n, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">{n}</Badge>
+                        )) : <span className="text-xs text-slate-400">Aucun quartier</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => toggleZoneMut.mutate({ id: zone.id, actif: !zone.actif })}>
+                        <div className={`w-3 h-3 rounded-full ${zone.actif ? "bg-emerald-500" : "bg-slate-300"}`} />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => ouvrirDialogZone(zone)}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-red-600" onClick={() => {
+                        if (confirm("Supprimer cette zone ?")) deleteZoneMut.mutate(zone.id);
+                      }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {zone.points_livraison && zone.points_livraison.length > 0 && (
-                <div>
-                  <p className="text-xs text-slate-500 font-medium mb-1">Points de livraison</p>
-                  <p className="text-xs text-slate-600">
-                    {zone.points_livraison.slice(0, 3).join(", ")}
-                    {zone.points_livraison.length > 3 && ` +${zone.points_livraison.length - 3}`}
-                  </p>
-                </div>
-              )}
+                );
+              })}
             </div>
-          </Card>
-        ))}
+          )}
+        </Card>
+      ))}
+
+      {/* Quartiers management section */}
+      <div className="mt-8">
+        <h2 className="text-lg font-bold text-slate-900 mb-3">Gestion des Quartiers</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {villes.map((ville) => {
+            const qs = getQuartiersForVille(ville.id);
+            if (qs.length === 0) return null;
+            return (
+              <Card key={ville.id} className="p-4">
+                <h3 className="font-semibold text-slate-800 mb-2">{ville.nom} <span className="text-slate-400 text-sm">({qs.length})</span></h3>
+                <div className="flex flex-wrap gap-1">
+                  {qs.map((q) => (
+                    <Badge key={q.id} variant="outline" className="text-xs flex items-center gap-1">
+                      {q.nom}
+                      <button onClick={() => { if (confirm(`Supprimer "${q.nom}" ?`)) deleteQuartierMut.mutate(q.id); }}
+                        className="ml-1 text-red-400 hover:text-red-600">×</button>
+                    </Badge>
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Dialog Formulaire */}
-      <Dialog open={dialogOuvert} onOpenChange={setDialogOuvert}>
-        <DialogContent className="max-w-md">
+      {/* Dialog Zone */}
+      <Dialog open={dialogZone} onOpenChange={setDialogZone}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {zoneEnCours ? "Modifier la Zone" : "Nouvelle Zone"}
-            </DialogTitle>
+            <DialogTitle>{zoneEdit ? "Modifier la Zone" : "Nouvelle Zone"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmitZone} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nom de la Zone *</Label>
-              <Input
-                value={formData.nom}
-                onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                placeholder="Ex: Zone Centre Douala"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Villes (séparées par des virgules)</Label>
-              <Input
-                value={formData.villes}
-                onChange={(e) => setFormData({ ...formData, villes: e.target.value })}
-                placeholder="Ex: Douala, Yaoundé"
-              />
-              <p className="text-xs text-slate-500">
-                Entrez les villes couvertes par cette zone
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Points de Livraison (séparés par des virgules)</Label>
-              <Textarea
-                value={formData.points_livraison}
-                onChange={(e) => setFormData({ ...formData, points_livraison: e.target.value })}
-                placeholder="Ex: Akwa, Bonaberi, Deido"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Description de la zone..."
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Statut</Label>
-              <Select
-                value={formData.statut}
-                onValueChange={(v) => setFormData({ ...formData, statut: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label>Ville *</Label>
+              <Select value={formZone.ville_id} onValueChange={(v) => setFormZone((f) => ({ ...f, ville_id: v, quartiers_ids: [] }))}>
+                <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="actif">Actif</SelectItem>
-                  <SelectItem value="inactif">Inactif</SelectItem>
+                  {villes.map((v) => <SelectItem key={v.id} value={v.id}>{v.nom}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Nom de la zone *</Label>
+              <Input value={formZone.nom} onChange={(e) => setFormZone((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Zone Centre" required />
+            </div>
+            {formZone.ville_id && (
+              <div className="space-y-2">
+                <Label>Quartiers couverts</Label>
+                <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                  {getQuartiersForVille(formZone.ville_id).length === 0 ? (
+                    <p className="text-xs text-slate-400">Aucun quartier pour cette ville. Ajoutez-en d'abord.</p>
+                  ) : (
+                    getQuartiersForVille(formZone.ville_id).map((q) => (
+                      <div key={q.id} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={formZone.quartiers_ids.includes(q.id)}
+                          onCheckedChange={() => toggleQuartier(q.id)}
+                        />
+                        <span className="text-sm">{q.nom}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Button type="button" variant="link" size="sm" className="text-xs p-0 h-auto"
+                  onClick={() => { setFormQuartier({ nom: "", ville_id: formZone.ville_id }); setDialogQuartier(true); }}>
+                  + Ajouter un quartier à cette ville
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setDialogZone(false)} className="flex-1">Annuler</Button>
+              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]"
+                disabled={createZoneMut.isPending || updateZoneMut.isPending}>
+                {zoneEdit ? "Mettre à jour" : "Créer"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={fermerDialog}
-                className="flex-1"
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]"
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                {zoneEnCours ? "Mettre à jour" : "Créer"}
-              </Button>
+      {/* Dialog Quartier */}
+      <Dialog open={dialogQuartier} onOpenChange={setDialogQuartier}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Nouveau Quartier</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); if (formQuartier.nom.trim() && formQuartier.ville_id) createQuartierMut.mutate(formQuartier); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Ville *</Label>
+              <Select value={formQuartier.ville_id} onValueChange={(v) => setFormQuartier((f) => ({ ...f, ville_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
+                <SelectContent>
+                  {villes.map((v) => <SelectItem key={v.id} value={v.id}>{v.nom}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Nom du quartier *</Label>
+              <Input value={formQuartier.nom} onChange={(e) => setFormQuartier((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: Bastos" required />
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setDialogQuartier(false)} className="flex-1">Annuler</Button>
+              <Button type="submit" className="flex-1 bg-[#1a1f5e] hover:bg-[#141952]" disabled={createQuartierMut.isPending}>Ajouter</Button>
             </div>
           </form>
         </DialogContent>
