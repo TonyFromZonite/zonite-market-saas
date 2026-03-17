@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, UserCog, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { listTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULES_DISPONIBLES = [
@@ -24,13 +23,12 @@ const MODULES_DISPONIBLES = [
 ];
 
 const VIDE = {
-  nom_complet: "",
+  full_name: "",
   nom_role: "",
   username: "",
   email: "",
   mot_de_passe: "",
   permissions: [],
-  statut: "actif",
   notes: "",
 };
 
@@ -40,12 +38,33 @@ export default function GestionSousAdmins() {
   const [editing, setEditing] = useState(null);
   const [mdpVisible, setMdpVisible] = useState(false);
   const [chargement, setChargement] = useState(false);
+  const [permissionsMap, setPermissionsMap] = useState({});
   const queryClient = useQueryClient();
 
   const { data: sousAdmins = [], isLoading } = useQuery({
     queryKey: ["sous_admins"],
-    queryFn: () => listTable("sous_admins", "-created_date"),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sous_admins").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
   });
+
+  // Load permissions for all sous-admins
+  useEffect(() => {
+    const loadPermissions = async () => {
+      if (sousAdmins.length === 0) return;
+      const { data } = await supabase.from("admin_permissions").select("*");
+      const map = {};
+      (data || []).forEach(p => {
+        if (p.sous_admin_id) {
+          map[p.sous_admin_id] = Array.isArray(p.modules_autorises) ? p.modules_autorises : [];
+        }
+      });
+      setPermissionsMap(map);
+    };
+    loadPermissions();
+  }, [sousAdmins]);
 
   const ouvrirCreation = () => {
     setEditing(null);
@@ -56,7 +75,15 @@ export default function GestionSousAdmins() {
 
   const ouvrirEdition = (sa) => {
     setEditing(sa);
-    setForm({ ...sa, mot_de_passe: "" });
+    setForm({
+      full_name: sa.full_name || "",
+      nom_role: sa.nom_role || "",
+      username: sa.username || "",
+      email: sa.email || "",
+      mot_de_passe: "",
+      permissions: permissionsMap[sa.id] || [],
+      notes: "",
+    });
     setMdpVisible(false);
     setDialogOuvert(true);
   };
@@ -80,31 +107,62 @@ export default function GestionSousAdmins() {
   };
 
   const sauvegarder = async () => {
-    if (!form.nom_complet || !form.nom_role || !form.username || !form.email) return;
-    if (!editing && !form.mot_de_passe) return; // Mot de passe requis pour création
+    if (!form.full_name || !form.nom_role || !form.username || !form.email) return;
+    if (!editing && !form.mot_de_passe) return;
     setChargement(true);
     try {
-      const data = {
-        nom_complet: form.nom_complet,
-        nom_role: form.nom_role,
-        username: form.username,
-        email: form.email,
-        permissions: form.permissions,
-        statut: form.statut,
-        notes: form.notes,
-        mot_de_passe_clair: form.mot_de_passe,
-      };
-      if (form.mot_de_passe) {
-        const response = await supabase.functions.invoke('hashPassword', {
-          password: form.mot_de_passe
-        });
-        data.mot_de_passe_hash = response.data.hashedPassword;
-      }
       if (editing) {
-         await adminApi.updateSousAdmin(editing.id, data);
-       } else {
-         await adminApi.createSousAdmin(data);
-       }
+        // Update sous_admin
+        await adminApi.updateSousAdmin(editing.id, {
+          full_name: form.full_name,
+          nom_role: form.nom_role,
+          username: form.username,
+        });
+
+        // Update password if provided
+        if (form.mot_de_passe && editing.user_id) {
+          await supabase.functions.invoke("seed-admin", {
+            body: { action: "update_password", user_id: editing.user_id, password: form.mot_de_passe },
+          });
+        }
+
+        // Upsert permissions
+        await adminApi.upsertPermissionsForSousAdmin(editing.id, editing.email, form.permissions);
+      } else {
+        // Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: form.email.trim().toLowerCase(),
+          password: form.mot_de_passe,
+          options: {
+            data: { role: "sous_admin", full_name: form.full_name },
+          },
+        });
+
+        if (authError) throw authError;
+
+        // Create sous_admin record
+        const result = await adminApi.createSousAdmin({
+          full_name: form.full_name,
+          nom_role: form.nom_role,
+          username: form.username,
+          email: form.email.trim().toLowerCase(),
+          user_id: authData.user?.id || null,
+        });
+
+        // Create user_roles entry
+        if (authData.user?.id) {
+          await supabase.from("user_roles").insert({
+            user_id: authData.user.id,
+            role: "sous_admin",
+          });
+        }
+
+        // Create permissions
+        if (result?.id) {
+          await adminApi.upsertPermissionsForSousAdmin(result.id, form.email, form.permissions);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["sous_admins"] });
       setDialogOuvert(false);
     } catch (err) {
@@ -122,15 +180,12 @@ export default function GestionSousAdmins() {
   };
 
   const toggleStatut = async (sa) => {
-    await adminApi.updateSousAdmin(sa.id, {
-      statut: sa.statut === "actif" ? "suspendu" : "actif",
-    });
+    await adminApi.updateSousAdmin(sa.id, { actif: !sa.actif });
     queryClient.invalidateQueries({ queryKey: ["sous_admins"] });
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Sous-Administrateurs</h2>
@@ -141,7 +196,6 @@ export default function GestionSousAdmins() {
         </Button>
       </div>
 
-      {/* Liste */}
       {isLoading ? (
         <p className="text-slate-400 text-sm">Chargement...</p>
       ) : sousAdmins.length === 0 ? (
@@ -156,29 +210,29 @@ export default function GestionSousAdmins() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="w-4 h-4 text-[#1a1f5e]" />
-                  <span className="font-semibold text-slate-900">{sa.nom_complet}</span>
-                  <Badge className={sa.statut === "actif" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-red-100 text-red-700 border-0"}>
-                    {sa.statut}
+                  <span className="font-semibold text-slate-900">{sa.full_name}</span>
+                  <Badge className={sa.actif ? "bg-emerald-100 text-emerald-700 border-0" : "bg-red-100 text-red-700 border-0"}>
+                    {sa.actif ? "Actif" : "Suspendu"}
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-500 mb-1">
-                  <span className="font-medium text-slate-700">{sa.nom_role}</span> · @{sa.username} · {sa.email}
+                  <span className="font-medium text-slate-700">{sa.nom_role || "—"}</span> · @{sa.username || "—"} · {sa.email}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {(sa.permissions || []).map((p) => {
+                  {(permissionsMap[sa.id] || []).map((p) => {
                     const mod = MODULES_DISPONIBLES.find((m) => m.id === p);
                     return mod ? (
                       <span key={p} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[10px] font-medium">{mod.label}</span>
                     ) : null;
                   })}
-                  {(sa.permissions || []).length === 0 && (
+                  {(permissionsMap[sa.id] || []).length === 0 && (
                     <span className="text-xs text-slate-400">Aucune permission</span>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button variant="outline" size="sm" onClick={() => toggleStatut(sa)}>
-                  {sa.statut === "actif" ? "Suspendre" : "Activer"}
+                  {sa.actif ? "Suspendre" : "Activer"}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => ouvrirEdition(sa)}>
                   <Pencil className="w-4 h-4" />
@@ -192,7 +246,6 @@ export default function GestionSousAdmins() {
         </div>
       )}
 
-      {/* Dialog création/édition */}
       <Dialog open={dialogOuvert} onOpenChange={setDialogOuvert}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -202,7 +255,7 @@ export default function GestionSousAdmins() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Nom complet *</Label>
-                <Input value={form.nom_complet} onChange={(e) => setForm({ ...form, nom_complet: e.target.value })} placeholder="ex: Jean Dupont" />
+                <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="ex: Jean Dupont" />
               </div>
               <div>
                 <Label>Titre du rôle *</Label>
@@ -238,15 +291,10 @@ export default function GestionSousAdmins() {
               </div>
             </div>
 
-            {/* Permissions */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Modules accessibles</Label>
-                <button
-                  type="button"
-                  className="text-xs text-blue-600 hover:underline"
-                  onClick={toutSelectionner}
-                >
+                <button type="button" className="text-xs text-blue-600 hover:underline" onClick={toutSelectionner}>
                   {form.permissions.length === MODULES_DISPONIBLES.length ? "Tout désélectionner" : "Tout sélectionner"}
                 </button>
               </div>
@@ -263,17 +311,12 @@ export default function GestionSousAdmins() {
               </div>
             </div>
 
-            <div>
-              <Label>Notes (optionnel)</Label>
-              <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Ex: gère uniquement les livraisons de Yaoundé" />
-            </div>
-
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setDialogOuvert(false)}>Annuler</Button>
               <Button
                 className="bg-[#1a1f5e] hover:bg-[#141952]"
                 onClick={sauvegarder}
-                disabled={chargement || !form.nom_complet || !form.nom_role || !form.username || !form.email}
+                disabled={chargement || !form.full_name || !form.nom_role || !form.username || !form.email}
               >
                 {chargement ? "Enregistrement..." : editing ? "Mettre à jour" : "Créer"}
               </Button>
