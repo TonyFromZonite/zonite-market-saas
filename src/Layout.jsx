@@ -13,10 +13,21 @@ const PAGES_SANS_LAYOUT_ADMIN = new Set([
   "EspaceSousAdmin",
 ]);
 
+function useResponsive() {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isDesktop;
+}
+
 export default function Layout({ children, currentPageName }) {
   const [sidebarOuverte, setSidebarOuverte] = useState(false);
   const [badges, setBadges] = useState({ commandes: 0, kyc: 0 });
   const vendeurSession = getVendeurSession();
+  const isDesktop = useResponsive();
 
   useEffect(() => {
     if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName)) return;
@@ -37,17 +48,28 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-slate-50">
-      {/* Sidebar always as overlay */}
-      <AdminSidebar isOpen={sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={false} />
-      
-      {/* Header with burger always visible */}
-      <AdminHeader currentPageName={currentPageName} onMenuOpen={() => setSidebarOuverte(true)} showBurger={true} />
-      
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6">
-        {children}
-      </main>
+    <div className="fixed inset-0 flex bg-slate-50">
+      {/* Desktop: permanent sidebar */}
+      {isDesktop && (
+        <AdminSidebar isOpen={true} onClose={() => {}} badges={badges} isDesktop={true} />
+      )}
+
+      {/* Mobile: overlay sidebar */}
+      {!isDesktop && (
+        <AdminSidebar isOpen={sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={false} />
+      )}
+
+      {/* Right content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <AdminHeader
+          currentPageName={currentPageName}
+          onMenuOpen={() => setSidebarOuverte(true)}
+          showBurger={!isDesktop}
+        />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
