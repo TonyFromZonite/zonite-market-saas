@@ -43,7 +43,7 @@ export default function CatalogueVendeur() {
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
   const produitsFiltres = produits.filter(p =>
-    `${p.nom} ${p.description || ""} ${p.categorie_nom || ""}`.toLowerCase().includes(recherche.toLowerCase())
+    `${p.nom} ${p.description || ""} ${p.reference || ""}`.toLowerCase().includes(recherche.toLowerCase())
   );
 
   return (
