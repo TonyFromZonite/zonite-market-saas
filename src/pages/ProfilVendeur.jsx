@@ -96,7 +96,7 @@ export default function ProfilVendeur() {
   const displayName = compteVendeur?.full_name || "Vendeur";
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
       <div className="bg-[#1a1f5e] text-white px-4 pb-8" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex items-center gap-3 mb-4">
