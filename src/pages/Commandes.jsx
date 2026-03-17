@@ -93,10 +93,10 @@ export default function Commandes() {
           reference_vente: vente.id,
         });
       }
-      // Réduire commission vendeur via adminApi (service role)
-      const resSellers = await supabase.functions.invoke('getAllVendeurs', {});
-      const allSellers = resSellers.data || [];
-      const vendeur = allSellers.find(v => v.id === vente.vendeur_id);
+      // Réduire commission vendeur
+      const { data: allSellers } = await supabase.from("sellers").select("*");
+      const allSellersArr = allSellers || [];
+      const vendeur = allSellersArr.find(v => v.id === vente.vendeur_id);
       if (vendeur) {
         await adminApi.updateVendeur(vendeur.id, {
           solde_commission: Math.max(0, (vendeur.solde_commission || 0) - (vente.commission_vendeur || 0)),

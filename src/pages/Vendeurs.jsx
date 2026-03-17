@@ -47,8 +47,9 @@ function ListeVendeurs() {
   const { data: vendeurs = [], isLoading } = useQuery({
     queryKey: ["vendeurs"],
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getAllVendeurs', {});
-      return res.data;
+      const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -236,8 +237,9 @@ function ValidationKYC() {
    const { data: sellers = [], isLoading } = useQuery({
       queryKey: ["sellers"],
       queryFn: async () => {
-        const res = await supabase.functions.invoke('getAllVendeurs', {});
-        return res.data;
+        const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        return data || [];
       },
       refetchInterval: 30000,
     });
@@ -378,8 +380,9 @@ function CommissionsTab() {
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({ 
     queryKey: ["vendeurs"], 
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getAllVendeurs', {});
-      return res.data;
+      const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     }
   });
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
@@ -570,8 +573,9 @@ export default function Vendeurs() {
   const { data: kycs = [] } = useQuery({ 
     queryKey: ["sellers_badge"], 
     queryFn: async () => {
-      const res = await supabase.functions.invoke('getAllVendeurs', {});
-      return (res.data || []).filter(s => s.statut_kyc === "en_attente");
+      const { data, error } = await supabase.from("sellers").select("*").eq("statut_kyc", "en_attente").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
     }, 
     refetchInterval: 30000 
   });
