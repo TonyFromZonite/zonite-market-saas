@@ -7,6 +7,7 @@ export const SELLER_STATUSES = {
   PENDING_VERIFICATION: "pending_verification",
   KYC_REQUIRED: "kyc_required",
   KYC_PENDING: "kyc_pending",
+  KYC_REJECTED: "kyc_rejected",
   KYC_APPROVED_TRAINING_REQUIRED: "kyc_approved_training_required",
   ACTIVE_SELLER: "active_seller",
 };
@@ -15,6 +16,7 @@ export const STATUS_LABELS = {
   pending_verification: "Email à vérifier",
   kyc_required: "Vérification d'identité requise",
   kyc_pending: "Dossier KYC en révision",
+  kyc_rejected: "Dossier KYC rejeté",
   kyc_approved_training_required: "Formation obligatoire",
   active_seller: "Vendeur actif",
 };
@@ -31,8 +33,9 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
     // dashboard = tableau de bord, profil, notifs, support
     dashboard: {
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: true,  // ✅ accès pour soumettre KYC via modal
-      [SELLER_STATUSES.KYC_PENDING]: true,  // ✅ accès dès le KYC soumis
+      [SELLER_STATUSES.KYC_REQUIRED]: true,
+      [SELLER_STATUSES.KYC_PENDING]: true,
+      [SELLER_STATUSES.KYC_REJECTED]: true,  // ✅ accès pour resoumettre KYC
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
@@ -40,13 +43,15 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
       [SELLER_STATUSES.KYC_REQUIRED]: false,
       [SELLER_STATUSES.KYC_PENDING]: false,
+      [SELLER_STATUSES.KYC_REJECTED]: false,
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: false,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
     sales: {
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
       [SELLER_STATUSES.KYC_REQUIRED]: false,
-      [SELLER_STATUSES.KYC_PENDING]: false,  // ❌ bloqué pendant kyc_pending
+      [SELLER_STATUSES.KYC_PENDING]: false,
+      [SELLER_STATUSES.KYC_REJECTED]: false,
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: false,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
@@ -54,13 +59,15 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
       [SELLER_STATUSES.KYC_REQUIRED]: false,
       [SELLER_STATUSES.KYC_PENDING]: false,
+      [SELLER_STATUSES.KYC_REJECTED]: false,
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
     profile: {
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: true,  // ✅ accès au profil pendant soumission KYC
-      [SELLER_STATUSES.KYC_PENDING]: true,  // ✅ accès au profil dès kyc_pending
+      [SELLER_STATUSES.KYC_REQUIRED]: true,
+      [SELLER_STATUSES.KYC_PENDING]: true,
+      [SELLER_STATUSES.KYC_REJECTED]: true,  // ✅ accès au profil pendant resoumission
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
@@ -88,6 +95,7 @@ export const getRestrictionMessage = (sellerStatus, feature) => {
     [SELLER_STATUSES.PENDING_VERIFICATION]: "Veuillez vérifier votre email pour continuer.",
     [SELLER_STATUSES.KYC_REQUIRED]: `Veuillez soumettre votre dossier KYC pour accéder à ${feature}.`,
     [SELLER_STATUSES.KYC_PENDING]: "Votre dossier KYC est en révision. Veuillez patienter.",
+    [SELLER_STATUSES.KYC_REJECTED]: "Votre dossier KYC a été rejeté. Veuillez resoumettre vos documents.",
     [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: "Veuillez regarder et valider la vidéo de formation avant d'accéder aux autres fonctionnalités.",
   };
 

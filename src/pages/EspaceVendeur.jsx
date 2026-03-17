@@ -237,14 +237,25 @@ export default function EspaceVendeur() {
     }
   }
 
-  // KYC rejected
-  if (compteVendeur.statut_kyc === "rejete") {
+  // KYC rejected — show reason + link to resubmit
+  if (compteVendeur.statut_kyc === "rejete" || compteVendeur.seller_status === SELLER_STATUSES.KYC_REJECTED) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
           <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier rejeté</h2>
-          <p className="text-sm text-slate-500">{compteVendeur.notes_admin || "Votre dossier KYC a été rejeté. Contactez notre équipe pour plus d'informations."}</p>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC rejeté</h2>
+          {compteVendeur.kyc_raison_rejet && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4 text-left">
+              <p className="font-semibold mb-1">Raison du rejet :</p>
+              <p>{compteVendeur.kyc_raison_rejet}</p>
+            </div>
+          )}
+          <p className="text-sm text-slate-500 mb-4">Vous pouvez corriger et resoumettre vos documents.</p>
+          <Link to={createPageUrl("ResoumissionKYC")}>
+            <Button className="w-full bg-[#1a1f5e] hover:bg-[#141952] mb-2">
+              📝 Resoumettre mon dossier
+            </Button>
+          </Link>
         </div>
       </div>
     );
