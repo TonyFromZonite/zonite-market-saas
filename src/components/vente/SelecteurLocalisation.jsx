@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Package } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Sélecteur dynamique de localisation et variation
@@ -31,8 +32,7 @@ export default function SelecteurLocalisation({
 
   const chargerDisponibilite = async () => {
     try {
-      const { base44 } = await import("@/api/base44Client");
-      const result = await base44.functions.invoke('getProductAvailability', {
+      const result = await supabase.functions.invoke('getProductAvailability', {
         produit_id: produit.id
       });
       setDisponibilite(result.data);

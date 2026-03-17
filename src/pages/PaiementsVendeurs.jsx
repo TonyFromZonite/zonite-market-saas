@@ -1,11 +1,11 @@
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, Wallet } from "lucide-react";
+import { filterTable, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -18,16 +18,16 @@ export default function PaiementsVendeurs() {
 
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ["demandes_paiement_admin"],
-    queryFn: () => base44.entities.DemandePaiementVendeur.list("-created_date"),
+    queryFn: () => listTable("demandes_paiement_vendeur", "-created_date"),
   });
 
   const marquerPaye = async (demande) => {
     await adminApi.updateDemandePaiement(demande.id, { statut: "paye" });
 
-    const sellers = await base44.entities.Seller.filter({ email: demande.vendeur_email });
+    const sellers = await filterTable("sellers", { email: demande.vendeur_email });
     if (sellers.length > 0) {
       const seller = sellers[0];
-      await base44.asServiceRole.entities.Seller.update(seller.id, {
+      await updateRecord("sellers", seller.id, {
         solde_commission: Math.max(0, (seller.solde_commission || 0) - demande.montant),
         total_commissions_payees: (seller.total_commissions_payees || 0) + demande.montant,
       });

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ const CONFIGS = [
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Lock, Youtube } from "lucide-react";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function ConfigurationApp() {
   const [valeurs, setValeurs] = useState({});
@@ -26,7 +26,7 @@ export default function ConfigurationApp() {
 
   useEffect(() => {
     const charger = async () => {
-      const items = await base44.entities.ConfigApp.filter({});
+      const items = await filterTable("config_app", {});
       const map = {};
       const idMap = {};
       items.forEach((i) => { map[i.cle] = i.valeur; idMap[i.cle] = i.id; });

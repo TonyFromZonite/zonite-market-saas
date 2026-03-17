@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCachedQuery } from "@/components/CacheManager";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,8 @@ import { LOGO_URL as LOGO } from "@/components/constants";
 import NotificationCenterVendeur from "@/components/NotificationCenterVendeur";
 import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/components/SellerStatusEngine";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -47,7 +48,7 @@ export default function EspaceVendeur() {
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: fichier });
+    const { file_url } = await uploadFile(fichier);
     setKycForm(p => ({ ...p, [champ]: file_url }));
     setKycUpload(p => ({ ...p, [key]: false }));
   };
@@ -58,7 +59,7 @@ export default function EspaceVendeur() {
     if (!kycForm.selfie_url) { setKycErreur("Veuillez uploader votre selfie."); return; }
     setKycEnCours(true);
     setKycErreur("");
-    const response = await base44.functions.invoke('updateKYCDocuments', {
+    const response = await supabase.functions.invoke('updateKYCDocuments', {
       email: compteVendeur.email,
       photo_identite_url: kycForm.photo_identite_url,
       photo_identite_verso_url: kycForm.photo_identite_verso_url || "",
@@ -81,7 +82,7 @@ export default function EspaceVendeur() {
         // Si pas de session mais connecté à Base44, créer une session vendeur
         if (!session) {
           try {
-            const user = await base44.auth.me();
+            const user = await getCurrentUser();
             if (user && user.role === 'user') {
               session = { role: 'vendeur', email: user.email };
               sessionStorage.setItem("vendeur_session", JSON.stringify(session));
@@ -103,7 +104,7 @@ export default function EspaceVendeur() {
           setCompteVendeur(session);
           
           // Subscribe to real-time updates by ID
-          const unsubscribe = base44.entities.Seller.subscribe((event) => {
+          const unsubscribe = subscribeToTable("sellers", (event) => {
             if (event.id === session.id) {
               setCompteVendeur(event.data);
             }
@@ -116,7 +117,7 @@ export default function EspaceVendeur() {
         // Otherwise, fetch from database via backend function (bypasse les restrictions RLS)
         const emailVendeur = session.email;
         try {
-          const resp = await base44.functions.invoke('vendeurActions', {
+          const resp = await supabase.functions.invoke('vendeurActions', {
             action: 'getSellerByEmail',
             vendeur_email: emailVendeur,
             payload: {},
@@ -127,7 +128,7 @@ export default function EspaceVendeur() {
             // Enrichir la session avec les données complètes
             sessionStorage.setItem("vendeur_session", JSON.stringify({ ...session, ...sellerData, role: 'vendeur' }));
 
-            const unsubscribe = base44.entities.Seller.subscribe((event) => {
+            const unsubscribe = subscribeToTable("sellers", (event) => {
               if (event.data?.email === emailVendeur) {
                 setCompteVendeur(event.data);
               }
@@ -140,7 +141,7 @@ export default function EspaceVendeur() {
           }
         } catch (_) {
           // Fallback direct si la fonction échoue
-          const sellers = await base44.entities.Seller.filter({ email: emailVendeur });
+          const sellers = await filterTable("sellers", { email: emailVendeur });
           if (sellers.length > 0) {
             setCompteVendeur(sellers[0]);
             setChargement(false);
@@ -158,13 +159,13 @@ export default function EspaceVendeur() {
 
   const { data: commandes = [] } = useCachedQuery(
     'COMMANDES',
-    () => base44.entities.CommandeVendeur.filter({ vendeur_id: compteVendeur.id }, "-created_date", 50),
+    () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_date", 50),
     { ttl: 5 * 60 * 1000, enabled: !!compteVendeur?.id }
   );
 
   const { data: compteActualise, isLoading: loadingCompte } = useCachedQuery(
     'COMPTE_VENDEUR',
-    () => base44.entities.Seller.filter({ id: compteVendeur.id }),
+    () => filterTable("sellers", { id: compteVendeur.id }),
     { ttl: 3 * 60 * 1000, enabled: !!compteVendeur?.id }
   );
 

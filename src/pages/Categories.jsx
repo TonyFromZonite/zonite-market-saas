@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Loader2, Tag } from "lucide-react";
+import { createRecord, deleteRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 export default function Categories() {
   const [dialogOuvert, setDialogOuvert] = useState(false);
@@ -16,7 +16,7 @@ export default function Categories() {
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => base44.entities.Categorie.list("nom"),
+    queryFn: () => listTable("categories", "nom"),
   });
 
   const ouvrir = (cat) => {
@@ -29,9 +29,9 @@ export default function Categories() {
     if (!form.nom.trim()) return;
     setEnCours(true);
     if (edite) {
-      await base44.entities.Categorie.update(edite.id, form);
+      await updateRecord("categories", edite.id, form);
     } else {
-      await base44.entities.Categorie.create(form);
+      await createRecord("categories", form);
     }
     queryClient.invalidateQueries({ queryKey: ["categories"] });
     setDialogOuvert(false);
@@ -40,7 +40,7 @@ export default function Categories() {
 
   const supprimer = async (cat) => {
     if (!confirm(`Supprimer la catégorie "${cat.nom}" ?`)) return;
-    await base44.entities.Categorie.delete(cat.id);
+    await deleteRecord("categories", cat.id);
     queryClient.invalidateQueries({ queryKey: ["categories"] });
   };
 

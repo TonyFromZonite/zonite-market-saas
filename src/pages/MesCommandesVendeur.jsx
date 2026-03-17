@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +8,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "⏳ En attente validation", couleur: "bg-yellow-100 text-yellow-800" },
@@ -35,7 +35,7 @@ export default function MesCommandesVendeur() {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
+      const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) setCompteVendeur(sellers[0]);
     };
     charger();
@@ -43,7 +43,7 @@ export default function MesCommandesVendeur() {
 
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeur", compteVendeur?.id],
-    queryFn: () => base44.entities.CommandeVendeur.filter({ vendeur_id: compteVendeur.id }, "-created_date", 100),
+    queryFn: () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_date", 100),
     enabled: !!compteVendeur?.id,
   });
 

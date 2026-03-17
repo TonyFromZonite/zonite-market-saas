@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import { createPageUrl } from "@/utils";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 /**
  * Hook centralisé pour récupérer le compte vendeur et calculer les droits d'accès.
@@ -23,7 +23,7 @@ export function useSellerAccess() {
         setLoading(false);
         return;
       }
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
+      const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) {
         setSeller(sellers[0]);
       } else {

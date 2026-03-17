@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { useCachedQuery } from "@/components/CacheManager";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -21,13 +20,14 @@ const TOUS_MODULES = [
 ];
 
 import { getSousAdminSession, clearAllSessions } from "@/components/useSessionGuard";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function EspaceSousAdmin() {
   const [sousAdmin] = useState(() => getSousAdminSession());
 
   const { data: commandesAttente = [], loading: isLoading } = useCachedQuery(
     'COMMANDES',
-    () => base44.entities.CommandeVendeur.filter({ statut: "en_attente_validation_admin" }),
+    () => filterTable("commandes_vendeur", { statut: "en_attente_validation_admin" }),
     { ttl: 5 * 60 * 1000, enabled: (sousAdmin?.permissions || []).includes("CommandesVendeurs") }
   );
 

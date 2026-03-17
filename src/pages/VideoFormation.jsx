@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { vendeurApi } from "@/components/vendeurApi";
 import { LOGO_URL } from "@/components/constants";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { filterTable, getCurrentUser } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function VideoFormation() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -54,20 +55,20 @@ export default function VideoFormation() {
 
     const charger = async () => {
       try {
-        const u = await base44.auth.me().catch(() => null);
+        const u = await getCurrentUser().catch(() => null);
         if (!u?.email) {
           if (isMounted) window.location.href = createPageUrl("Connexion");
           return;
         }
 
-        const sellers = await base44.entities.Seller.filter({ email: u.email });
+        const sellers = await filterTable("sellers", { email: u.email });
         if (isMounted && sellers.length > 0) setCompteVendeur(sellers[0]);
 
         // Récupérer config vidéo (avec retry)
-        let configs = await base44.entities.ConfigApp.filter({ cle: "lien_youtube_formation" });
+        let configs = await filterTable("config_app", { cle: "lien_youtube_formation" });
         if (!configs?.length) {
           await new Promise(r => setTimeout(r, 300));
-          configs = await base44.entities.ConfigApp.filter({ cle: "lien_youtube_formation" });
+          configs = await filterTable("config_app", { cle: "lien_youtube_formation" });
         }
 
         if (!isMounted) return;
@@ -210,7 +211,7 @@ export default function VideoFormation() {
                       setErreur("");
                       try {
                         // NEW ARCHITECTURE: Use completeTraining endpoint
-                        const response = await base44.functions.invoke('completeTraining', {
+                        const response = await supabase.functions.invoke('completeTraining', {
                           email: compteVendeur.email
                         });
                         

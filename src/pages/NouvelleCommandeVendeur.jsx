@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import SelecteurLocalisation from "@/components/vente/SelecteurLocalisation";
 import BlocageKycPending from "@/components/BlocageKycPending";
+import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -40,7 +41,7 @@ export default function NouvelleCommandeVendeur() {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
+      const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) setCompteVendeur(sellers[0]);
       else setErreur("Compte vendeur introuvable");
 
@@ -53,7 +54,7 @@ export default function NouvelleCommandeVendeur() {
 
   const { data: produits = [] } = useQuery({
     queryKey: ["produits_actifs"],
-    queryFn: () => base44.entities.Produit.filter({ statut: "actif" }),
+    queryFn: () => filterTable("produits", { statut: "actif" }),
   });
 
   const modifier = (champ, val) => {
@@ -89,7 +90,7 @@ export default function NouvelleCommandeVendeur() {
 
     try {
       // Appeler fonction backend ATOMIQUE (transaction stock + commande)
-       const { data } = await base44.functions.invoke('createOrderAtomically', {
+       const { data } = await supabase.functions.invoke('createOrderAtomically', {
          vendeur_id: compteVendeur.id,
          vendeur_nom: compteVendeur.nom_complet,
          vendeur_email: compteVendeur.email,

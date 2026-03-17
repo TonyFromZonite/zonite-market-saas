@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import {
 import { Search, ChevronLeft, ChevronRight, Shield, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import RapportsVentes from "./RapportsVentes";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const MODULES = {
   vente: { label: "Vente", couleur: "bg-blue-100 text-blue-700" },
@@ -48,7 +48,7 @@ export default function JournalAudit() {
 
   const { data: journaux = [], isLoading } = useQuery({
     queryKey: ["journal_audit"],
-    queryFn: () => base44.entities.JournalAudit.list("-created_date", 500),
+    queryFn: () => listTable("journal_audit", "-created_date", 500),
   });
 
   const journauxFiltres = journaux.filter((j) => {

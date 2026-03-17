@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
+import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const ONGLETS = [
   { key: "liste", label: "Vendeurs" },
@@ -47,7 +47,7 @@ function ListeVendeurs() {
   const { data: vendeurs = [], isLoading } = useQuery({
     queryKey: ["vendeurs"],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getAllVendeurs', {});
+      const res = await supabase.functions.invoke('getAllVendeurs', {});
       return res.data;
     },
   });
@@ -98,7 +98,7 @@ function ListeVendeurs() {
     setEnCours(true);
     try {
       // Utiliser le vendeur_id déjà disponible (user_id du seller)
-      await base44.functions.invoke('changeUserRole', {
+      await supabase.functions.invoke('changeUserRole', {
         user_email: vendeurRoleEdite.email,
         new_role: nouveauRoleVendeur
       });
@@ -236,7 +236,7 @@ function ValidationKYC() {
    const { data: sellers = [], isLoading } = useQuery({
       queryKey: ["sellers"],
       queryFn: async () => {
-        const res = await base44.functions.invoke('getAllVendeurs', {});
+        const res = await supabase.functions.invoke('getAllVendeurs', {});
         return res.data;
       },
       refetchInterval: 30000,
@@ -245,7 +245,7 @@ function ValidationKYC() {
   const validerKYC = async (statut) => {
      setEnCours(true);
      try {
-       const response = await base44.functions.invoke('validateKYC', {
+       const response = await supabase.functions.invoke('validateKYC', {
          seller_id: compteSelectionne.id,
          statut,
          notes: notes || '',
@@ -378,11 +378,11 @@ function CommissionsTab() {
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({ 
     queryKey: ["vendeurs"], 
     queryFn: async () => {
-      const res = await base44.functions.invoke('getAllVendeurs', {});
+      const res = await supabase.functions.invoke('getAllVendeurs', {});
       return res.data;
     }
   });
-  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => base44.entities.PaiementCommission.list("-created_date", 100) });
+  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
 
   const ouvrirPaiement = (vendeur) => { setVendeurPaiement(vendeur); setMontantPaiement(vendeur.solde_commission || 0); setMethodePaiement("especes"); setNotesPaiement(""); setDialogPaiement(true); };
 
@@ -499,7 +499,7 @@ function CommissionsTab() {
 // ─── Sous-composant : Paiements Vendeurs ────────────────────────────────────
 function PaiementsTab() {
   const queryClient = useQueryClient();
-  const { data: demandes = [], isLoading } = useQuery({ queryKey: ["demandes_paiement_admin"], queryFn: () => base44.entities.DemandePaiementVendeur.list("-created_date") });
+  const { data: demandes = [], isLoading } = useQuery({ queryKey: ["demandes_paiement_admin"], queryFn: () => listTable("demandes_paiement_vendeur", "-created_date") });
 
   const marquerPaye = async (demande) => {
     // Opération atomique via adminApi (service role) : met à jour demande + solde vendeur + notif
@@ -570,12 +570,12 @@ export default function Vendeurs() {
   const { data: kycs = [] } = useQuery({ 
     queryKey: ["sellers_badge"], 
     queryFn: async () => {
-      const res = await base44.functions.invoke('getAllVendeurs', {});
+      const res = await supabase.functions.invoke('getAllVendeurs', {});
       return (res.data || []).filter(s => s.statut_kyc === "en_attente");
     }, 
     refetchInterval: 30000 
   });
-  const { data: paiements = [] } = useQuery({ queryKey: ["paiements_badge"], queryFn: () => base44.entities.DemandePaiementVendeur.filter({ statut: "en_attente" }), refetchInterval: 30000 });
+  const { data: paiements = [] } = useQuery({ queryKey: ["paiements_badge"], queryFn: () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }), refetchInterval: 30000 });
 
   const badges = { kyc: kycs.length, paiements: paiements.length };
 

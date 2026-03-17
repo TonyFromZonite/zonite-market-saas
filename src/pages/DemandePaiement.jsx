@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { vendeurApi } from "@/components/vendeurApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { CheckCircle2, Loader2, ChevronLeft, Wallet, AlertCircle } from "lucide-
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 const STATUTS_PAIEMENT = {
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -34,7 +34,7 @@ export default function DemandePaiement() {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
+      const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) {
         setCompteVendeur(sellers[0]);
         setForm(f => ({
@@ -49,7 +49,7 @@ export default function DemandePaiement() {
 
   const { data: demandes = [] } = useQuery({
     queryKey: ["demandes_paiement", compteVendeur?.id],
-    queryFn: () => base44.entities.DemandePaiementVendeur.filter({ vendeur_id: compteVendeur.id }, "-created_date", 20),
+    queryFn: () => filterTable("demandes_paiement_vendeur", { vendeur_id: compteVendeur.id }, "-created_date", 20),
     enabled: !!compteVendeur?.id,
   });
 

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { adminApi } from "@/components/adminApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS = {
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -60,7 +61,7 @@ export default function Commandes() {
 
   const { data: ventes = [], isLoading } = useQuery({
     queryKey: ["ventes"],
-    queryFn: () => base44.entities.Vente.list("-created_date", 500),
+    queryFn: () => listTable("ventes", "-created_date", 500),
   });
 
   const changerStatut = async (vente, nouveauStatut) => {
@@ -74,7 +75,7 @@ export default function Commandes() {
 
     // Si annulée, restaurer le stock
     if (nouveauStatut === "annulee" && vente.statut_commande !== "annulee") {
-      const produits = await base44.entities.Produit.list();
+      const produits = await listTable("produits");
       const produit = produits.find(p => p.id === vente.produit_id);
       if (produit) {
         await adminApi.updateProduit(produit.id, {
@@ -93,7 +94,7 @@ export default function Commandes() {
         });
       }
       // Réduire commission vendeur via adminApi (service role)
-      const resSellers = await base44.functions.invoke('getAllVendeurs', {});
+      const resSellers = await supabase.functions.invoke('getAllVendeurs', {});
       const allSellers = resSellers.data || [];
       const vendeur = allSellers.find(v => v.id === vente.vendeur_id);
       if (vendeur) {

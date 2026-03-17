@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { showSuccess, showError } from "@/components/NotificationSystem";
 import { adminApi } from "@/components/adminApi";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Tag, Loader2 } from "lucide-react";
+import { listTable } from "@/lib/supabaseHelpers";
 
 export default function CategoriesTab() {
   const [dialogOuvert, setDialogOuvert] = useState(false);
@@ -19,7 +19,7 @@ export default function CategoriesTab() {
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => base44.entities.Categorie.list("nom"),
+    queryFn: () => listTable("categories", "nom"),
   });
 
   const ouvrir = (cat) => {

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Wallet, DollarSign, Loader2, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { createRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
 
 export default function Commissions() {
   const [dialogPaiement, setDialogPaiement] = useState(false);
@@ -41,12 +41,12 @@ export default function Commissions() {
 
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
     queryKey: ["vendeurs"],
-    queryFn: () => base44.entities.Seller.list(),
+    queryFn: () => listTable("sellers"),
   });
 
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({
     queryKey: ["paiements_commissions"],
-    queryFn: () => base44.entities.PaiementCommission.list("-created_date", 100),
+    queryFn: () => listTable("paiements_commission", "-created_date", 100),
   });
 
   const ouvrirPaiement = (vendeur) => {
@@ -61,7 +61,7 @@ export default function Commissions() {
     if (!vendeurPaiement || montantPaiement <= 0) return;
     setEnCours(true);
 
-    await base44.entities.PaiementCommission.create({
+    await createRecord("paiements_commission", {
       vendeur_id: vendeurPaiement.id,
       vendeur_nom: vendeurPaiement.nom_complet,
       montant: montantPaiement,
@@ -69,12 +69,12 @@ export default function Commissions() {
       notes: notesPaiement,
     });
 
-    await base44.entities.Seller.update(vendeurPaiement.id, {
+    await updateRecord("sellers", vendeurPaiement.id, {
       solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement),
       total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement,
     });
 
-    await base44.entities.JournalAudit.create({
+    await createRecord("journal_audit", {
       action: "Commission payée",
       module: "paiement",
       details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.nom_complet} (${methodePaiement})`,

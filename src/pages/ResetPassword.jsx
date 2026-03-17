@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
@@ -7,6 +6,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import { LOGO_URL as LOGO } from "@/components/constants";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ResetPassword() {
   const [nouveauMdp, setNouveauMdp] = useState("");
@@ -40,7 +40,7 @@ export default function ResetPassword() {
 
     setChargement(true);
     try {
-      const response = await base44.functions.invoke('confirmResetPassword', {
+      const response = await supabase.functions.invoke('confirmResetPassword', {
         token,
         email,
         nouveau_mot_de_passe: nouveauMdp,

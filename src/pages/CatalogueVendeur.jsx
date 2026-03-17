@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +8,7 @@ import { createPageUrl } from "@/utils";
 import { Search, Package, ExternalLink, ChevronLeft, PlayCircle } from "lucide-react";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import BlocageKycPending from "@/components/BlocageKycPending";
+import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function CatalogueVendeur() {
   const [recherche, setRecherche] = useState("");
@@ -18,7 +18,7 @@ export default function CatalogueVendeur() {
     const charger = async () => {
       const session = getVendeurSession();
       if (!session) return;
-      const sellers = await base44.entities.Seller.filter({ email: session.email });
+      const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) setCompteVendeur(sellers[0]);
     };
     charger();
@@ -26,7 +26,7 @@ export default function CatalogueVendeur() {
 
   const { data: produits = [], isLoading } = useQuery({
     queryKey: ["produits_catalogue"],
-    queryFn: () => base44.entities.Produit.filter({ statut: "actif" }),
+    queryFn: () => filterTable("produits", { statut: "actif" }),
   });
 
   // Blocage doux si KYC en attente
