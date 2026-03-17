@@ -9,74 +9,45 @@ export default function AdminHeader({ currentPageName, onMenuOpen, showBurger = 
   const sousAdmin = getSousAdminSession();
   const adminSession = getAdminSession();
 
-  const pageTitle =
-    ADMIN_MENU.find((i) => i.page === currentPageName)?.label || "ZONITE";
+  const pageTitle = ADMIN_MENU.find((item) => item.page === currentPageName)?.label || "ZONITE";
+  const roleLabel = adminSession ? "Admin principal" : sousAdmin?.nom_role;
+  const contextLabel = sousAdmin ? "Espace sous-admin" : "Espace administration";
 
   return (
-    <header style={{
-      height: 56,
-      background: "white",
-      borderBottom: "1px solid #E2E8F0",
-      display: "flex",
-      alignItems: "center",
-      padding: "0 16px",
-      gap: 12,
-      flexShrink: 0,
-      zIndex: 100,
-    }}>
-      {/* Burger mobile */}
-      {showBurger && (
-        <button
-          onClick={onMenuOpen}
-          style={{
-            padding: "6px", marginLeft: -6, borderRadius: 8,
-            color: "#475569", background: "none", border: "none",
-            cursor: "pointer", display: "flex", alignItems: "center",
-          }}
-        >
-          <Menu size={22} />
-        </button>
-      )}
-
-      {/* Logo mobile */}
-      {showBurger && (
-        <img
-          src={LOGO}
-          alt="Zonite"
-          style={{ height: 28, width: 28, borderRadius: 6, objectFit: "contain", flexShrink: 0 }}
-        />
-      )}
-
-      {/* Titre */}
-      <h1 style={{
-        flex: 1, fontSize: 15, fontWeight: 600, color: "#0F172A",
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        margin: 0,
-      }}>
-        {pageTitle}
-      </h1>
-
-      {/* Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <NotificationCenter />
-        {adminSession && (
-          <span style={{
-            fontSize: 11, background: "rgba(245,197,24,0.2)", color: "#1a1f5e",
-            fontWeight: 700, padding: "3px 10px", borderRadius: 20,
-            whiteSpace: "nowrap",
-          }}>
-            Admin Principal
-          </span>
+    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="flex min-h-16 items-center gap-3 px-3 sm:px-4 md:px-6">
+        {showBurger && (
+          <button
+            onClick={onMenuOpen}
+            type="button"
+            aria-label="Ouvrir le menu admin"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-accent"
+          >
+            <Menu size={20} />
+          </button>
         )}
-        {sousAdmin && (
-          <span style={{
-            fontSize: 11, background: "rgba(245,197,24,0.2)", color: "#1a1f5e",
-            fontWeight: 700, padding: "3px 10px", borderRadius: 20,
-            whiteSpace: "nowrap",
-          }}>
-            {sousAdmin.nom_role}
-          </span>
+
+        {showBurger && (
+          <img
+            src={LOGO}
+            alt="Zonite"
+            className="h-8 w-8 rounded-lg border border-border bg-card p-1 object-contain"
+          />
         )}
+
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">{pageTitle}</h1>
+          <p className="hidden truncate text-xs text-muted-foreground sm:block">{contextLabel}</p>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <NotificationCenter />
+          {roleLabel && (
+            <span className="hidden rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground md:inline-flex">
+              {roleLabel}
+            </span>
+          )}
+        </div>
       </div>
     </header>
   );
