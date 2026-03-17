@@ -7,6 +7,7 @@ export const SELLER_STATUSES = {
   PENDING_VERIFICATION: "pending_verification",
   KYC_REQUIRED: "kyc_required",
   KYC_PENDING: "kyc_pending",
+  KYC_REJECTED: "kyc_rejected",
   KYC_APPROVED_TRAINING_REQUIRED: "kyc_approved_training_required",
   ACTIVE_SELLER: "active_seller",
 };
