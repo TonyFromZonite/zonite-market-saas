@@ -11,7 +11,6 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
-import { filterTable } from "@/lib/supabaseHelpers";
 
 export default function CatalogueVendeur() {
   const [recherche, setRecherche] = useState("");
