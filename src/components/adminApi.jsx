@@ -128,6 +128,15 @@ export const adminApi = {
     const { error } = await supabase.from("config_app").update(updates).eq("id", id);
     if (error) throw error;
   },
+  async createConfigApp({ cle, valeur }) {
+    const { data, error } = await supabase.from("config_app").insert({ cle, valeur }).select().single();
+    if (error) throw error;
+    return { result: data };
+  },
+  async updateConfigApp(id, { cle, valeur }) {
+    const { error } = await supabase.from("config_app").update({ cle, valeur }).eq("id", id);
+    if (error) throw error;
+  },
 
   // Tickets support
   async updateTicketSupport(id, data) {
