@@ -223,23 +223,24 @@ export default function PaiementsVendeurs() {
                 : null;
               return (
                 <div key={d.id} className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="space-y-1 flex-1 min-w-0">
                       <p className="font-bold text-lg text-slate-900">{formater(d.montant)}</p>
                       <p className="text-sm text-slate-700 font-medium">Vendeur : {seller?.full_name || d.vendeur_email}</p>
-                      <p className="text-sm text-slate-600">Opérateur : {d.operateur_mobile_money}</p>
-                      <p className="text-sm text-slate-600">Numéro : {d.numero_mobile_money}</p>
+                      <p className="text-sm text-slate-500">Email : {d.vendeur_email}</p>
+                      <p className="text-sm text-slate-600">💳 Opérateur : <span className="font-medium">{d.operateur_mobile_money}</span></p>
+                      <p className="text-sm text-slate-600">📱 Numéro : <span className="font-medium">{d.numero_mobile_money}</span></p>
                       {d.notes && (
-                        <p className="text-sm text-slate-600 flex items-center gap-1">
-                          {d.notes}
+                        <p className="text-sm text-slate-600 flex items-center gap-1 flex-wrap">
+                          👤 {d.notes}
                           {nameMatch !== null && (
                             nameMatch
                               ? <span className="text-emerald-600 text-xs font-medium ml-1">✅ Nom correspondant</span>
-                              : <span className="text-red-600 text-xs font-medium ml-1">❌ Nom différent</span>
+                              : <span className="text-red-600 text-xs font-medium ml-1">❌ Nom différent du profil ({seller?.full_name})</span>
                           )}
                         </p>
                       )}
-                      <p className="text-xs text-slate-400">Date demande : {formaterDate(d.created_at)}</p>
+                      <p className="text-xs text-slate-400">📅 Date demande : {formaterDate(d.created_at)}</p>
                       <Badge className="bg-yellow-100 text-yellow-800 border-0 text-xs mt-1">En attente</Badge>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
