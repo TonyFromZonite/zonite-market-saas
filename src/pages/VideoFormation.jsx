@@ -49,7 +49,7 @@ export default function VideoFormation() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!timerStarted.current || videoWatched) return;
+    if (!timerStarted || videoWatched) return;
     if (timeLeft <= 0) {
       setVideoWatched(true);
       return;
