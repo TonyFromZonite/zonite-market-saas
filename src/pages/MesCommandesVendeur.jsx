@@ -44,7 +44,13 @@ export default function MesCommandesVendeur() {
 
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeur", compteVendeur?.id],
-    queryFn: () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_date", 100),
+    queryFn: async () => {
+      const { data } = await supabase.from("commandes_vendeur").select("*")
+        .eq("vendeur_id", compteVendeur.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
     enabled: !!compteVendeur?.id,
   });
 
