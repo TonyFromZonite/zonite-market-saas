@@ -98,11 +98,14 @@ function ListeVendeurs() {
     if (!vendeurRoleEdite) return;
     setEnCours(true);
     try {
-      // Utiliser le vendeur_id déjà disponible (user_id du seller)
-      await supabase.functions.invoke('changeUserRole', {
-        user_email: vendeurRoleEdite.email,
-        new_role: nouveauRoleVendeur
-      });
+      // Update role in sellers table
+      await supabase.from("sellers").update({ role: nouveauRoleVendeur }).eq("id", vendeurRoleEdite.id);
+      
+      // Update role in user_roles table if user_id exists
+      if (vendeurRoleEdite.user_id) {
+        await supabase.from("user_roles").update({ role: nouveauRoleVendeur }).eq("user_id", vendeurRoleEdite.user_id);
+      }
+      
       await adminApi.createJournalAudit({ action: "Rôle utilisateur changé", module: "vendeur", details: `Rôle de ${vendeurRoleEdite.full_name || vendeurRoleEdite.nom_complet} changé en ${nouveauRoleVendeur}`, entite_id: vendeurRoleEdite.id });
       toast({ title: "Rôle changé avec succès", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
