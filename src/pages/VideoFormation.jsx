@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -45,11 +45,11 @@ export default function VideoFormation() {
   const [confirmWatched, setConfirmWatched] = useState(false);
   const [acceptConditions, setAcceptConditions] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const timerStarted = useRef(false);
+  const [timerStarted, setTimerStarted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!timerStarted.current || videoWatched) return;
+    if (!timerStarted || videoWatched) return;
     if (timeLeft <= 0) {
       setVideoWatched(true);
       return;
@@ -65,7 +65,7 @@ export default function VideoFormation() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [timerStarted.current, videoWatched, timeLeft]);
+  }, [timerStarted, videoWatched, timeLeft]);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,7 +189,7 @@ export default function VideoFormation() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen={true}
                 referrerPolicy="strict-origin-when-cross-origin"
-                onLoad={() => { timerStarted.current = true; setTimeLeft(30); }}
+                onLoad={() => { setTimerStarted(true); setTimeLeft(30); }}
                 style={{
                   position: 'absolute',
                   top: 0, left: 0,
