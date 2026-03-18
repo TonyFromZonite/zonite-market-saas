@@ -74,10 +74,9 @@ export default function Commissions() {
 
     await createRecord("paiements_commission", {
       vendeur_id: vendeurPaiement.id,
-      vendeur_nom: vendeurPaiement.nom_complet,
       montant: montantPaiement,
       methode_paiement: methodePaiement,
-      notes: notesPaiement,
+      effectue_par: "admin",
     });
 
     await updateRecord("sellers", vendeurPaiement.id, {
