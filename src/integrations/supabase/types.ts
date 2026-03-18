@@ -95,6 +95,7 @@ export type Database = {
           actif: boolean | null
           created_at: string
           description: string | null
+          emoji: string | null
           id: string
           image_url: string | null
           nom: string
@@ -104,6 +105,7 @@ export type Database = {
           actif?: boolean | null
           created_at?: string
           description?: string | null
+          emoji?: string | null
           id?: string
           image_url?: string | null
           nom: string
@@ -113,6 +115,7 @@ export type Database = {
           actif?: boolean | null
           created_at?: string
           description?: string | null
+          emoji?: string | null
           id?: string
           image_url?: string | null
           nom?: string
