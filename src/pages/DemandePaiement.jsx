@@ -253,16 +253,28 @@ export default function DemandePaiement() {
               <h3 className="font-semibold text-slate-900 text-sm">Historique des demandes</h3>
             </div>
             {demandes.map(d => (
-              <div key={d.id} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-0">
-                <div>
+              <div key={d.id} className="p-4 border-b border-slate-50 last:border-0">
+                <div className="flex items-center justify-between mb-1">
                   <p className="font-bold text-slate-900">{formater(d.montant)}</p>
-                  <p className="text-xs text-slate-500">{d.operateur_mobile_money} • {d.numero_mobile_money}</p>
-                  {d.notes && <p className="text-xs text-slate-400">{d.notes}</p>}
-                  <p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p>
+                  <Badge className={`${STATUTS_PAIEMENT[d.statut]?.couleur || 'bg-slate-100 text-slate-800'} border-0 text-xs`}>
+                    {STATUTS_PAIEMENT[d.statut]?.label || d.statut}
+                  </Badge>
                 </div>
-                <Badge className={`${STATUTS_PAIEMENT[d.statut]?.couleur || 'bg-slate-100 text-slate-800'} border-0 text-xs`}>
-                  {STATUTS_PAIEMENT[d.statut]?.label || d.statut}
-                </Badge>
+                <p className="text-xs text-slate-500">{d.operateur_mobile_money} • {d.numero_mobile_money}</p>
+                {d.notes && <p className="text-xs text-slate-400">{d.notes}</p>}
+                <p className="text-xs text-slate-400">Demandé le {formaterDate(d.created_at)}</p>
+                {d.traite_at && (
+                  <p className="text-xs text-slate-400">Traité le {formaterDate(d.traite_at)}{d.traite_par ? ` par ${d.traite_par}` : ""}</p>
+                )}
+                {d.reference_paiement && (
+                  <p className="text-xs text-emerald-600 font-medium mt-1">Réf: {d.reference_paiement}</p>
+                )}
+                {d.motif_rejet && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs text-red-700 font-semibold">Motif du rejet :</p>
+                    <p className="text-xs text-red-600">{d.motif_rejet}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
