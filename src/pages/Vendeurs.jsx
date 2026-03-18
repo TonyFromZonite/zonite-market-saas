@@ -432,9 +432,9 @@ function CommissionsTab() {
           <Table>
             <TableHeader><TableRow className="bg-slate-50"><TableHead>Vendeur</TableHead><TableHead className="text-right">Gagné</TableHead><TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Solde à Payer</TableHead><TableHead className="w-32">Action</TableHead></TableRow></TableHeader>
             <TableBody>
-              {vendeurs.filter(v => v.statut === "actif").map((v) => (
+              {vendeurs.filter(v => v.seller_status === "active_seller").map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
-                  <TableCell className="font-medium">{v.nom_complet}</TableCell>
+                  <TableCell className="font-medium">{v.full_name || v.nom_complet}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_payees)}</TableCell>
                   <TableCell className="text-right"><span className={`font-bold ${(v.solde_commission || 0) > 0 ? "text-yellow-600" : "text-emerald-600"}`}>{formater(v.solde_commission)}</span></TableCell>
