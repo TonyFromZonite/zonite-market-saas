@@ -145,7 +145,7 @@ function ListeVendeurs() {
             </TableHeader>
             <TableBody>
               {vendeursFiltres.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-slate-400">Aucun vendeur</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-slate-400">Aucun vendeur</TableCell></TableRow>
               )}
               {vendeursFiltres.map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
