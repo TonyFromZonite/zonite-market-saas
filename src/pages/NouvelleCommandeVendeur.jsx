@@ -31,6 +31,9 @@ export default function NouvelleCommandeVendeur() {
   const [succes, setSucces] = useState(false);
   const queryClient = useQueryClient();
 
+  const location = useLocation();
+  const prefilledProduct = location.state;
+
   useEffect(() => {
     const charger = async () => {
       const session = getVendeurSession();
@@ -38,9 +41,15 @@ export default function NouvelleCommandeVendeur() {
       const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) setCompteVendeur(sellers[0]);
       else setErreur("Compte vendeur introuvable");
-      const params = new URLSearchParams(window.location.search);
-      const produitId = params.get("produit_id");
-      if (produitId) setForm((f) => ({ ...f, produit_id: produitId }));
+
+      // Pre-fill from navigation state or URL params
+      if (prefilledProduct?.produit_id) {
+        setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const produitId = params.get("produit_id");
+        if (produitId) setForm((f) => ({ ...f, produit_id: produitId }));
+      }
     };
     charger();
   }, []);

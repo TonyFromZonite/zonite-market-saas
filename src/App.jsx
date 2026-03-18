@@ -87,6 +87,14 @@ const AuthenticatedApp = () => {
         <Route path="/ResoumissionKYC" element={
           <LayoutWrapper currentPageName="ResoumissionKYC"><ResoumissionKYC /></LayoutWrapper>
         } />
+        <Route path="/CatalogueVendeur/:categorieId" element={
+          <LayoutWrapper currentPageName="CatalogueVendeur">
+            {React.createElement(PAGES.CatalogueVendeur || (() => null))}
+          </LayoutWrapper>
+        } />
+        <Route path="/ProduitDetail/:produitId" element={
+          <LayoutWrapper currentPageName="ProduitDetail"><ProduitDetail /></LayoutWrapper>
+        } />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </Suspense>
