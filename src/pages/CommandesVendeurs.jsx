@@ -43,18 +43,20 @@ export default function CommandesVendeurs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commandes_vendeur")
-        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name)")
+        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name), produits!commandes_vendeur_produit_id_fkey(prix_gros)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) { console.error("load commandes:", error); return []; }
-      return (data || []).map(c => ({
-        ...c,
-        vendeur_nom: c.sellers?.full_name || c.vendeur_email,
-        // Compute commission: (prix_final_client - prix_unitaire) * quantite
-        commission_calculee: c.prix_final_client
-          ? Math.max(0, (Number(c.prix_final_client) - Number(c.prix_unitaire || 0)) * (c.quantite || 1))
-          : 0,
-      }));
+      return (data || []).map(c => {
+        const prixGros = Number(c.produits?.prix_gros) || Number(c.prix_unitaire) || 0;
+        const prixFinal = Number(c.prix_final_client) || 0;
+        return {
+          ...c,
+          vendeur_nom: c.sellers?.full_name || c.vendeur_email,
+          // Commission = (prix_final_client - prix_gros) × quantite
+          commission_calculee: Math.max(0, (prixFinal - prixGros) * (c.quantite || 1)),
+        };
+      });
     },
   });
 
