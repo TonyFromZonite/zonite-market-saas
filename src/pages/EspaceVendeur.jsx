@@ -551,7 +551,7 @@ export default function EspaceVendeur() {
       </div>
 
       {/* SECTION A — Stats personnelles */}
-      <div className="px-3 -mt-4">
+      <div className="px-2 sm:px-3 -mt-4 max-w-screen-md mx-auto w-full">
         {/* Stats row 1: Total gagné / Total reçu */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
