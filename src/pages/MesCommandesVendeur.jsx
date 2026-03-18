@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getVendeurSession } from "@/components/useSessionGuard";
+import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { createPageUrl } from "@/utils";
 import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import VendeurBottomNav from "@/components/VendeurBottomNav";
-import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS = {
@@ -20,7 +19,6 @@ const STATUTS = {
   livree:                      { label: "✅ Livrée", couleur: "bg-emerald-100 text-emerald-800" },
   echec_livraison:             { label: "❌ Échec livraison", couleur: "bg-orange-100 text-orange-800" },
   annulee:                     { label: "🚫 Annulée", couleur: "bg-red-100 text-red-800" },
-  // Rétrocompatibilité anciens statuts
   en_attente:                  { label: "⏳ En attente", couleur: "bg-yellow-100 text-yellow-800" },
   en_preparation:              { label: "En préparation", couleur: "bg-blue-100 text-blue-800" },
   echec:                       { label: "Échec", couleur: "bg-red-100 text-red-800" },
@@ -29,25 +27,34 @@ const STATUTS = {
 export default function MesCommandesVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [recherche, setRecherche] = useState("");
+  const [sessionLoading, setSessionLoading] = useState(true);
 
   useEffect(() => {
     const charger = async () => {
-      const session = getVendeurSession();
+      const session = await getVendeurSessionAsync();
       if (!session) {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      const sellers = await filterTable("sellers", { email: session.email });
-      if (sellers.length > 0) setCompteVendeur(sellers[0]);
+      // Get fresh seller data
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("id", session.id)
+        .maybeSingle();
+      
+      setCompteVendeur(seller || session);
+      setSessionLoading(false);
     };
     charger();
   }, []);
 
   const { data: commandes = [], isLoading } = useQuery({
-    queryKey: ["commandes_vendeur", compteVendeur?.id],
+    queryKey: ["commandes_vendeur", compteVendeur?.id, compteVendeur?.email],
     queryFn: async () => {
+      // Query by both vendeur_id and email to catch any mismatches
       const { data } = await supabase.from("commandes_vendeur").select("*")
-        .eq("vendeur_id", compteVendeur.id)
+        .or(`vendeur_id.eq.${compteVendeur.id},vendeur_email.eq.${compteVendeur.email}`)
         .order("created_at", { ascending: false })
         .limit(100);
       return data || [];

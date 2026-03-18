@@ -9,6 +9,7 @@
  */
 
 import { createPageUrl } from "@/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Lecture des sessions ────────────────────────────────────────────────────
 
@@ -37,6 +38,72 @@ export function getVendeurSession() {
     const parsed = JSON.parse(data);
     return parsed?.role === 'vendeur' ? parsed : null;
   } catch (_) { return null; }
+}
+
+/**
+ * Async version: tries sessionStorage first, then falls back to Supabase auth + sellers table.
+ * Use this in pages that load vendor data to handle session edge cases.
+ */
+export async function getVendeurSessionAsync() {
+  // Try sessionStorage first
+  const stored = getVendeurSession();
+  if (stored?.id) return stored;
+
+  // Fallback: get from Supabase auth
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Try by user_id
+    let seller = null;
+    const { data: sellerByUserId } = await supabase
+      .from("sellers")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    seller = sellerByUserId;
+
+    // Fallback by email
+    if (!seller) {
+      const { data: sellerByEmail } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("email", user.email)
+        .maybeSingle();
+
+      if (sellerByEmail) {
+        // Fix missing user_id
+        await supabase
+          .from("sellers")
+          .update({ user_id: user.id })
+          .eq("id", sellerByEmail.id);
+        seller = { ...sellerByEmail, user_id: user.id };
+      }
+    }
+
+    if (!seller) return null;
+
+    // Rebuild and save session
+    const session = {
+      id: seller.id,
+      user_id: user.id,
+      email: seller.email,
+      nom_complet: seller.full_name,
+      role: "vendeur",
+      seller_status: seller.seller_status,
+      statut_kyc: seller.statut_kyc,
+      telephone: seller.telephone,
+      catalogue_debloque: seller.catalogue_debloque,
+      training_completed: seller.training_completed,
+      solde_commission: seller.solde_commission,
+    };
+
+    sessionStorage.setItem("vendeur_session", JSON.stringify(session));
+    return session;
+  } catch (_) {
+    return null;
+  }
 }
 
 /**
