@@ -75,13 +75,6 @@ export default function DemandePaiement() {
     if (!form.numero_mobile_money) return setErreur("Renseignez votre numéro Mobile Money");
     if (!form.nom_titulaire) return setErreur("Renseignez le nom du titulaire du compte");
 
-    if (form.nom_titulaire.toLowerCase().trim() !== compteVendeur?.full_name?.toLowerCase().trim()) {
-      const confirmed = window.confirm(
-        `⚠️ ATTENTION\n\nLe nom "${form.nom_titulaire}" ne correspond pas à votre nom sur Zonite Market "${compteVendeur?.full_name}".\n\nVotre paiement risque d'être rejeté par l'administrateur.\n\nVoulez-vous quand même continuer ?`
-      );
-      if (!confirmed) return;
-    }
-
     setEnCours(true);
     setErreur("");
 
@@ -195,26 +188,20 @@ export default function DemandePaiement() {
           </div>
         )}
 
-        {/* Name matching warning */}
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-          <span className="text-2xl flex-shrink-0">⚠️</span>
-          <div>
-            <p className="font-bold text-amber-700 text-sm mb-1">Important - Vérifiez votre nom</p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Le paiement sera effectué <strong className="text-amber-700">uniquement si le nom du titulaire du compte Mobile Money est identique à votre nom sur Zonite Market.</strong>
-            </p>
-            <div className="mt-2 p-2 bg-white/70 rounded-lg text-xs text-slate-700">
-              Votre nom sur Zonite Market : <strong className="text-amber-700 ml-1">{compteVendeur?.full_name}</strong>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold text-slate-900 text-sm">Nouvelle demande</h2>
           <div className="space-y-1">
             <Label>Montant à retirer (FCFA) *</Label>
-            <Input type="number" min="5000" value={form.montant} onFocus={e => e.target.select()}
-              onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} placeholder="Min. 5 000 FCFA" />
+            <Input type="number" min="5000" max={compteVendeur?.solde_commission || 0} value={form.montant} onFocus={e => e.target.select()}
+              onChange={e => {
+                const val = e.target.value;
+                const max = compteVendeur?.solde_commission || 0;
+                if (val && parseFloat(val) > max) {
+                  setForm(f => ({ ...f, montant: String(max) }));
+                } else {
+                  setForm(f => ({ ...f, montant: val }));
+                }
+              }} placeholder="Min. 5 000 FCFA" />
             <p className="text-xs text-slate-400">Disponible : {formater(compteVendeur?.solde_commission)}</p>
           </div>
           <div className="space-y-1">
@@ -239,16 +226,8 @@ export default function DemandePaiement() {
             <Input
               value={form.nom_titulaire}
               onChange={e => setForm(f => ({ ...f, nom_titulaire: e.target.value }))}
-              placeholder={compteVendeur?.full_name || "Nom complet du titulaire"}
-              className={form.nom_titulaire ? (form.nom_titulaire.toLowerCase().trim() === compteVendeur?.full_name?.toLowerCase().trim() ? "border-emerald-400 focus:border-emerald-500" : "border-red-400 focus:border-red-500") : ""}
+              placeholder="Nom complet du titulaire"
             />
-            {form.nom_titulaire && (
-              form.nom_titulaire.toLowerCase().trim() === compteVendeur?.full_name?.toLowerCase().trim() ? (
-                <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">✅ Nom correspondant — votre paiement sera traité</p>
-              ) : (
-                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">❌ Ce nom ne correspond pas à votre nom Zonite Market ({compteVendeur?.full_name}). Votre paiement pourrait être rejeté.</p>
-              )
-            )}
           </div>
           <Button onClick={soumettre} disabled={enCours || (compteVendeur?.solde_commission || 0) < 5000}
             className="w-full bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">
