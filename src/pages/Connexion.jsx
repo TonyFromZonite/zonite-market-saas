@@ -6,16 +6,10 @@ import { Eye, EyeOff, Facebook } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
-const MESSAGES_MOTIVATION = [
-"Chaque vente est une victoire.\nAllons-y 🚀"];
-
-
-
 const TikTokIcon = ({ size = 20 }) =>
 <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.77a4.85 4.85 0 01-1.01-.08z" />
   </svg>;
-
 
 const MODE_VENDEUR = "vendeur";
 const MODE_ADMIN = "admin";
@@ -28,7 +22,6 @@ export default function Connexion() {
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState("");
   const [configs, setConfigs] = useState({});
-  const [msgIndex] = useState(() => Math.floor(Math.random() * MESSAGES_MOTIVATION.length));
 
   const [modeMdpOublie, setModeMdpOublie] = useState(false);
   const [emailOublie, setEmailOublie] = useState("");
@@ -41,7 +34,12 @@ export default function Connexion() {
         const { data } = await supabase.from("config_app").select("cle, valeur");
         const map = {};
         (data || []).forEach((i) => {
-          try {map[i.cle] = typeof i.valeur === "string" ? i.valeur : JSON.parse(JSON.stringify(i.valeur));} catch {map[i.cle] = i.valeur;}
+          try {
+            const val = typeof i.valeur === "string" ? i.valeur : JSON.stringify(i.valeur);
+            map[i.cle] = val.replace(/^"|"$/g, '');
+          } catch {
+            map[i.cle] = String(i.valeur || '').replace(/^"|"$/g, '');
+          }
         });
         setConfigs(map);
       } catch (_) {}
@@ -58,7 +56,6 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      // If input doesn't contain @, treat as username and resolve email via RPC (bypasses RLS)
       if (!loginEmail.includes("@")) {
         const { data: resolvedEmail, error: rpcError } = await supabase
           .rpc("resolve_username_to_email", { _username: loginEmail });
@@ -149,10 +146,13 @@ export default function Connexion() {
     setChargementOublie(false);
   };
 
-  const lienFacebook = configs["lien_facebook"] || "https://facebook.com";
-  const lienTiktok = configs["lien_tiktok"] || "https://tiktok.com";
-  const messageAccueil = configs["message_accueil"] || MESSAGES_MOTIVATION[msgIndex];
+  const lienFacebook = configs["lien_facebook"] || "";
+  const lienTiktok = configs["lien_tiktok"] || "";
+  const lienInstagram = configs["lien_instagram"] || "";
+  const messageAccueil = configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀";
   const nomApp = configs["nom_app"] || "ZONITE Vendeurs";
+
+  const hasSocialLinks = lienFacebook || lienTiktok || lienInstagram;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
@@ -167,12 +167,12 @@ export default function Connexion() {
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
         <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight">
-          {String(nomApp).replace(/"/g, '').split(" ").map((w, i) =>
+          {String(nomApp).split(" ").map((w, i) =>
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
         <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3">
-          {String(messageAccueil).replace(/"/g, '')}
+          {String(messageAccueil)}
         </p>
       </div>
 
@@ -266,20 +266,31 @@ export default function Connexion() {
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-3 md:gap-4 mt-5 md:mt-8 px-3">
-        <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
-        <div className="flex items-center gap-2 md:gap-3">
-          <a href={String(lienFacebook).replace(/"/g, '')} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
-            <Facebook className="w-3 h-3 md:w-4 md:h-4 text-[#1877F2]" /> <span className="hidden sm:inline">Facebook</span>
-          </a>
-          <a href={String(lienTiktok).replace(/"/g, '')} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
-            <TikTokIcon size={14} /> <span className="hidden sm:inline">TikTok</span>
-          </a>
+      {hasSocialLinks && (
+        <div className="relative z-10 flex flex-col items-center gap-3 md:gap-4 mt-5 md:mt-8 px-3">
+          <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
+          <div className="flex items-center gap-2 md:gap-3">
+            {lienFacebook && (
+              <a href={lienFacebook} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
+                <Facebook className="w-3 h-3 md:w-4 md:h-4 text-[#1877F2]" /> <span className="hidden sm:inline">Facebook</span>
+              </a>
+            )}
+            {lienTiktok && (
+              <a href={lienTiktok} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
+                <TikTokIcon size={14} /> <span className="hidden sm:inline">TikTok</span>
+              </a>
+            )}
+            {lienInstagram && (
+              <a href={lienInstagram} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white/10 hover:bg-pink-500/30 border border-white/20 rounded-2xl px-3 md:px-4 py-1.5 md:py-2 text-white text-xs md:text-sm font-medium transition-all active:scale-95">
+                <span className="text-xs">IG</span> <span className="hidden sm:inline">Instagram</span>
+              </a>
+            )}
+          </div>
         </div>
-        <p className="text-slate-500 text-[10px] md:text-xs">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
-      </div>
+      )}
+      <p className="relative z-10 text-slate-500 text-[10px] md:text-xs mt-3 mb-2">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
     </div>);
-
 }
