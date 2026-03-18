@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Search, ChevronLeft, ChevronRight, Shield, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import RapportsVentes from "./RapportsVentes";
+const RapportsVentes = lazy(() => import("./RapportsVentes"));
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULES = {
