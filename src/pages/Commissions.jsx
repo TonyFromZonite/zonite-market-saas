@@ -240,7 +240,7 @@ export default function Commissions() {
           {vendeurPaiement && (
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.nom_complet}</span></p>
+                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.full_name}</span></p>
                 <p className="text-sm text-slate-600">Solde actuel: <span className="font-bold text-yellow-600">{formater(vendeurPaiement.solde_commission)}</span></p>
               </div>
               <div className="space-y-2">
