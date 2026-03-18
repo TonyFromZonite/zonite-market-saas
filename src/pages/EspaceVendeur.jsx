@@ -468,32 +468,31 @@ export default function EspaceVendeur() {
       {compteVendeur.seller_status === SELLER_STATUSES.KYC_PENDING && <BanniereKycPending />}
 
       {/* Header with logout */}
-      <div className="bg-[#1a1f5e] text-white px-4 pt-6 pb-10" style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))" }}>
+      <div className="bg-[#1a1f5e] text-white px-3 pt-4 pb-8" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex justify-between items-center mb-1">
-          <div className="flex items-center gap-3">
-            <img src={LOGO} alt="Zonite" className="h-9 w-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
+          <div className="flex items-center gap-2">
+            <img src={LOGO} alt="Zonite" className="h-8 w-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <span className="text-xs font-bold tracking-tight leading-none">ZONITE <span className="text-[#F5C518]">Vendeurs</span></span>
-              <p className="text-slate-300 text-xs mt-0.5">Bonjour 👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+              <p className="text-slate-300 text-[11px] mt-0.5 truncate max-w-[160px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <NotificationCenterVendeur />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-none text-red-300 hover:text-red-200 hover:bg-white/10 transition-colors text-xs font-medium"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg border-none text-red-300 hover:text-red-200 hover:bg-white/10 transition-colors text-xs font-medium"
             >
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Déconnexion</span>
+              <LogOut size={14} />
             </button>
           </div>
         </div>
 
         {/* Solde */}
-        <div className="mt-4 bg-white/10 rounded-2xl p-4">
-          <p className="text-slate-300 text-xs mb-1">Solde commissions disponible</p>
-          <p className="text-3xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
-          <p className="text-xs text-slate-300 mt-1">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
+        <div className="mt-3 bg-white/10 rounded-xl p-3">
+          <p className="text-slate-300 text-[11px] mb-0.5">Solde commissions</p>
+          <p className="text-2xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
+          <p className="text-[11px] text-slate-300 mt-0.5">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
         </div>
       </div>
 
