@@ -3,7 +3,7 @@ import VentesVendeurTab from "@/components/rapports/VentesVendeurTab";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download, Loader2 } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download, Loader2, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
