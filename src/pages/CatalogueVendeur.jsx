@@ -21,17 +21,26 @@ export default function CatalogueVendeur() {
 
   useEffect(() => {
     const checkAccess = async () => {
-      const session = getVendeurSession();
+      const { getVendeurSessionAsync } = await import("@/components/useSessionGuard");
+      const session = await getVendeurSessionAsync();
       if (!session) { window.location.href = createPageUrl("Connexion"); return; }
 
-      const sellers = await filterTable("sellers", { email: session.email });
-      if (sellers.length === 0) { window.location.href = createPageUrl("Connexion"); return; }
+      // Always load fresh seller from DB
+      let seller = null;
+      if (session.id) {
+        const { data } = await supabase.from("sellers").select("*").eq("id", session.id).maybeSingle();
+        seller = data;
+      }
+      if (!seller && session.email) {
+        const { data } = await supabase.from("sellers").select("*").eq("email", session.email).maybeSingle();
+        seller = data;
+      }
+      if (!seller) { setIsLocked(true); return; }
 
-      const seller = sellers[0];
       setCompteVendeur(seller);
 
       if (seller.seller_status === "kyc_pending") {
-        setIsLocked(false); // will show BlocageKycPending
+        setIsLocked(false);
         return;
       }
 
