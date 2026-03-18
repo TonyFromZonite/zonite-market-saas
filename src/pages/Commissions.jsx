@@ -42,12 +42,22 @@ export default function Commissions() {
 
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
     queryKey: ["vendeurs"],
-    queryFn: () => listTable("sellers"),
+    queryFn: async () => {
+      const { data } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({
     queryKey: ["paiements_commissions"],
-    queryFn: () => listTable("paiements_commission", "-created_date", 100),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("paiements_commission")
+        .select("*, sellers!paiements_commission_vendeur_id_fkey(full_name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
   });
 
   const ouvrirPaiement = (vendeur) => {
