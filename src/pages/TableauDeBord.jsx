@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCachedQuery } from "@/components/CacheManager";
+import { supabase } from "@/integrations/supabase/client";
 
 // Composant helper pour 2 colonnes sur desktop, 1 sur mobile
 function ResponsiveRow({ children }) {
@@ -8,7 +11,6 @@ function ResponsiveRow({ children }) {
     </div>
   );
 }
-import { useCachedQuery } from "@/components/CacheManager";
 import {
   DollarSign, TrendingUp, Wallet, AlertTriangle,
   ShoppingCart, Package, Users, ShieldCheck, Lock
