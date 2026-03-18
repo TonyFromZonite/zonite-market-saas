@@ -35,7 +35,7 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
       [SELLER_STATUSES.KYC_REQUIRED]: true,
       [SELLER_STATUSES.KYC_PENDING]: true,
-      [SELLER_STATUSES.KYC_REJECTED]: true,  // ✅ accès pour resoumettre KYC
+      [SELLER_STATUSES.KYC_REJECTED]: true,
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
@@ -67,7 +67,7 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
       [SELLER_STATUSES.PENDING_VERIFICATION]: false,
       [SELLER_STATUSES.KYC_REQUIRED]: true,
       [SELLER_STATUSES.KYC_PENDING]: true,
-      [SELLER_STATUSES.KYC_REJECTED]: true,  // ✅ accès au profil pendant resoumission
+      [SELLER_STATUSES.KYC_REJECTED]: true,
       [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
       [SELLER_STATUSES.ACTIVE_SELLER]: true,
     },
@@ -75,11 +75,9 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
 
   let canAccess = accessMap[feature]?.[sellerStatus] ?? false;
 
-  // If training is required but not completed, block catalog/sales access
-  if (sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED && !trainingCompleted) {
-    if (["catalog", "sales"].includes(feature)) {
-      canAccess = false;
-    }
+  // Block catalog/sales if training not completed, regardless of status
+  if (!trainingCompleted && ["catalog", "sales"].includes(feature)) {
+    canAccess = false;
   }
 
   return canAccess;
