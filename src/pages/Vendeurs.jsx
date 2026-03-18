@@ -149,19 +149,23 @@ function ListeVendeurs() {
                 <TableRow key={v.id} className="hover:bg-slate-50">
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{v.nom_complet?.[0]?.toUpperCase() || "V"}</div>
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{(v.full_name || v.nom_complet)?.[0]?.toUpperCase() || "V"}</div>
                       <div>
-                        <p className="font-medium">{v.nom_complet}</p>
-                        <p className="text-xs text-slate-500">{v.date_embauche ? new Date(v.date_embauche).toLocaleDateString("fr-FR") : ""}</p>
+                        <p className="font-medium">{v.full_name || v.nom_complet}</p>
+                        <p className="text-xs text-slate-500">{v.created_at ? new Date(v.created_at).toLocaleDateString("fr-FR") : ""}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm"><p>{v.email || "—"}</p><p className="text-slate-500">{v.telephone || "—"}</p></TableCell>
-                  <TableCell className="text-right font-medium">{formater(v.chiffre_affaires_genere)}</TableCell>
+                  <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
-                  <TableCell className="text-center">{v.nombre_ventes || 0}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="text-xs">{v.taux_commission || 10}%</Badge>
+                  </TableCell>
                   <TableCell>
-                    <Badge className={v.statut === "actif" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>{v.statut === "actif" ? "Actif" : "Inactif"}</Badge>
+                    <Badge className={v.seller_status === "active_seller" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>
+                      {v.seller_status === "active_seller" ? "Actif" : v.seller_status === "kyc_pending" ? "KYC en attente" : v.seller_status === "pending_verification" ? "Non vérifié" : v.seller_status}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
