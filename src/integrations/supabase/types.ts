@@ -495,6 +495,39 @@ export type Database = {
         }
         Relationships: []
       }
+      formation_videos: {
+        Row: {
+          actif: boolean | null
+          created_at: string
+          description: string
+          id: string
+          ordre: number | null
+          titre: string
+          updated_at: string
+          youtube_url: string
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string
+          description: string
+          id?: string
+          ordre?: number | null
+          titre: string
+          updated_at?: string
+          youtube_url: string
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string
+          description?: string
+          id?: string
+          ordre?: number | null
+          titre?: string
+          updated_at?: string
+          youtube_url?: string
+        }
+        Relationships: []
+      }
       journal_audit: {
         Row: {
           action: string
