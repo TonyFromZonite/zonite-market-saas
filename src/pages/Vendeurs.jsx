@@ -343,11 +343,14 @@ function ValidationKYC() {
                 <div><p className="text-slate-400">Opérateur</p><p className="font-medium">{compteSelectionne.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {compteSelectionne.photo_identite_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité</p><img src={compteSelectionne.photo_identite_url} alt="ID" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.photo_identite_url)} /></div>
+                {compteSelectionne.kyc_document_recto_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (recto)</p><img src={compteSelectionne.kyc_document_recto_url} alt="ID Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} /></div>
                 )}
-                {compteSelectionne.selfie_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><img src={compteSelectionne.selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.selfie_url)} /></div>
+                {compteSelectionne.kyc_document_verso_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (verso)</p><img src={compteSelectionne.kyc_document_verso_url} alt="ID Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} /></div>
+                )}
+                {compteSelectionne.kyc_selfie_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><img src={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_selfie_url)} /></div>
                 )}
               </div>
               <div className="space-y-1">
