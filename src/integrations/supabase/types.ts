@@ -327,6 +327,7 @@ export type Database = {
           created_at: string
           id: string
           montant: number
+          motif_rejet: string | null
           notes: string | null
           notes_admin: string | null
           numero_mobile_money: string
@@ -342,6 +343,7 @@ export type Database = {
           created_at?: string
           id?: string
           montant: number
+          motif_rejet?: string | null
           notes?: string | null
           notes_admin?: string | null
           numero_mobile_money: string
@@ -357,6 +359,7 @@ export type Database = {
           created_at?: string
           id?: string
           montant?: number
+          motif_rejet?: string | null
           notes?: string | null
           notes_admin?: string | null
           numero_mobile_money?: string
@@ -980,6 +983,7 @@ export type Database = {
           role: string
           seller_status: string
           solde_commission: number | null
+          solde_en_attente: number | null
           statut_kyc: string | null
           telephone: string | null
           total_commissions_gagnees: number | null
@@ -1016,6 +1020,7 @@ export type Database = {
           role?: string
           seller_status?: string
           solde_commission?: number | null
+          solde_en_attente?: number | null
           statut_kyc?: string | null
           telephone?: string | null
           total_commissions_gagnees?: number | null
@@ -1052,6 +1057,7 @@ export type Database = {
           role?: string
           seller_status?: string
           solde_commission?: number | null
+          solde_en_attente?: number | null
           statut_kyc?: string | null
           telephone?: string | null
           total_commissions_gagnees?: number | null

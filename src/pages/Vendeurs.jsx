@@ -525,6 +525,9 @@ function PaiementsTab() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ["demandes_paiement_admin"],
@@ -541,7 +544,7 @@ function PaiementsTab() {
   const { data: sellers = [] } = useQuery({
     queryKey: ["sellers_for_payments"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, total_commissions_payees");
+      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees");
       if (error) { console.error(error); return []; }
       return data || [];
     },
@@ -560,52 +563,56 @@ function PaiementsTab() {
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
   };
 
-  const traiterPaiement = async (demandeId) => {
+  // APPROVE payment — balance already deducted at request time, just confirm
+  const approuverPaiement = async (demandeId) => {
     setProcessingId(demandeId);
     try {
       const demande = demandes.find(d => d.id === demandeId);
       if (!demande) throw new Error("Demande introuvable");
       if (demande.statut !== "en_attente") throw new Error("Cette demande a déjà été traitée");
 
-      const seller = getSellerForDemande(demande);
+      // Get fresh seller data
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("id, full_name, email, solde_commission, solde_en_attente, total_commissions_payees")
+        .eq("id", demande.vendeur_id)
+        .single();
+
       if (!seller) throw new Error("Vendeur introuvable");
 
       const montant = Number(demande.montant);
-      const soldeActuel = Number(seller.solde_commission || 0);
-      if (montant > soldeActuel) throw new Error(`Solde insuffisant. Solde actuel : ${soldeActuel.toLocaleString("fr-FR")} FCFA`);
 
-      const { error: updateError } = await supabase.from("demandes_paiement_vendeur").update({
-        statut: "payee",
-        traite_par: "admin",
-        traite_at: new Date().toISOString(),
-      }).eq("id", demandeId);
-      if (updateError) throw updateError;
+      // Update demande to payee
+      const { error: demandeError } = await supabase
+        .from("demandes_paiement_vendeur")
+        .update({ statut: "payee", traite_par: "admin", traite_at: new Date().toISOString() })
+        .eq("id", demandeId);
+      if (demandeError) throw demandeError;
 
-      const nouveauSolde = soldeActuel - montant;
+      // Confirm: solde stays reduced (already deducted), reset solde_en_attente, increment total_payees
       const { error: sellerError } = await supabase.from("sellers").update({
-        solde_commission: Math.max(0, nouveauSolde),
+        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
         total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
       }).eq("id", seller.id);
       if (sellerError) throw sellerError;
 
+      // Create payment record
       await supabase.from("paiements_commission").insert({
-        demande_id: demandeId,
-        vendeur_id: seller.id,
-        montant,
+        demande_id: demandeId, vendeur_id: seller.id, montant,
         methode_paiement: demande.operateur_mobile_money,
         reference_paiement: `PAY-${Date.now().toString(36).toUpperCase()}`,
         effectue_par: "admin",
       });
 
+      // Notify vendor
       await supabase.from("notifications_vendeur").insert({
-        vendeur_id: seller.id,
-        vendeur_email: seller.email,
+        vendeur_id: seller.id, vendeur_email: seller.email,
         titre: "✅ Paiement effectué !",
-        message: `Votre retrait de ${montant.toLocaleString("fr-FR")} FCFA via ${demande.operateur_mobile_money} au ${demande.numero_mobile_money} a été effectué. Nouveau solde : ${Math.max(0, nouveauSolde).toLocaleString("fr-FR")} FCFA`,
-        type: "paiement",
+        message: `Votre retrait de ${montant.toLocaleString("fr-FR")} FCFA a été effectué avec succès !\n\n💳 Opérateur : ${demande.operateur_mobile_money}\n📱 Numéro : ${demande.numero_mobile_money}\n\n💰 Total reçu depuis le début : ${(Number(seller.total_commissions_payees || 0) + montant).toLocaleString("fr-FR")} FCFA\n\nMerci pour votre confiance ! 🎉`,
+        type: "succes",
       });
 
-      toast({ title: "✅ Paiement effectué", description: `${montant.toLocaleString("fr-FR")} FCFA envoyé à ${seller.full_name}` });
+      toast({ title: "✅ Paiement approuvé !", description: `${montant.toLocaleString("fr-FR")} FCFA payé à ${seller.full_name}` });
       refreshAll();
     } catch (error) {
       console.error("Payment error:", error);
@@ -615,31 +622,59 @@ function PaiementsTab() {
     }
   };
 
-  const handleRejectPayment = async (demandeId) => {
-    const reason = window.prompt("Motif du rejet (obligatoire) :");
-    if (!reason?.trim()) return;
+  // Open reject modal
+  const openRejectModal = (demandeId) => {
+    setRejectingId(demandeId);
+    setRejectReason("");
+    setShowRejectModal(true);
+  };
 
-    setProcessingId(demandeId);
+  // REJECT payment — RESTORE balance
+  const rejeterPaiement = async () => {
+    if (!rejectReason.trim()) {
+      toast({ title: "⚠️ Motif obligatoire", description: "Vous devez écrire le motif du rejet", variant: "destructive" });
+      return;
+    }
+    setProcessingId(rejectingId);
     try {
-      const demande = demandes.find(d => d.id === demandeId);
+      const demande = demandes.find(d => d.id === rejectingId);
       if (!demande) throw new Error("Demande introuvable");
 
-      await supabase.from("demandes_paiement_vendeur").update({
-        statut: "rejetee",
-        notes_admin: reason,
-        traite_par: "admin",
-        traite_at: new Date().toISOString(),
-      }).eq("id", demandeId);
+      // Get fresh seller data
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("id, full_name, email, solde_commission, solde_en_attente")
+        .eq("id", demande.vendeur_id)
+        .single();
 
+      if (!seller) throw new Error("Vendeur introuvable");
+
+      const montant = Number(demande.montant);
+
+      // Update demande to rejetee
+      await supabase.from("demandes_paiement_vendeur").update({
+        statut: "rejetee", motif_rejet: rejectReason.trim(),
+        traite_par: "admin", traite_at: new Date().toISOString(),
+      }).eq("id", rejectingId);
+
+      // RESTORE vendor balance
+      await supabase.from("sellers").update({
+        solde_commission: Number(seller.solde_commission || 0) + montant,
+        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
+      }).eq("id", seller.id);
+
+      // Notify vendor with exact reason
       await supabase.from("notifications_vendeur").insert({
-        vendeur_id: demande.vendeur_id,
-        vendeur_email: demande.vendeur_email,
+        vendeur_id: seller.id, vendeur_email: seller.email,
         titre: "❌ Demande de paiement rejetée",
-        message: `Votre demande de retrait de ${Number(demande.montant).toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif : ${reason}\n\nVotre solde reste inchangé.`,
+        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${(Number(seller.solde_commission || 0) + montant).toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
         type: "alerte",
       });
 
-      toast({ title: "✅ Demande rejetée", description: "Le vendeur a été notifié." });
+      toast({ title: "✅ Demande rejetée", description: `Solde de ${seller.full_name} restauré. Vendeur notifié.` });
+      setShowRejectModal(false);
+      setRejectingId(null);
+      setRejectReason("");
       refreshAll();
     } catch (error) {
       toast({ title: "❌ Erreur", description: error.message, variant: "destructive" });
@@ -654,8 +689,44 @@ function PaiementsTab() {
   const traitees = demandes.filter(d => d.statut !== "en_attente");
   const totalEnAttente = enAttente.reduce((s, d) => s + (d.montant || 0), 0);
 
+  const REJECT_SUGGESTIONS = [
+    "Nom Mobile Money incorrect",
+    "Numéro de compte invalide",
+    "Informations incomplètes",
+    "Solde insuffisant",
+    "Compte non vérifié",
+  ];
+
   return (
     <div className="space-y-5">
+      {/* Reject modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-red-200 shadow-xl">
+            <h3 className="text-lg font-bold text-red-600 mb-1">❌ Rejeter la demande</h3>
+            <p className="text-sm text-slate-500 mb-4">Le solde du vendeur sera automatiquement restauré.</p>
+            <label className="text-sm font-semibold text-slate-700 block mb-2">Motif du rejet * (obligatoire)</label>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {REJECT_SUGGESTIONS.map(s => (
+                <button key={s} onClick={() => setRejectReason(s)}
+                  className={`px-2.5 py-1 text-xs rounded-full border cursor-pointer transition-colors ${rejectReason === s ? "bg-red-100 border-red-300 text-red-700" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+              placeholder="Expliquez le motif du rejet au vendeur..." rows={3} className="mb-4" />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowRejectModal(false); setRejectReason(""); setRejectingId(null); }}>Annuler</Button>
+              <Button onClick={rejeterPaiement} disabled={!rejectReason.trim() || !!processingId}
+                className="flex-[2] bg-red-600 hover:bg-red-700 text-white font-bold">
+                {processingId ? "⏳ Traitement..." : "❌ Confirmer le rejet"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="p-3 bg-yellow-50 rounded-xl"><Wallet className="w-5 h-5 text-yellow-600" /></div>
@@ -723,10 +794,10 @@ function PaiementsTab() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleRejectPayment(d.id)} disabled={processingId === d.id} className="flex-1 text-red-600 border-red-200 hover:bg-red-50">
+                    <Button size="sm" variant="outline" onClick={() => openRejectModal(d.id)} disabled={processingId === d.id} className="flex-1 text-red-600 border-red-200 hover:bg-red-50">
                       <XCircle className="w-4 h-4 mr-1" /> Rejeter
                     </Button>
-                    <Button size="sm" onClick={() => traiterPaiement(d.id)} disabled={processingId === d.id} className="flex-[2] bg-emerald-600 hover:bg-emerald-700">
+                    <Button size="sm" onClick={() => approuverPaiement(d.id)} disabled={processingId === d.id} className="flex-[2] bg-emerald-600 hover:bg-emerald-700">
                       {processingId === d.id ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
                       {processingId === d.id ? "Traitement..." : "💸 Marquer comme payé"}
                     </Button>
@@ -750,7 +821,7 @@ function PaiementsTab() {
                     <p className="font-bold">{formater(d.montant)}</p>
                     <p className="text-sm text-slate-600">{seller?.full_name || d.vendeur_email} • {d.operateur_mobile_money}</p>
                     <p className="text-xs text-slate-500">{d.numero_mobile_money}</p>
-                    {d.notes_admin && <p className="text-xs text-red-500">Motif rejet : {d.notes_admin}</p>}
+                    {(d.motif_rejet || d.notes_admin) && <p className="text-xs text-red-500">Motif rejet : {d.motif_rejet || d.notes_admin}</p>}
                     <p className="text-xs text-slate-400">{formaterDate(d.created_at)}{d.traite_at ? ` → Traité: ${formaterDate(d.traite_at)}` : ""}</p>
                   </div>
                   <Badge className={`border-0 ${(d.statut === "payee" || d.statut === "paye") ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
