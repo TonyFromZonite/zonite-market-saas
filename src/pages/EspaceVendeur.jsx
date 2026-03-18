@@ -10,7 +10,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import {
-  ShoppingBag, Package,
+  ShoppingBag, Package, GraduationCap,
   Clock, CheckCircle2, XCircle, Truck, Plus,
   AlertCircle, Upload, Loader2, LogOut, Trophy, Wallet, TrendingUp, CalendarDays
 } from "lucide-react";
