@@ -643,7 +643,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* SECTION E — Transaction history */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm">📋 Historique des transactions</h3>
             <div className="flex gap-2 mt-3 flex-wrap">
