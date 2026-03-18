@@ -468,15 +468,19 @@ function PaiementsTab() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: sellers = [] } = useQuery({
     queryKey: ["sellers_for_payments"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees");
+      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees, total_commissions_gagnees");
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const getSellerForDemande = (d) => sellers.find(s => s.id === d.vendeur_id) || null;
