@@ -150,17 +150,17 @@ export default function GestionCommandes() {
   const handleLivree = async (commande) => {
     const quantite = commande.quantite || 1;
 
-    // Fetch product for prix_achat
+    // Fetch product for prix_achat & prix_gros
     const { data: produit } = await supabase
       .from("produits")
-      .select("prix_achat, prix_vente, stock_global")
+      .select("prix_achat, prix_gros, prix_vente, stock_global")
       .eq("id", commande.produit_id)
       .single();
 
-    // Fetch seller for commission rate & balance
+    // Fetch seller balance
     const { data: seller } = await supabase
       .from("sellers")
-      .select("solde_commission, total_commissions_gagnees, taux_commission")
+      .select("solde_commission, total_commissions_gagnees")
       .eq("id", commande.vendeur_id)
       .single();
 
@@ -169,19 +169,18 @@ export default function GestionCommandes() {
       return;
     }
 
+    const prixFinalClient = Number(commande.prix_final_client) || Number(commande.prix_unitaire) || Number(produit.prix_vente) || 0;
+    const prixGros = Number(produit.prix_gros) || 0;
     const prixAchat = Number(produit.prix_achat) || 0;
-    const tauxCommission = Number(seller.taux_commission) || 10;
-    const montantTotal = Number(commande.montant_total) || 0;
-    const prixFinalClient = Number(commande.prix_final_client) || montantTotal;
-    const prixUnitaire = Number(commande.prix_unitaire) || 0;
 
-    // Commission = (prix_final_client - prix_unitaire) × quantite
-    // Si pas de prix_final_client, fallback: montant_total × taux / 100
-    const commissionVendeur = commande.prix_final_client
-      ? (prixFinalClient - prixUnitaire) * quantite
-      : (montantTotal * tauxCommission) / 100;
+    // Commission vendeur = (prix_vente - prix_gros) × quantite
+    const commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
 
-    const profitZonite = montantTotal - commissionVendeur - (prixAchat * quantite);
+    // Marge ZONITE = (prix_gros - prix_achat) × quantite
+    const margeZonite = (prixGros - prixAchat) * quantite;
+
+    // CA total of this sale
+    const caVente = prixFinalClient * quantite;
 
     const now = new Date();
     const getWeekNumber = (d) => {
@@ -196,19 +195,22 @@ export default function GestionCommandes() {
       produit_id: commande.produit_id,
       commande_id: commande.id,
       quantite,
-      montant_total: montantTotal,
-      commission_vendeur: Math.max(0, commissionVendeur),
-      profit_zonite: profitZonite,
+      montant_total: caVente,
+      prix_final_client: prixFinalClient,
+      prix_gros: prixGros,
+      prix_achat: prixAchat,
+      commission_vendeur: commissionVendeur,
+      profit_zonite: margeZonite,
+      marge_zonite: margeZonite,
       prix_achat_unitaire: prixAchat,
-      taux_commission_applique: tauxCommission,
       semaine: getWeekNumber(now),
       mois: now.getMonth() + 1,
       annee: now.getFullYear(),
     });
 
     // 2. Credit seller balance
-    const nouveauSolde = (Number(seller.solde_commission) || 0) + Math.max(0, commissionVendeur);
-    const nouveauTotal = (Number(seller.total_commissions_gagnees) || 0) + Math.max(0, commissionVendeur);
+    const nouveauSolde = (Number(seller.solde_commission) || 0) + commissionVendeur;
+    const nouveauTotal = (Number(seller.total_commissions_gagnees) || 0) + commissionVendeur;
     await supabase.from("sellers").update({
       solde_commission: nouveauSolde,
       total_commissions_gagnees: nouveauTotal,
@@ -224,6 +226,15 @@ export default function GestionCommandes() {
       localisation: commande.coursier_nom || "Coursier",
       stock_avant: produit.stock_global,
       stock_apres: produit.stock_global,
+    });
+
+    // 4. Notify vendor with correct commission breakdown
+    await supabase.from("notifications_vendeur").insert({
+      vendeur_id: commande.vendeur_id,
+      vendeur_email: commande.vendeur_email,
+      titre: "🎉 Livraison confirmée !",
+      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${prixFinalClient.toLocaleString("fr-FR")} - ${prixGros.toLocaleString("fr-FR")} = ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n\n💳 Nouveau solde disponible : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+      type: "succes",
     });
   };
 
