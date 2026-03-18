@@ -283,56 +283,43 @@ export default function RapportsVentes() {
   const topProduits = useMemo(() => {
     const map = {};
     ventesFiltrees.forEach(v => {
-      const key = v.produit_id || v.produit_nom;
-      if (!map[key]) map[key] = { nom: v.produit_nom || "Inconnu", qte: 0, ca: 0, marge: 0 };
+      const key = v.produit_id;
+      if (!map[key]) map[key] = { nom: "Inconnu", qte: 0, ca: 0, commissions: 0, marge: 0 };
+      // Try to get product name from produits list
+      const prod = produits.find(p => p.id === v.produit_id);
+      if (prod) map[key].nom = prod.nom;
       map[key].qte += v.quantite || 0;
       map[key].ca += v.montant_total || 0;
-      map[key].marge += v.profit_zonite || 0;
-    });
-    cmdsFiltrees.forEach(c => {
-      const key = c.produit_id || c.produit_nom;
-      if (!map[key]) map[key] = { nom: c.produit_nom || "Inconnu", qte: 0, ca: 0, marge: 0 };
-      const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-      map[key].qte += c.quantite || 0;
-      map[key].ca += ca;
-      map[key].marge += ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
+      map[key].commissions += v.commission_vendeur || 0;
+      map[key].marge += v.marge_zonite || v.profit_zonite || 0;
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca).slice(0, 10);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [ventesFiltrees, produits]);
 
   // ── Top Vendeurs ──
   const topVendeurs = useMemo(() => {
     const map = {};
     ventesFiltrees.forEach(v => {
-      const key = v.vendeur_id || v.vendeur_nom || "direct";
-      if (!map[key]) map[key] = { nom: v.vendeur_nom || "Vente Directe", nb: 0, ca: 0, commissions: 0 };
-      map[key].nb += 1; map[key].ca += v.montant_total || 0; map[key].commissions += v.commission_vendeur || 0;
-    });
-    cmdsFiltrees.forEach(c => {
-      const key = c.vendeur_id || c.vendeur_email || c.vendeur_nom;
-      if (!map[key]) map[key] = { nom: c.vendeur_nom || c.vendeur_email || "Inconnu", nb: 0, ca: 0, commissions: 0 };
+      const key = v.vendeur_id;
+      if (!map[key]) map[key] = { nom: v.vendeur_email || "Inconnu", nb: 0, ca: 0, commissions: 0 };
       map[key].nb += 1;
-      map[key].ca += (c.prix_final_client || 0) * (c.quantite || 0);
-      map[key].commissions += c.commission_vendeur || 0;
+      map[key].ca += v.montant_total || 0;
+      map[key].commissions += v.commission_vendeur || 0;
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca).slice(0, 10);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [ventesFiltrees]);
 
-  // ── Top Villes ──
+  // ── Top Villes (from commandes_vendeur) ──
   const topVilles = useMemo(() => {
     const map = {};
-    ventesFiltrees.forEach(v => {
-      const ville = v.client_adresse?.split(",")[0]?.trim() || "Non précisée";
-      if (!map[ville]) map[ville] = { ville, nb: 0, ca: 0 };
-      map[ville].nb += 1; map[ville].ca += v.montant_total || 0;
-    });
     cmdsFiltrees.forEach(c => {
       const ville = c.client_ville || "Non précisée";
       if (!map[ville]) map[ville] = { ville, nb: 0, ca: 0 };
-      map[ville].nb += 1; map[ville].ca += (c.prix_final_client || 0) * (c.quantite || 0);
+      map[ville].nb += 1;
+      map[ville].ca += (c.montant_total || 0);
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [cmdsFiltrees]);
 
   const totalCAVilles = topVilles.reduce((s, v) => s + v.ca, 0);
   const badgeRank = (i) => i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-slate-200 text-slate-600" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500";
