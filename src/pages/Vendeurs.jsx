@@ -52,6 +52,8 @@ function ListeVendeurs() {
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const modifier = (champ, valeur) => {
@@ -382,9 +384,11 @@ function CommissionsTab() {
       const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
-    }
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
-  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
+  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100), refetchInterval: 10000 });
 
   const totalAPayer = vendeurs.reduce((s, v) => s + (v.solde_commission || 0), 0);
 
@@ -464,15 +468,19 @@ function PaiementsTab() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: sellers = [] } = useQuery({
     queryKey: ["sellers_for_payments"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees");
+      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees, total_commissions_gagnees");
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const getSellerForDemande = (d) => sellers.find(s => s.id === d.vendeur_id) || null;
