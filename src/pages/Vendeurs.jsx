@@ -488,6 +488,10 @@ function PaiementsTab() {
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_vendeurs"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_paiements"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_ventes"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_commandes"] });
   };
 
   // APPROVE payment — balance already deducted at request time, just confirm
