@@ -545,9 +545,9 @@ function PaiementsTab() {
               <div key={d.id} className="p-4 flex items-center justify-between">
                 <div>
                   <p className="font-bold text-slate-900">{formater(d.montant)}</p>
-                  <p className="text-sm text-slate-700 font-medium">{d.vendeur_nom}</p>
-                  <p className="text-xs text-slate-500">{d.operateur} : {d.numero_mobile_money}</p>
-                  <p className="text-xs text-slate-400">{formaterDate(d.created_date)}</p>
+                  <p className="text-sm text-slate-700 font-medium">{d.vendeur_email}</p>
+                  <p className="text-xs text-slate-500">{d.operateur_mobile_money} : {d.numero_mobile_money}</p>
+                  <p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p>
                 </div>
                 <Button size="sm" onClick={() => marquerPaye(d)} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="w-4 h-4 mr-1" /> Payé</Button>
               </div>
