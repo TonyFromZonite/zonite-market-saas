@@ -166,9 +166,9 @@ export default function Commissions() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendeurs.filter(v => v.statut === "actif").map((v) => (
+              {vendeurs.filter(v => v.seller_status === "active_seller").map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
-                  <TableCell className="font-medium">{v.nom_complet}</TableCell>
+                  <TableCell className="font-medium">{v.full_name}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_payees)}</TableCell>
                   <TableCell className="text-right">
