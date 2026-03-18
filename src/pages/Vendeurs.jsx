@@ -203,7 +203,7 @@ function ListeVendeurs() {
       {/* Dialog Changement Rôle */}
       <Dialog open={dialogRoleOuvert} onOpenChange={setDialogRoleOuvert}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Modifier le rôle - {vendeurRoleEdite?.nom_complet}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Modifier le rôle - {vendeurRoleEdite?.full_name || vendeurRoleEdite?.nom_complet}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <p className="text-sm text-slate-600 mb-2">Rôle actuel: <span className="font-bold">{vendeurRoleEdite?.role || 'user'}</span></p>
