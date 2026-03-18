@@ -37,6 +37,7 @@ const SupportAdmin = lazy(() => import('./pages/SupportAdmin'));
 const TableauDeBord = lazy(() => import('./pages/TableauDeBord'));
 const Vendeurs = lazy(() => import('./pages/Vendeurs'));
 const VideoFormation = lazy(() => import('./pages/VideoFormation'));
+const FormationCours = lazy(() => import('./pages/FormationCours'));
 
 export const PAGES = {
     "AideVendeur": AideVendeur,
