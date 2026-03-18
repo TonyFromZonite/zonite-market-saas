@@ -258,25 +258,41 @@ function DashboardAdmin() {
         </div>
       )}
 
-      {/* Ventes Directes */}
+      {/* CA ZONITE */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Ventes Directes (Admin)</p>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>📊 Chiffre d'Affaires</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          <CarteStatistique titre="Chiffre d'Affaires" valeur={formaterMontant(chiffreAffaires)} icone={DollarSign} couleur="bleu" />
-          <CarteStatistique titre="Profit Net" valeur={formaterMontant(profitNet)} icone={TrendingUp} couleur="vert" />
-          <CarteStatistique titre="Commissions à Payer" valeur={formaterMontant(commissionsAPayer)} icone={Wallet} couleur="orange" />
-          <CarteStatistique titre="Commandes du Jour" valeur={commandesDuJour} icone={ShoppingCart} couleur="violet" />
+          <CarteStatistique titre="CA Aujourd'hui" valeur={formaterMontant(caAujourdhui)} icone={DollarSign} couleur="bleu" />
+          <CarteStatistique titre="CA Ce Mois" valeur={formaterMontant(caMois)} icone={DollarSign} couleur="bleu" />
         </div>
       </div>
 
-      {/* Application Vendeurs */}
+      {/* Commissions vendeurs */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Application Vendeurs</p>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>💸 Commissions Vendeurs</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          <CarteStatistique titre="Comm. Aujourd'hui" valeur={formaterMontant(commAujourdhui)} icone={Wallet} couleur="orange" />
+          <CarteStatistique titre="Comm. Ce Mois" valeur={formaterMontant(commMois)} icone={Wallet} couleur="orange" />
+        </div>
+      </div>
+
+      {/* Marge ZONITE */}
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>🏦 Marge ZONITE Market</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          <CarteStatistique titre="Marge Aujourd'hui" valeur={formaterMontant(margeAujourdhui)} icone={TrendingUp} couleur="vert" />
+          <CarteStatistique titre="Marge Ce Mois" valeur={formaterMontant(margeMois)} icone={TrendingUp} couleur="vert" />
+        </div>
+      </div>
+
+      {/* Opérationnel */}
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Opérationnel</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
           <CarteStatistique titre="Cmds Vendeurs Aujourd'hui" valeur={commandesVendeursAujourdhui} icone={ShoppingCart} couleur="indigo" />
-          <CarteStatistique titre="Total Commandes" valeur={commandesArray.length} icone={Package} couleur="jaune" />
+          <CarteStatistique titre="Commissions à Payer" valeur={formaterMontant(commissionsAPayer)} icone={Wallet} couleur="orange" />
           <CarteStatistique titre="Stock Critique" valeur={stockCritique} icone={AlertTriangle} couleur={stockCritique > 0 ? "rouge" : "vert"} />
-          <CarteStatistique titre="Top Produit" valeur={topProduit?.nom || "—"} icone={Package} couleur="bleu" />
+          <CarteStatistique titre="Total Commandes" valeur={commandesArray.length} icone={Package} couleur="jaune" />
         </div>
       </div>
 

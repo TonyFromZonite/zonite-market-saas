@@ -320,30 +320,29 @@ export default function GestionCommandes() {
         await handleEchecOrAnnulee(commandeSelectionnee);
       }
 
-      // Notification vendeur
-      const statusLabels = {
-        validee_admin: "✅ Validée par l'admin",
-        attribuee_livreur: "🚚 Assignée au livreur",
-        en_livraison: "📦 En cours de livraison",
-        livree: "🎉 Livrée avec succès",
-        echec_livraison: "❌ Livraison échouée",
-        annulee: "🚫 Annulée",
-      };
+      // Notification vendeur (skip for livree — already sent in handleLivree)
+      if (nouveauStatut !== "livree") {
+        const statusLabels = {
+          validee_admin: "✅ Validée par l'admin",
+          attribuee_livreur: "🚚 Assignée au livreur",
+          en_livraison: "📦 En cours de livraison",
+          echec_livraison: "❌ Livraison échouée",
+          annulee: "🚫 Annulée",
+        };
 
-      const notifMessage = nouveauStatut === "livree"
-        ? `${commandeSelectionnee.produit_nom} - 🎉 Livrée ! Commission créditée sur votre solde.`
-        : nouveauStatut === "echec_livraison"
-        ? `${commandeSelectionnee.produit_nom} - ❌ Livraison échouée. Stock restauré.`
-        : `${commandeSelectionnee.produit_nom} - Statut: ${statusLabels[nouveauStatut] || nouveauStatut}`;
+        const notifMessage = nouveauStatut === "echec_livraison"
+          ? `${commandeSelectionnee.produit_nom} - ❌ Livraison échouée. Stock restauré.`
+          : `${commandeSelectionnee.produit_nom} - Statut: ${statusLabels[nouveauStatut] || nouveauStatut}`;
 
-      await adminApi.createNotificationVendeur({
-        vendeur_id: commandeSelectionnee.vendeur_id,
-        vendeur_email: commandeSelectionnee.vendeur_email,
-        titre: "📦 Mise à jour commande",
-        message: notifMessage,
-        type: nouveauStatut === "livree" ? "succes" : nouveauStatut === "echec_livraison" ? "alerte" : "info",
-        lien: `/MesCommandesVendeur`,
-      });
+        await adminApi.createNotificationVendeur({
+          vendeur_id: commandeSelectionnee.vendeur_id,
+          vendeur_email: commandeSelectionnee.vendeur_email,
+          titre: "📦 Mise à jour commande",
+          message: notifMessage,
+          type: nouveauStatut === "echec_livraison" ? "alerte" : "info",
+          lien: `/MesCommandesVendeur`,
+        });
+      }
 
       // Audit
       await adminApi.createJournalAudit({

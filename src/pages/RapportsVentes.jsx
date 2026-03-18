@@ -398,9 +398,9 @@ export default function RapportsVentes() {
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="caVentes" name="CA Ventes Directes" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="caVendeurs" name="CA Ventes Vendeurs" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="marge" name="Marge Brute" fill="#10b981" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="ca" name="CA Total" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="commissions" name="Commissions Vendeurs" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="marge" name="Marge ZONITE" fill="#10b981" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
