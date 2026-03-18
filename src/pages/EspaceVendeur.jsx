@@ -512,8 +512,8 @@ export default function EspaceVendeur() {
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Trophy className="w-4 h-4 text-emerald-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{formater(soldeAffiche.total_commissions_gagnees)}</p>
-            <p className="text-[10px] text-slate-500">🏆 Total Gagné</p>
+            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
+            <p className="text-[10px] text-slate-500 truncate">🏆 Total Gagné</p>
           </div>
         </div>
 
