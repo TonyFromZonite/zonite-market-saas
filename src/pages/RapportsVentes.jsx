@@ -223,19 +223,25 @@ export default function RapportsVentes() {
   const { data: ventes = [], isLoading: chargVentes } = useQuery({
     queryKey: ["ventes_rapport"],
     queryFn: () => listTable("ventes", "-created_date", 2000),
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: commandesVendeurs = [], isLoading: chargCmds } = useQuery({
     queryKey: ["commandes_vendeurs_rapport"],
     queryFn: () => listTable("commandes_vendeur", "-created_date", 2000),
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
-  const { data: produits = [] } = useQuery({
+  const { data: produits = [], isLoading: chargProduits } = useQuery({
     queryKey: ["produits_rapport"],
     queryFn: () => listTable("produits"),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 
-  const isLoading = chargVentes || chargCmds;
+  const isLoading = chargVentes || chargCmds || chargProduits;
 
   const dateDebut = useMemo(() => {
     if (periodeJours === 0) return null;
