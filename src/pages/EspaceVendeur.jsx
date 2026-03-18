@@ -499,7 +499,7 @@ export default function EspaceVendeur() {
 
       {/* SECTION A — Stats personnelles */}
       <div className="px-4 -mt-5">
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Wallet className="w-4 h-4 text-yellow-600" /></div>
             <p className="text-lg font-bold text-slate-900">{formater(soldeAffiche.solde_commission)}</p>
