@@ -421,6 +421,7 @@ export default function RapportsVentes() {
                           <th className="text-left px-2 md:px-4 py-2 font-medium">Produit</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">Qté</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">CA</th>
+                          <th className="text-right px-2 md:px-4 py-2 font-medium">Commission</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">Marge</th>
                         </tr></thead>
                 <tbody>
