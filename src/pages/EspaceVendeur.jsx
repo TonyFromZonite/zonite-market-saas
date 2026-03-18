@@ -514,7 +514,7 @@ export default function EspaceVendeur() {
       {compteVendeur.seller_status === SELLER_STATUSES.KYC_PENDING && <BanniereKycPending />}
 
       {/* Header with logout */}
-      <div className="bg-[#1a1f5e] text-white px-3 pt-4 pb-8" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
+      <div className="bg-[#1a1f5e] text-white px-3 pt-4 pb-8 sm:px-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex justify-between items-center mb-1">
           <div className="flex items-center gap-2">
             <img src={LOGO} alt="Zonite" className="h-8 w-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
