@@ -615,12 +615,15 @@ export default function EspaceVendeur() {
           )}
         </div>
 
-        {/* SECTION B — Top vendeurs */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
-          <div className="p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Classement des vendeurs</h3>
-          </div>
-          <div className="p-4">
+        {/* SECTION B — Top vendeurs (collapsible) */}
+        <CollapsibleSection
+          title="Classement des vendeurs"
+          icon={<Trophy className="w-4 h-4 text-yellow-500" />}
+          onFirstOpen={() => setLoadTopVendeurs(true)}
+        >
+          {!topVendeurs ? (
+            <div className="py-4 text-center text-slate-400 text-sm">Chargement...</div>
+          ) : (
             <Tabs defaultValue="week" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-3">
                 <TabsTrigger value="week" className="text-xs">Cette semaine</TabsTrigger>
@@ -631,23 +634,24 @@ export default function EspaceVendeur() {
               <TabsContent value="month"><TopVendeursSection data={topVendeurs?.topMonth} currentVendeurId={compteVendeur.id} /></TabsContent>
               <TabsContent value="year"><TopVendeursSection data={topVendeurs?.topYear} currentVendeurId={compteVendeur.id} /></TabsContent>
             </Tabs>
-          </div>
-        </div>
+          )}
+        </CollapsibleSection>
 
-        {/* Commandes récentes */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
-          <div className="flex items-center justify-between p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900 text-sm">Commandes récentes</h3>
-            <Link to={createPageUrl("MesCommandesVendeur")}><span className="text-xs text-blue-600">Voir tout →</span></Link>
-          </div>
+        {/* Commandes récentes (collapsible) */}
+        <CollapsibleSection
+          title="Commandes récentes"
+          icon={<Package className="w-4 h-4 text-blue-500" />}
+          badge={commandes?.length || undefined}
+          trailing={<Link to={createPageUrl("MesCommandesVendeur")} onClick={e => e.stopPropagation()}><span className="text-xs text-blue-600">Voir tout →</span></Link>}
+        >
           {(commandes || []).length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">
+            <div className="p-4 text-center text-slate-400 text-sm">
               <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-40" />
               Aucune commande pour l'instant
             </div>
           ) : (
             commandes.slice(0, 5).map((c) => (
-              <div key={c.id} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-0">
+              <div key={c.id} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-slate-900 truncate">{c.produit_nom}</p>
                   <p className="text-xs text-slate-500">{c.client_nom} • {c.client_ville}</p>
@@ -658,52 +662,59 @@ export default function EspaceVendeur() {
               </div>
             ))
           )}
-        </div>
+        </CollapsibleSection>
 
-        {/* SECTION E — Transaction history */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
-          <div className="p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-900 text-sm">📋 Historique des transactions</h3>
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {[
-                { key: "tout", label: "Tout" },
-                { key: "commande", label: "Commandes" },
-                { key: "vente", label: "Paiements" },
-                { key: "paiement", label: "Retraits" },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setHistoryFilter(f.key)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${historyFilter === f.key ? 'bg-[#1a1f5e] text-white border-[#1a1f5e]' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {filteredHistory.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">Aucune transaction</div>
+        {/* SECTION E — Transaction history (collapsible) */}
+        <CollapsibleSection
+          title="Historique des transactions"
+          icon={<span className="text-base">📋</span>}
+          onFirstOpen={() => setLoadHistorique(true)}
+        >
+          {!loadHistorique ? (
+            <div className="py-4 text-center text-slate-400 text-sm">Chargement...</div>
           ) : (
-            filteredHistory.slice(0, 20).map((h, i) => (
-              <div key={i} className="flex items-start gap-3 p-4 border-b border-slate-50 last:border-0">
-                <span className="text-xl mt-0.5">{h.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm text-slate-900 truncate">{h.titre}</p>
-                    <span className="text-xs text-slate-400 flex-shrink-0 ml-2">{formatRelativeTime(h.date)}</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{h.description}</p>
-                  {h.montant > 0 && (
-                    <p className="text-xs font-bold mt-1" style={{ color: h.color }}>{h.type === 'vente' ? '+' : ''}{formater(h.montant)}</p>
-                  )}
-                  {h.notes && <p className="text-xs text-slate-400 mt-1 italic">Note : {h.notes}</p>}
-                  <p className="text-[10px] text-slate-300 mt-0.5">{new Date(h.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} à {new Date(h.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
+            <>
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {[
+                  { key: "tout", label: "Tout" },
+                  { key: "commande", label: "Commandes" },
+                  { key: "vente", label: "Paiements" },
+                  { key: "paiement", label: "Retraits" },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setHistoryFilter(f.key)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${historyFilter === f.key ? 'bg-[#1a1f5e] text-white border-[#1a1f5e]' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
-            ))
+
+              {filteredHistory.length === 0 ? (
+                <div className="py-4 text-center text-slate-400 text-sm">Aucune transaction</div>
+              ) : (
+                filteredHistory.slice(0, 20).map((h, i) => (
+                  <div key={i} className="flex items-start gap-3 py-3 border-b border-slate-50 last:border-0">
+                    <span className="text-xl mt-0.5">{h.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-sm text-slate-900 truncate">{h.titre}</p>
+                        <span className="text-xs text-slate-400 flex-shrink-0 ml-2">{formatRelativeTime(h.date)}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">{h.description}</p>
+                      {h.montant > 0 && (
+                        <p className="text-xs font-bold mt-1" style={{ color: h.color }}>{h.type === 'vente' ? '+' : ''}{formater(h.montant)}</p>
+                      )}
+                      {h.notes && <p className="text-xs text-slate-400 mt-1 italic">Note : {h.notes}</p>}
+                      <p className="text-[10px] text-slate-300 mt-0.5">{new Date(h.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} à {new Date(h.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
           )}
-        </div>
+        </CollapsibleSection>
       </div>
 
       <VendeurBottomNav items={[
