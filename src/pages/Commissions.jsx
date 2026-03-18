@@ -215,8 +215,8 @@ export default function Commissions() {
               )}
               {paiements.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-sm">{formaterDate(p.created_date)}</TableCell>
-                  <TableCell className="font-medium">{p.vendeur_nom}</TableCell>
+                  <TableCell className="text-sm">{formaterDate(p.created_at)}</TableCell>
+                  <TableCell className="font-medium">{p.sellers?.full_name || "—"}</TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">{formater(p.montant)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs capitalize">
