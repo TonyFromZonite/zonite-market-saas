@@ -36,7 +36,9 @@ export function getVendeurSession() {
     const data = sessionStorage.getItem("vendeur_session");
     if (!data) return null;
     const parsed = JSON.parse(data);
-    return parsed?.role === 'vendeur' ? parsed : null;
+    // Accept any role stored in vendeur_session (user, vendeur, sous_admin)
+    // as long as it has an id or email
+    return (parsed?.id || parsed?.email) ? parsed : null;
   } catch (_) { return null; }
 }
 
