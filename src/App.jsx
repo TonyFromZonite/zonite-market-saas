@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import InstallPrompt from '@/components/InstallPrompt';
 
 const GestionZones = lazy(() => import('./pages/GestionZones'));
 const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
