@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell, X, Trash2 } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,9 @@ const ICONES_TYPE = {
   support_ticket: "💬",
   systeme: "⚙️",
   info: "ℹ️",
+  succes: "✅",
+  alerte: "⚠️",
+  paiement: "💰",
 };
 
 export default function NotificationCenterVendeur() {
@@ -51,40 +54,53 @@ export default function NotificationCenterVendeur() {
       return data || [];
     },
     enabled: !!sellerId,
-    refetchInterval: 15000,
+    refetchInterval: 10000,
+    staleTime: 0,
   });
 
-  const marquerCommeLueMutation = useMutation({
-    mutationFn: async (notifId) => {
-      await supabase.from("notifications_vendeur").update({ lu: true }).eq("id", notifId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications-vendeur"] });
-    },
-  });
+  const nbNonLues = notifications.filter((n) => !n.lu).length;
+
+  const markAllAsRead = async () => {
+    if (!sellerId || nbNonLues === 0) return;
+    const { error } = await supabase
+      .from("notifications_vendeur")
+      .update({ lu: true })
+      .eq("vendeur_id", sellerId)
+      .eq("lu", false);
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ["notifications-vendeur", sellerId] });
+      queryClient.invalidateQueries({ queryKey: ["notifs_vendeur"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
+    }
+  };
+
+  const handleBellClick = () => {
+    setOuvert((prev) => {
+      const newState = !prev;
+      if (newState) {
+        markAllAsRead();
+      }
+      return newState;
+    });
+  };
 
   const handleClickNotification = (notif) => {
-    if (!notif.lu) {
-      marquerCommeLueMutation.mutate(notif.id);
-    }
     if (notif.action_url) {
       setOuvert(false);
       navigate(notif.action_url);
     }
   };
 
-  const nbNonLues = notifications.filter((n) => !n.lu).length;
-
   return (
     <div className="relative">
       <button
-        onClick={() => setOuvert(!ouvert)}
+        onClick={handleBellClick}
         className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
       >
         <Bell className="w-6 h-6 text-white" />
-        {nbNonLues > 0 && (
+        {nbNonLues > 0 && !ouvert && (
           <Badge className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center bg-red-500 text-white text-xs px-1 border-2 border-[#1a1f5e]">
-            {nbNonLues > 9 ? "9+" : nbNonLues}
+            {nbNonLues > 99 ? "99+" : nbNonLues}
           </Badge>
         )}
       </button>
@@ -94,9 +110,7 @@ export default function NotificationCenterVendeur() {
           <div className="fixed inset-0 z-40" onClick={() => setOuvert(false)} />
           <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 max-h-[80vh] flex flex-col">
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900">
-                Notifications ({nbNonLues} non lues)
-              </h3>
+              <h3 className="font-bold text-slate-900">Notifications</h3>
               <button onClick={() => setOuvert(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
