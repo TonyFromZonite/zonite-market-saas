@@ -55,7 +55,15 @@ export default function ProfilVendeur() {
         seller = data;
       }
 
-      if (seller) setCompteVendeur(seller);
+      if (seller) {
+        setCompteVendeur(seller);
+        // Fetch actual sales count from ventes table
+        const { count } = await supabase
+          .from('ventes')
+          .select('*', { count: 'exact', head: true })
+          .eq('vendeur_id', seller.id);
+        setNombreVentes(count || 0);
+      }
       setChargement(false);
     };
     charger();
