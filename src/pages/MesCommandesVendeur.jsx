@@ -73,7 +73,7 @@ export default function MesCommandesVendeur() {
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3">
           <Link to={createPageUrl("EspaceVendeur")}>
             <ChevronLeft className="w-6 h-6 text-white" />
           </Link>

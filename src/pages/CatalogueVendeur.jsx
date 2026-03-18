@@ -272,7 +272,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-3 sm:p-4 max-w-screen-md mx-auto w-full">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4">
             {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
