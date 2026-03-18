@@ -493,6 +493,15 @@ export default function EspaceVendeur() {
           <p className="text-slate-300 text-[11px] mb-0.5">💰 Solde disponible au retrait</p>
           <p className="text-2xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
         </div>
+        {Number(soldeAffiche.solde_en_attente || 0) > 0 && (
+          <div className="mt-2 bg-yellow-500/20 border border-yellow-400/30 rounded-xl p-2.5 flex items-center gap-2">
+            <span className="text-base">⏳</span>
+            <div>
+              <p className="text-yellow-300 text-[11px] font-semibold">En attente de validation</p>
+              <p className="text-yellow-200 text-xs font-bold">{formater(soldeAffiche.solde_en_attente)}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SECTION A — Stats personnelles */}
@@ -537,7 +546,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* SECTION C — Quick payment button */}
-        {(soldeAffiche.solde_commission || 0) > 0 ? (
+        {(soldeAffiche.solde_commission || 0) > 0 && Number(soldeAffiche.solde_en_attente || 0) === 0 ? (
           <button
             onClick={() => navigate(createPageUrl("DemandePaiement"))}
             className="w-full mb-3 p-3 rounded-xl border-none text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
@@ -546,6 +555,10 @@ export default function EspaceVendeur() {
             💰 Demander un paiement
             <span className="bg-white/30 px-2.5 py-0.5 rounded-full text-xs">{formater(soldeAffiche.solde_commission)}</span>
           </button>
+        ) : Number(soldeAffiche.solde_en_attente || 0) > 0 ? (
+          <div className="w-full mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-center text-amber-700 text-xs font-medium">
+            ⏳ Demande de paiement en cours... Attendez la validation de l'admin.
+          </div>
         ) : (
           <div className="w-full mb-3 p-3 rounded-xl bg-slate-100 text-center text-slate-400 text-xs">
             💰 Aucune commission disponible

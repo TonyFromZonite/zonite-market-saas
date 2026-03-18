@@ -86,6 +86,31 @@ export default function DemandePaiement() {
     setErreur("");
 
     try {
+      // Check no pending request exists
+      const { data: existingRequest } = await supabase
+        .from("demandes_paiement_vendeur")
+        .select("id")
+        .eq("vendeur_id", compteVendeur.id)
+        .eq("statut", "en_attente")
+        .maybeSingle();
+
+      if (existingRequest) {
+        throw new Error("Vous avez déjà une demande en cours de traitement. Attendez qu'elle soit traitée avant d'en faire une nouvelle.");
+      }
+
+      // Get fresh seller data
+      const { data: freshSeller } = await supabase
+        .from("sellers")
+        .select("solde_commission, solde_en_attente")
+        .eq("id", compteVendeur.id)
+        .single();
+
+      const soldeDisponible = Number(freshSeller?.solde_commission || 0);
+      if (montant > soldeDisponible) {
+        throw new Error(`Montant supérieur à votre solde disponible (${soldeDisponible.toLocaleString("fr-FR")} FCFA)`);
+      }
+
+      // Create payment request
       const { data: demande, error } = await supabase
         .from("demandes_paiement_vendeur")
         .insert({
@@ -102,15 +127,31 @@ export default function DemandePaiement() {
 
       if (error) throw error;
 
+      // TEMPORARILY deduct from balance
+      await supabase.from("sellers").update({
+        solde_commission: soldeDisponible - montant,
+        solde_en_attente: Number(freshSeller?.solde_en_attente || 0) + montant,
+      }).eq("id", compteVendeur.id);
+
+      // Notify vendor
+      await supabase.from("notifications_vendeur").insert({
+        vendeur_id: compteVendeur.id,
+        vendeur_email: compteVendeur.email,
+        titre: "⏳ Demande de paiement envoyée",
+        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été envoyée.\n\n💳 Opérateur : ${form.operateur}\n📱 Numéro : ${form.numero_mobile_money}\n👤 Titulaire : ${form.nom_titulaire}\n\n💰 Solde temporairement réservé : ${montant.toLocaleString("fr-FR")} FCFA`,
+        type: "info",
+      }).catch(() => {});
+
+      // Notify admin
       await supabase.from("notifications_admin").insert({
-        titre: "💰 Demande de paiement",
+        titre: "💰 Nouvelle demande de paiement",
         message: `${compteVendeur.full_name} demande un retrait de ${formater(montant)} via ${form.operateur}. Numéro : ${form.numero_mobile_money}. Nom titulaire : ${form.nom_titulaire}`,
         type: "paiement",
         vendeur_email: compteVendeur.email,
         reference_id: demande?.id || null,
       }).catch(() => {});
 
-      toast({ title: "✅ Demande envoyée", description: "Votre demande de paiement a été envoyée à l'admin." });
+      toast({ title: "✅ Demande envoyée", description: `${montant.toLocaleString("fr-FR")} FCFA en attente de validation.` });
       queryClient.invalidateQueries({ queryKey: ["demandes_paiement"] });
       setEnCours(false);
       setSucces(true);
