@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCachedQuery } from "@/components/CacheManager";
+import { supabase } from "@/integrations/supabase/client";
 
 // Composant helper pour 2 colonnes sur desktop, 1 sur mobile
 function ResponsiveRow({ children }) {
@@ -8,7 +11,6 @@ function ResponsiveRow({ children }) {
     </div>
   );
 }
-import { useCachedQuery } from "@/components/CacheManager";
 import {
   DollarSign, TrendingUp, Wallet, AlertTriangle,
   ShoppingCart, Package, Users, ShieldCheck, Lock
@@ -127,53 +129,92 @@ function DashboardSousAdmin({ sousAdmin }) {
 
 // Dashboard complet pour admin principal
 function DashboardAdmin() {
-  const { data: ventes = [], isLoading: chargementVentes } = useCachedQuery(
-    'VENTES',
-    () => listTable("ventes", "-created_date", 100),
-    { ttl: 10 * 60 * 1000 }
-  );
+  const REFRESH = 15 * 1000; // 15s auto-refresh
 
-  const { data: produits = [], isLoading: chargementProduits } = useCachedQuery(
-    'PRODUITS',
-    () => listTable("produits"),
-    { ttl: 30 * 60 * 1000 }
-  );
+  const { data: ventes = [], isLoading: chargementVentes } = useQuery({
+    queryKey: ["dashboard_ventes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("ventes")
+        .select("id, vendeur_id, vendeur_email, produit_id, commande_id, quantite, montant_total, commission_vendeur, profit_zonite, prix_achat_unitaire, marge_zonite, prix_achat, prix_gros, prix_final_client, created_at")
+        .order("created_at", { ascending: false }).limit(500);
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+    staleTime: 10 * 1000,
+    refetchInterval: REFRESH,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: produits = [], isLoading: chargementProduits } = useQuery({
+    queryKey: ["dashboard_produits"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("produits")
+        .select("id, nom, reference, prix_vente, prix_achat, stock_global, seuil_alerte_stock, actif, categorie_id, created_at")
+        .eq("actif", true);
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+    staleTime: 30 * 1000,
+    refetchInterval: REFRESH,
+    refetchOnWindowFocus: true,
+  });
 
   // Filtrer les produits supprimés
   const produitsActifs = (Array.isArray(produits) ? produits : []).filter(p => p.statut !== 'supprime');
 
-  const { data: vendeurs = [], isLoading: chargementVendeurs } = useCachedQuery(
-    'VENDEURS',
-    () => listTable("sellers"),
-    { ttl: 60 * 60 * 1000 }
-  );
+  const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
+    queryKey: ["dashboard_vendeurs"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sellers")
+        .select("id, full_name, email, solde_commission, total_commissions_gagnees, total_commissions_payees, seller_status, created_at");
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+    staleTime: 10 * 1000,
+    refetchInterval: REFRESH,
+    refetchOnWindowFocus: true,
+  });
 
   // Filtrer les vendeurs actifs
   const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.seller_status === 'active_seller');
 
-  const { data: commandesVendeurs = [] } = useCachedQuery(
-    'COMMANDES',
-    () => listTable("commandes_vendeur", "-created_date", 100),
-    { ttl: 5 * 60 * 1000 }
-  );
+  const { data: commandesVendeurs = [] } = useQuery({
+    queryKey: ["dashboard_commandes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commandes_vendeur")
+        .select("id, statut, created_at")
+        .order("created_at", { ascending: false }).limit(200);
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+    staleTime: 10 * 1000,
+    refetchInterval: REFRESH,
+    refetchOnWindowFocus: true,
+  });
 
-  const { data: candidaturesEnAttente } = useCachedQuery(
-    'CANDIDATURES',
-    () => filterTable("candidatures_vendeur", { statut: "en_attente" }),
-    { ttl: 15 * 60 * 1000 }
-  );
+  const { data: candidaturesEnAttente } = useQuery({
+    queryKey: ["dashboard_candidatures"],
+    queryFn: () => filterTable("candidatures_vendeur", { statut: "en_attente" }),
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
-  const { data: kycEnAttente } = useCachedQuery(
-    'KYC',
-    () => filterTable("sellers", { statut_kyc: "en_attente" }),
-    { ttl: 15 * 60 * 1000 }
-  );
+  const { data: kycEnAttente } = useQuery({
+    queryKey: ["dashboard_kyc"],
+    queryFn: () => filterTable("sellers", { statut_kyc: "en_attente" }),
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
-  const { data: paiementsEnAttente } = useCachedQuery(
-    'PAIEMENTS',
-    () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }),
-    { ttl: 15 * 60 * 1000 }
-  );
+  const { data: paiementsEnAttente } = useQuery({
+    queryKey: ["dashboard_paiements"],
+    queryFn: () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }),
+    staleTime: 10 * 1000,
+    refetchInterval: REFRESH,
+    refetchOnWindowFocus: true,
+  });
 
   const enChargement = chargementVentes || chargementProduits || chargementVendeurs;
 

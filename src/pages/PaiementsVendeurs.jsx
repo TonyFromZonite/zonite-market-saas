@@ -60,6 +60,9 @@ export default function PaiementsVendeurs() {
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_vendeurs"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_paiements"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_ventes"] });
   };
 
   // ─── APPROVE PAYMENT (Phase 3 flow) ───
