@@ -136,7 +136,7 @@ function ListeVendeurs() {
                 <TableHead>Contact</TableHead>
                 <TableHead className="text-right">CA Généré</TableHead>
                 <TableHead className="text-right">Solde Commission</TableHead>
-                <TableHead className="text-center">Ventes</TableHead>
+                <TableHead className="text-center">Commission</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
