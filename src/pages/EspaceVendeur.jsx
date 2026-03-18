@@ -102,48 +102,40 @@ export default function EspaceVendeur() {
   useEffect(() => {
     const charger = async () => {
       try {
-        let session = getVendeurSession();
-        if (!session) {
-          try {
-            const user = await getCurrentUser();
-            if (user && user.role === 'user') {
-              session = { role: 'vendeur', email: user.email };
-              sessionStorage.setItem("vendeur_session", JSON.stringify(session));
-            }
-          } catch (_) {}
-        }
+        // Use async session guard for resilience
+        const { getVendeurSessionAsync } = await import("@/components/useSessionGuard");
+        let session = await getVendeurSessionAsync();
         if (!session) {
           window.location.href = createPageUrl("Connexion");
           return;
         }
         setUtilisateur({ email: session.email });
-        if (session.id && session.nom_complet) {
-          setCompteVendeur(session);
-          const unsubscribe = subscribeToTable("sellers", (event) => {
-            if (event.id === session.id) setCompteVendeur(event.data);
-          });
-          setChargement(false);
-          return unsubscribe;
-        }
-        const emailVendeur = session.email;
-        try {
-          const sellers = await filterTable("sellers", { email: emailVendeur });
-          if (sellers.length > 0) {
-            const sellerData = sellers[0];
-            setCompteVendeur(sellerData);
-            sessionStorage.setItem("vendeur_session", JSON.stringify({ ...session, ...sellerData, role: 'vendeur' }));
-            const unsubscribe = subscribeToTable("sellers", (event) => {
-              if (event.data?.email === emailVendeur) setCompteVendeur(event.data);
-            });
-            setChargement(false);
-            return unsubscribe;
+
+        // Always load fresh seller data from DB
+        const { data: freshSeller } = await supabase
+          .from("sellers")
+          .select("*")
+          .eq("id", session.id)
+          .maybeSingle();
+        
+        if (freshSeller) {
+          setCompteVendeur(freshSeller);
+        } else {
+          // Fallback: try by email
+          const { data: sellerByEmail } = await supabase
+            .from("sellers")
+            .select("*")
+            .eq("email", session.email)
+            .maybeSingle();
+          
+          if (sellerByEmail) {
+            setCompteVendeur(sellerByEmail);
           } else {
             window.location.href = createPageUrl("Connexion");
+            return;
           }
-        } catch (err) {
-          console.error('Erreur chargement vendeur:', err);
-          window.location.href = createPageUrl("Connexion");
         }
+        setChargement(false);
       } catch (error) {
         console.error('Erreur chargement espace vendeur:', error);
         window.location.href = createPageUrl("Connexion");
