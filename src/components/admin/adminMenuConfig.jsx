@@ -109,17 +109,10 @@ export const ADMIN_MENU = [
     roles: ["admin"],
   },
   {
-    id: "permissions",
-    label: "Permissions Admin",
-    icon: Shield,
-    page: "GestionPermissionsAdmin",
-    roles: ["admin"],
-  },
-  {
-    id: "sous_admins",
-    label: "Sous-Admins",
+    id: "gestion_admins",
+    label: "Gestion Admins",
     icon: UserCog,
-    page: "GestionSousAdmins",
+    page: "GestionAdmins",
     roles: ["admin"],
   },
   {
