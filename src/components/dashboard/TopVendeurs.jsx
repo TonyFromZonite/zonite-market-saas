@@ -1,10 +1,10 @@
 import React from "react";
-import { Users } from "lucide-react";
 
 export default function TopVendeurs({ vendeurs }) {
+  // Use correct DB fields: seller_status, full_name, total_commissions_gagnees
   const top5 = [...vendeurs]
-    .filter(v => v.statut === 'actif')
-    .sort((a, b) => (b.chiffre_affaires_genere || 0) - (a.chiffre_affaires_genere || 0))
+    .filter(v => v.seller_status === 'active_seller' && v.role !== 'admin')
+    .sort((a, b) => (b.total_commissions_gagnees || 0) - (a.total_commissions_gagnees || 0))
     .slice(0, 5);
 
   return (
@@ -21,14 +21,16 @@ export default function TopVendeurs({ vendeurs }) {
               i === 1 ? "bg-blue-500" :
               "bg-slate-400"
             }`}>
-              {vendeur.nom_complet?.[0]?.toUpperCase() || "V"}
+              {vendeur.full_name?.[0]?.toUpperCase() || "V"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{vendeur.nom_complet}</p>
-              <p className="text-xs text-slate-500">{vendeur.nombre_ventes || 0} ventes</p>
+              <p className="text-sm font-medium text-slate-900 truncate">{vendeur.full_name}</p>
+              <p className="text-xs text-slate-500">
+                Solde : {(vendeur.solde_commission || 0).toLocaleString("fr-FR")} FCFA
+              </p>
             </div>
             <p className="text-sm font-semibold text-slate-700">
-              {(vendeur.chiffre_affaires_genere || 0).toLocaleString("fr-FR")} FCFA
+              {(vendeur.total_commissions_gagnees || 0).toLocaleString("fr-FR")} FCFA
             </p>
           </div>
         ))}

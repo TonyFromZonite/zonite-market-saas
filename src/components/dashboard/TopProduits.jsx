@@ -1,10 +1,18 @@
 import React from "react";
 import { Package } from "lucide-react";
 
-export default function TopProduits({ produits }) {
+export default function TopProduits({ produits, ventes = [] }) {
+  // If ventes data is available, compute sales count per product
+  const ventesParProduit = {};
+  ventes.forEach(v => {
+    if (!ventesParProduit[v.produit_id]) ventesParProduit[v.produit_id] = 0;
+    ventesParProduit[v.produit_id] += (v.quantite || 1);
+  });
+
   const top5 = [...produits]
-    .filter(p => p.statut !== 'supprime')
-    .sort((a, b) => (b.total_vendu || 0) - (a.total_vendu || 0))
+    .filter(p => p.actif !== false)
+    .map(p => ({ ...p, total_vendu: ventesParProduit[p.id] || 0 }))
+    .sort((a, b) => b.total_vendu - a.total_vendu)
     .slice(0, 5);
 
   return (
@@ -25,7 +33,7 @@ export default function TopProduits({ produits }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">{produit.nom}</p>
-              <p className="text-xs text-slate-500">{produit.total_vendu || 0} vendus</p>
+              <p className="text-xs text-slate-500">{produit.total_vendu} vendu{produit.total_vendu > 1 ? 's' : ''}</p>
             </div>
             <Package className="w-4 h-4 text-slate-300" />
           </div>
