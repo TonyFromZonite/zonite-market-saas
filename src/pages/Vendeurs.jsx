@@ -780,7 +780,7 @@ export default function Vendeurs() {
   const badges = { kyc: kycs.length, paiements: paiements.length };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Onglets */}
       <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {ONGLETS.map(({ key, label }) => {

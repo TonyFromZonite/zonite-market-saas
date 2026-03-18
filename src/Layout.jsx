@@ -96,7 +96,7 @@ export default function Layout({ children, currentPageName }) {
           onMenuOpen={handleMenuOpen}
           showBurger={!isDesktop}
         />
-        <main className="flex-1 min-w-0 overflow-x-hidden p-2 sm:p-3 md:p-4 lg:p-5 max-w-screen-2xl mx-auto w-full">
+        <main className="flex-1 min-w-0 overflow-x-hidden p-2 sm:p-3 md:p-4 lg:p-4 max-w-screen-2xl mx-auto w-full">
           {children}
         </main>
       </div>
