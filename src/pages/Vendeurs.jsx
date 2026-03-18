@@ -52,6 +52,8 @@ function ListeVendeurs() {
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const modifier = (champ, valeur) => {

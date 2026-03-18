@@ -38,6 +38,8 @@ export default function PaiementsVendeurs() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: sellers = [] } = useQuery({
@@ -45,10 +47,12 @@ export default function PaiementsVendeurs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sellers")
-        .select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees");
+        .select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_payees, total_commissions_gagnees");
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const getSellerForDemande = (demande) => sellers.find(s => s.id === demande.vendeur_id) || null;
