@@ -435,6 +435,7 @@ export default function RapportsVentes() {
                       </td>
                       <td className="px-2 md:px-4 py-2.5 text-right text-slate-600 text-xs md:text-sm">{l.qte}</td>
                       <td className="px-2 md:px-4 py-2.5 text-right font-medium text-slate-800 text-xs md:text-sm">{fmt(l.ca)}</td>
+                      <td className="px-2 md:px-4 py-2.5 text-right font-medium text-orange-600 text-xs md:text-sm">{fmt(l.commissions)}</td>
                       <td className={`px-2 md:px-4 py-2.5 text-right font-semibold text-xs md:text-sm ${l.marge >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(l.marge)}</td>
                     </tr>
                   ))}
