@@ -195,7 +195,8 @@ export default function EspaceVendeur() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // SECTION B — Top vendeurs
+  // SECTION B — Top vendeurs (lazy-loaded)
+  const [loadTopVendeurs, setLoadTopVendeurs] = useState(false);
   const { data: topVendeurs } = useQuery({
     queryKey: ["top_vendeurs"],
     queryFn: async () => {
@@ -227,7 +228,7 @@ export default function EspaceVendeur() {
         topYear: groupByVendeur(topYear.data),
       };
     },
-    enabled: !!compteVendeur?.id,
+    enabled: !!compteVendeur?.id && loadTopVendeurs,
     staleTime: 5 * 60 * 1000,
   });
 
