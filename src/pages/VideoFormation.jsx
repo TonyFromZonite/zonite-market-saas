@@ -189,7 +189,7 @@ export default function VideoFormation() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen={true}
                 referrerPolicy="strict-origin-when-cross-origin"
-                onLoad={() => { timerStarted.current = true; setTimeLeft(30); }}
+                onLoad={() => { setTimerStarted(true); setTimeLeft(30); }}
                 style={{
                   position: 'absolute',
                   top: 0, left: 0,
