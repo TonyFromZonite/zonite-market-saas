@@ -109,6 +109,7 @@ function App() {
           <AuthenticatedApp />
         </Router>
         <Toaster />
+        <InstallPrompt />
       </QueryClientProvider>
     </AuthProvider>
   )
