@@ -482,6 +482,8 @@ function PaiementsTab() {
   };
 
   const refreshAll = () => {
+    invalidateQuery("VENDEURS");
+    invalidateQuery("PAIEMENTS");
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });

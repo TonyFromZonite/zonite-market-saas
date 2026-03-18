@@ -54,6 +54,8 @@ export default function PaiementsVendeurs() {
   const getSellerForDemande = (demande) => sellers.find(s => s.id === demande.vendeur_id) || null;
 
   const loadDemandes = () => {
+    invalidateQuery("VENDEURS");
+    invalidateQuery("PAIEMENTS");
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
