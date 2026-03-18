@@ -147,6 +147,20 @@ export default function DemandePaiement() {
           </div>
         )}
 
+        {/* Name matching warning */}
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <span className="text-2xl flex-shrink-0">⚠️</span>
+          <div>
+            <p className="font-bold text-amber-700 text-sm mb-1">Important - Vérifiez votre nom</p>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Le paiement sera effectué <strong className="text-amber-700">uniquement si le nom du titulaire du compte Mobile Money est identique à votre nom sur Zonite Market.</strong>
+            </p>
+            <div className="mt-2 p-2 bg-white/70 rounded-lg text-xs text-slate-700">
+              Votre nom sur Zonite Market : <strong className="text-amber-700 ml-1">{compteVendeur?.full_name}</strong>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold text-slate-900 text-sm">Nouvelle demande</h2>
           <div className="space-y-1">
@@ -173,8 +187,20 @@ export default function DemandePaiement() {
             <Input value={form.numero_mobile_money} onChange={e => setForm(f => ({ ...f, numero_mobile_money: e.target.value }))} placeholder="+237 6XX XXX XXX" />
           </div>
           <div className="space-y-1">
-            <Label>Nom du titulaire du compte *</Label>
-            <Input value={form.nom_titulaire} onChange={e => setForm(f => ({ ...f, nom_titulaire: e.target.value }))} placeholder="Nom complet du titulaire" />
+            <Label>Nom du titulaire du compte Mobile Money *</Label>
+            <Input
+              value={form.nom_titulaire}
+              onChange={e => setForm(f => ({ ...f, nom_titulaire: e.target.value }))}
+              placeholder={compteVendeur?.full_name || "Nom complet du titulaire"}
+              className={form.nom_titulaire ? (form.nom_titulaire.toLowerCase().trim() === compteVendeur?.full_name?.toLowerCase().trim() ? "border-emerald-400 focus:border-emerald-500" : "border-red-400 focus:border-red-500") : ""}
+            />
+            {form.nom_titulaire && (
+              form.nom_titulaire.toLowerCase().trim() === compteVendeur?.full_name?.toLowerCase().trim() ? (
+                <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">✅ Nom correspondant — votre paiement sera traité</p>
+              ) : (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">❌ Ce nom ne correspond pas à votre nom Zonite Market ({compteVendeur?.full_name}). Votre paiement pourrait être rejeté.</p>
+              )
+            )}
           </div>
           <Button onClick={soumettre} disabled={enCours || (compteVendeur?.solde_commission || 0) < 5000}
             className="w-full bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">
