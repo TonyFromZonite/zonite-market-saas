@@ -567,31 +567,31 @@ export default function EspaceVendeur() {
         <div className="grid grid-cols-2 gap-2 mb-3">
           {canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("NouvelleCommandeVendeur")}>
-              <div className="bg-[#1a1f5e] text-white rounded-2xl p-4 flex items-center gap-3 hover:bg-[#141952] transition-colors">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Nouvelle</p><p className="text-xs text-slate-300">commande</p></div>
+              <div className="bg-[#1a1f5e] text-white rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#141952] transition-colors">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px] text-slate-300">commande</p></div>
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed">
-              <div className="bg-slate-300 text-slate-500 rounded-2xl p-4 flex items-center gap-3 opacity-60">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Nouvelle</p><p className="text-xs">commande</p></div>
+            <button disabled className="cursor-not-allowed w-full">
+              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px]">commande</p></div>
               </div>
             </button>
           )}
           {canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("CatalogueVendeur")}>
-              <div className="bg-[#F5C518] text-[#1a1f5e] rounded-2xl p-4 flex items-center gap-3 hover:bg-[#e0b010] transition-colors">
-                <div className="w-10 h-10 bg-[#1a1f5e]/10 rounded-xl flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Catalogue</p><p className="text-xs text-[#1a1f5e]/70">produits</p></div>
+              <div className="bg-[#F5C518] text-[#1a1f5e] rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#e0b010] transition-colors">
+                <div className="w-8 h-8 bg-[#1a1f5e]/10 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px] text-[#1a1f5e]/70">produits</p></div>
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed">
-              <div className="bg-slate-300 text-slate-500 rounded-2xl p-4 flex items-center gap-3 opacity-60">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Catalogue</p><p className="text-xs">produits</p></div>
+            <button disabled className="cursor-not-allowed w-full">
+              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px]">produits</p></div>
               </div>
             </button>
           )}
