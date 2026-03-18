@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/components/adminApi";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Truck, CheckCircle2, AlertCircle, Clock, Loader2 } from "lucide-react";
+import { Truck, Loader2, AlertTriangle, MapPin, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { filterTable, listTable } from "@/lib/supabaseHelpers";
+import { listTable } from "@/lib/supabaseHelpers";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", color: "bg-yellow-100 text-yellow-700" },
@@ -23,33 +24,126 @@ export default function GestionCommandes() {
   const [filtreStatut, setFiltreStatut] = useState("all");
   const [dialogOuvert, setDialogOuvert] = useState(false);
   const [commandeSelectionnee, setCommandeSelectionnee] = useState(null);
-  const [livreurSelectionne, setLivreurSelectionne] = useState("");
+  const [coursiersDisponibles, setCoursiersDisponibles] = useState([]);
+  const [coursierSelectionne, setCoursierSelectionne] = useState("");
   const [nouveauStatut, setNouveauStatut] = useState("");
   const [enCours, setEnCours] = useState(false);
+  const [coursierError, setCoursierError] = useState(null);
+  const [loadingCoursiers, setLoadingCoursiers] = useState(false);
   const queryClient = useQueryClient();
 
-  // Récupérer les commandes
   const { data: commandes = [], isLoading: loadingCommandes } = useQuery({
-    queryKey: ["commandes"],
+    queryKey: ["commandes_vendeur"],
     queryFn: () => listTable("commandes_vendeur", "-created_date"),
   });
 
-  // Récupérer les livreurs actifs
-  const { data: livreurs = [] } = useQuery({
-    queryKey: ["livreurs"],
-    queryFn: () => filterTable("livraisons", { statut: "actif" }),
-  });
-
-  // Filtrer les commandes
   const commandesFiltrees = filtreStatut === "all"
     ? commandes
     : commandes.filter(c => c.statut === filtreStatut);
 
-  const ouvrir = (cmd) => {
+  // Find coursiers matching the order's city
+  const findCoursiersForCommande = async (cmd) => {
+    setLoadingCoursiers(true);
+    setCoursierError(null);
+    setCoursiersDisponibles([]);
+
+    try {
+      if (!cmd.client_ville) {
+        // No city on order — load all active coursiers
+        const { data: allCoursiers } = await supabase
+          .from("coursiers")
+          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+          .eq("actif", true);
+        setCoursiersDisponibles(allCoursiers || []);
+        setCoursierError("⚠️ Aucune ville spécifiée sur la commande. Tous les coursiers sont affichés.");
+        return;
+      }
+
+      // Step 1: Find ville_id from city name
+      const { data: villes } = await supabase
+        .from("villes_cameroun")
+        .select("id, nom")
+        .ilike("nom", `%${cmd.client_ville.trim()}%`);
+
+      const ville = villes?.[0];
+
+      if (!ville) {
+        // City not found — show all coursiers with warning
+        const { data: allCoursiers } = await supabase
+          .from("coursiers")
+          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+          .eq("actif", true);
+        setCoursiersDisponibles(allCoursiers || []);
+        setCoursierError(`Ville "${cmd.client_ville}" introuvable. Tous les coursiers sont affichés.`);
+        return;
+      }
+
+      // Step 2: Find coursiers in that city
+      const { data: coursiers } = await supabase
+        .from("coursiers")
+        .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+        .eq("ville_id", ville.id)
+        .eq("actif", true);
+
+      if (!coursiers || coursiers.length === 0) {
+        // No coursiers in city — show all with warning
+        const { data: allCoursiers } = await supabase
+          .from("coursiers")
+          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+          .eq("actif", true);
+        setCoursiersDisponibles(allCoursiers || []);
+        setCoursierError(`Aucun coursier actif à ${cmd.client_ville}. Tous les coursiers sont affichés.`);
+        return;
+      }
+
+      // Step 3: Check stock if product is set
+      if (cmd.produit_id) {
+        const { data: produit } = await supabase
+          .from("produits")
+          .select("stocks_par_coursier")
+          .eq("id", cmd.produit_id)
+          .single();
+
+        if (produit?.stocks_par_coursier && Array.isArray(produit.stocks_par_coursier)) {
+          const coursiersAvecStock = coursiers.filter(c => {
+            const stockInfo = produit.stocks_par_coursier.find(s => s.coursier_id === c.id);
+            if (!stockInfo) return false;
+
+            if (cmd.variation) {
+              const varStock = stockInfo.stock_par_variation?.find(
+                v => v.variation_key === cmd.variation
+              );
+              return varStock && varStock.quantite >= (cmd.quantite || 1);
+            }
+            return stockInfo.stock_total >= (cmd.quantite || 1);
+          });
+
+          if (coursiersAvecStock.length > 0) {
+            setCoursiersDisponibles(coursiersAvecStock);
+            return;
+          }
+          // No stock match — show all city coursiers with warning
+          setCoursiersDisponibles(coursiers);
+          setCoursierError("Aucun coursier n'a le stock suffisant. Tous les coursiers de la ville sont affichés.");
+          return;
+        }
+      }
+
+      setCoursiersDisponibles(coursiers);
+    } catch (err) {
+      console.error("findCoursiers error:", err);
+      setCoursierError("Erreur lors de la recherche de coursiers.");
+    } finally {
+      setLoadingCoursiers(false);
+    }
+  };
+
+  const ouvrir = async (cmd) => {
     setCommandeSelectionnee(cmd);
-    setLivreurSelectionne(cmd.livreur_id || "");
+    setCoursierSelectionne(cmd.coursier_id || "");
     setNouveauStatut(cmd.statut);
     setDialogOuvert(true);
+    await findCoursiersForCommande(cmd);
   };
 
   const sauvegarder = async () => {
@@ -57,21 +151,19 @@ export default function GestionCommandes() {
     setEnCours(true);
 
     try {
-      const updateData = {
-        statut: nouveauStatut,
-        ...(livreurSelectionne && { livreur_id: livreurSelectionne }),
-      };
+      const updateData = { statut: nouveauStatut };
 
-      if (livreurSelectionne) {
-        const livreur = livreurs.find(l => l.id === livreurSelectionne);
-        if (livreur) {
-          updateData.livreur_nom = livreur.nom;
+      if (coursierSelectionne) {
+        updateData.coursier_id = coursierSelectionne;
+        const coursier = coursiersDisponibles.find(c => c.id === coursierSelectionne);
+        if (coursier) {
+          updateData.coursier_nom = coursier.nom;
         }
       }
 
       await adminApi.updateCommandeVendeur(commandeSelectionnee.id, updateData);
 
-      // Créer une notification pour le vendeur
+      // Notification vendeur
       const statusLabels = {
         validee_admin: "✅ Validée par l'admin",
         attribuee_livreur: "🚚 Assignée au livreur",
@@ -82,23 +174,23 @@ export default function GestionCommandes() {
       };
 
       await adminApi.createNotificationVendeur({
+        vendeur_id: commandeSelectionnee.vendeur_id,
         vendeur_email: commandeSelectionnee.vendeur_email,
         titre: "📦 Mise à jour commande",
         message: `${commandeSelectionnee.produit_nom} - Statut: ${statusLabels[nouveauStatut] || nouveauStatut}`,
         type: nouveauStatut === "livree" ? "succes" : nouveauStatut === "echec_livraison" ? "alerte" : "info",
-        lien: `/MesCommandesVendeur?cmd_id=${commandeSelectionnee.id}`,
-        lue: false,
+        lien: `/MesCommandesVendeur`,
       });
 
-      // Journal d'audit
+      // Audit
       await adminApi.createJournalAudit({
         action: "Statut commande modifié",
         module: "commande",
-        details: `Commande ${commandeSelectionnee.id} - Nouveau statut: ${nouveauStatut}${livreurSelectionne ? ` - Livreur assigné: ${updateData.livreur_nom}` : ""}`,
+        details: `Commande ${commandeSelectionnee.reference_commande || commandeSelectionnee.id} - Statut: ${nouveauStatut}${coursierSelectionne ? ` - Coursier: ${updateData.coursier_nom}` : ""}`,
         entite_id: commandeSelectionnee.id,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["commandes"] });
+      queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
       setDialogOuvert(false);
       setEnCours(false);
     } catch (error) {
@@ -126,9 +218,12 @@ export default function GestionCommandes() {
             ))}
           </SelectContent>
         </Select>
+        <Badge variant="outline" className="self-center text-xs">
+          {commandesFiltrees.length} commande(s)
+        </Badge>
       </div>
 
-      {/* Liste des commandes */}
+      {/* Liste */}
       <div className="space-y-3">
         {commandesFiltrees.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
@@ -139,23 +234,28 @@ export default function GestionCommandes() {
           commandesFiltrees.map((cmd) => (
             <div key={cmd.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Infos commande */}
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{cmd.produit_nom}</h3>
-                    <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label}</Badge>
+                    <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label || cmd.statut}</Badge>
+                    {cmd.reference_commande && (
+                      <span className="text-xs text-slate-400">{cmd.reference_commande}</span>
+                    )}
                   </div>
                   <div className="text-xs text-slate-500 space-y-1">
-                    <p><strong>Vendeur:</strong> {cmd.vendeur_nom} ({cmd.vendeur_email})</p>
-                    <p><strong>Client:</strong> {cmd.client_nom} - {cmd.client_telephone}</p>
-                    <p><strong>Quantité:</strong> {cmd.quantite} × {cmd.prix_final_client} FCFA = {cmd.quantite * cmd.prix_final_client} FCFA</p>
-                    {cmd.livreur_nom && <p><strong>Livreur:</strong> {cmd.livreur_nom}</p>}
+                    <p><strong>Vendeur:</strong> {cmd.vendeur_email}</p>
+                    <p><strong>Client:</strong> {cmd.client_nom} — {cmd.client_telephone}</p>
+                    <p>
+                      <strong>Livraison:</strong>{" "}
+                      {cmd.client_ville || "—"}{cmd.client_quartier ? `, ${cmd.client_quartier}` : ""}
+                    </p>
+                    <p><strong>Montant:</strong> {(cmd.montant_total || 0).toLocaleString("fr-FR")} FCFA</p>
+                    {cmd.coursier_nom && <p><strong>Coursier:</strong> 🚚 {cmd.coursier_nom}</p>}
                   </div>
                 </div>
 
-                {/* Actions */}
                 <Button onClick={() => ouvrir(cmd)} className="bg-[#1a1f5e] hover:bg-[#141952] w-full sm:w-auto">
-                  {cmd.livreur_id ? "Modifier" : "Assigner"}
+                  {cmd.coursier_id ? "Modifier" : "Gérer"}
                 </Button>
               </div>
             </div>
@@ -163,7 +263,7 @@ export default function GestionCommandes() {
         )}
       </div>
 
-      {/* Dialog d'attribution */}
+      {/* Dialog */}
       <Dialog open={dialogOuvert} onOpenChange={setDialogOuvert}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -172,31 +272,80 @@ export default function GestionCommandes() {
 
           {commandeSelectionnee && (
             <div className="space-y-5">
+              {/* Order summary */}
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm text-slate-600">
-                  <strong>{commandeSelectionnee.produit_nom}</strong> - {commandeSelectionnee.quantite} unités
+                <p className="text-sm font-medium text-slate-800">
+                  {commandeSelectionnee.produit_nom} — {commandeSelectionnee.quantite || 1} unité(s)
+                </p>
+                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {commandeSelectionnee.client_ville || "Ville non spécifiée"}
+                  {commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Vendeur: {commandeSelectionnee.vendeur_nom}
+                  Client: {commandeSelectionnee.client_nom} — {commandeSelectionnee.client_telephone}
                 </p>
               </div>
 
-              {/* Assigner livreur */}
+              {/* Warning */}
+              {coursierError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{coursierError}</span>
+                </div>
+              )}
+
+              {/* Coursier selection */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-900">Assigner un livreur</label>
-                <Select value={livreurSelectionne} onValueChange={setLivreurSelectionne}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un livreur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {livreurs.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{l.nom}</SelectItem>
+                <label className="text-sm font-medium text-slate-900">
+                  Assigner un coursier {commandeSelectionnee.client_ville ? `(${commandeSelectionnee.client_ville})` : ""}
+                </label>
+
+                {loadingCoursiers ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500 py-4 justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Recherche des coursiers...
+                  </div>
+                ) : coursiersDisponibles.length === 0 ? (
+                  <p className="text-sm text-slate-400 py-4 text-center">
+                    Aucun coursier disponible. Créez-en un dans Gestion Coursiers.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                    {coursiersDisponibles.map(c => (
+                      <label
+                        key={c.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          coursierSelectionne === c.id
+                            ? "border-amber-400 bg-amber-50"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="coursier"
+                          value={c.id}
+                          checked={coursierSelectionne === c.id}
+                          onChange={() => setCoursierSelectionne(c.id)}
+                          className="accent-amber-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800">🚚 {c.nom}</p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {c.telephone || "—"}
+                            {c.frais_livraison_defaut > 0 && (
+                              <span> • {Number(c.frais_livraison_defaut).toLocaleString("fr-FR")} FCFA</span>
+                            )}
+                          </p>
+                        </div>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
 
-              {/* Changer statut */}
+              {/* Status */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-900">Statut</label>
                 <Select value={nouveauStatut} onValueChange={setNouveauStatut}>
