@@ -10,7 +10,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import {
-  ShoppingBag, Package,
+  ShoppingBag, Package, GraduationCap,
   Clock, CheckCircle2, XCircle, Truck, Plus,
   AlertCircle, Upload, Loader2, LogOut, Trophy, Wallet, TrendingUp, CalendarDays
 } from "lucide-react";
@@ -661,6 +661,19 @@ export default function EspaceVendeur() {
           )}
         </div>
 
+        {/* Formation & Cours */}
+        <Link to={createPageUrl("FormationCours")}>
+          <div className="mb-3 bg-gradient-to-r from-[#1a1f5e] to-[#2a2f7e] text-white rounded-xl p-3 flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <div className="w-10 h-10 bg-[#F5C518]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <GraduationCap className="w-5 h-5 text-[#F5C518]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">🎓 Formation & Cours Zonite</p>
+              <p className="text-[10px] text-slate-300">Vidéos de formation pour booster vos ventes</p>
+            </div>
+            <span className="text-slate-300 text-lg">→</span>
+          </div>
+        </Link>
         {/* SECTION B — Top vendeurs (collapsible) */}
         <CollapsibleSection
           title="Classement des vendeurs"
