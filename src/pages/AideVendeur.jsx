@@ -165,7 +165,7 @@ export default function AideVendeur() {
         </div>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto space-y-3">
+      <div className="p-3 sm:p-4 max-w-screen-md mx-auto w-full space-y-3">
         {succes && (
           <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />

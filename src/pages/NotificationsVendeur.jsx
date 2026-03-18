@@ -139,7 +139,7 @@ export default function NotificationsVendeur() {
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 max-w-screen-md mx-auto w-full">
         {isLoading ? (
           Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)
         ) : notifsFiltrees.length === 0 ? (
