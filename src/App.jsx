@@ -11,6 +11,8 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 const GestionZones = lazy(() => import('./pages/GestionZones'));
 const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
 const ResoumissionKYC = lazy(() => import('./pages/ResoumissionKYC'));
+const ProduitDetail = lazy(() => import('./pages/ProduitDetail'));
+const CatalogueVendeurPage = lazy(() => import('./pages/CatalogueVendeur'));
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -85,6 +87,12 @@ const AuthenticatedApp = () => {
         } />
         <Route path="/ResoumissionKYC" element={
           <LayoutWrapper currentPageName="ResoumissionKYC"><ResoumissionKYC /></LayoutWrapper>
+        } />
+        <Route path="/CatalogueVendeur/:categorieId" element={
+          <LayoutWrapper currentPageName="CatalogueVendeur"><CatalogueVendeurPage /></LayoutWrapper>
+        } />
+        <Route path="/ProduitDetail/:produitId" element={
+          <LayoutWrapper currentPageName="ProduitDetail"><ProduitDetail /></LayoutWrapper>
         } />
         <Route path="*" element={<PageNotFound />} />
       </Routes>

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Loader2, ChevronLeft, AlertCircle, Truck } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
@@ -31,6 +31,9 @@ export default function NouvelleCommandeVendeur() {
   const [succes, setSucces] = useState(false);
   const queryClient = useQueryClient();
 
+  const location = useLocation();
+  const prefilledProduct = location.state;
+
   useEffect(() => {
     const charger = async () => {
       const session = getVendeurSession();
@@ -38,9 +41,15 @@ export default function NouvelleCommandeVendeur() {
       const sellers = await filterTable("sellers", { email: session.email });
       if (sellers.length > 0) setCompteVendeur(sellers[0]);
       else setErreur("Compte vendeur introuvable");
-      const params = new URLSearchParams(window.location.search);
-      const produitId = params.get("produit_id");
-      if (produitId) setForm((f) => ({ ...f, produit_id: produitId }));
+
+      // Pre-fill from navigation state or URL params
+      if (prefilledProduct?.produit_id) {
+        setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const produitId = params.get("produit_id");
+        if (produitId) setForm((f) => ({ ...f, produit_id: produitId }));
+      }
     };
     charger();
   }, []);
