@@ -193,7 +193,7 @@ function ListeVendeurs() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOuvert(false)}>Annuler</Button>
-            <Button onClick={sauvegarder} disabled={enCours || !form.nom_complet} className="bg-[#1a1f5e] hover:bg-[#141952]">
+            <Button onClick={sauvegarder} disabled={enCours || !(form.full_name || form.nom_complet)} className="bg-[#1a1f5e] hover:bg-[#141952]">
               {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
             </Button>
           </DialogFooter>
