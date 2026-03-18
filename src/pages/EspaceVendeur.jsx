@@ -158,11 +158,16 @@ export default function EspaceVendeur() {
     { ttl: 5 * 60 * 1000, enabled: !!compteVendeur?.id }
   );
 
-  const { data: compteActualise, isLoading: loadingCompte } = useCachedQuery(
-    'COMPTE_VENDEUR',
-    () => filterTable("sellers", { id: compteVendeur.id }),
-    { ttl: 3 * 60 * 1000, enabled: !!compteVendeur?.id }
-  );
+  const { data: compteActualise, isLoading: loadingCompte } = useQuery({
+    queryKey: ['COMPTE_VENDEUR_FRESH', compteVendeur?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("sellers").select("*").eq("id", compteVendeur.id).maybeSingle();
+      return data ? [data] : [];
+    },
+    enabled: !!compteVendeur?.id,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
   // SECTION A — Vendor personal stats
   const { data: vendeurStats } = useQuery({

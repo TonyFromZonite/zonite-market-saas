@@ -34,18 +34,26 @@ export default function DemandePaiement() {
 
   useEffect(() => {
     const charger = async () => {
-      const session = getVendeurSession();
-      if (!session) { window.location.href = createPageUrl("Connexion"); return; }
-      const sellers = await filterTable("sellers", { email: session.email });
-      if (sellers.length > 0) {
-        setCompteVendeur(sellers[0]);
-        setForm(f => ({
-          ...f,
-          numero_mobile_money: sellers[0].numero_mobile_money || "",
-          operateur: sellers[0].operateur_mobile_money === "mtn_momo" ? "MTN MoMo" : sellers[0].operateur_mobile_money === "orange_money" ? "Orange Money" : sellers[0].operateur_mobile_money || "Orange Money",
-          nom_titulaire: sellers[0].full_name || "",
-        }));
-      }
+      // Use async session guard to handle missing/stale sessions
+      const { getVendeurSessionAsync } = await import("@/components/useSessionGuard");
+      const session = await getVendeurSessionAsync();
+      if (!session?.id) { window.location.href = createPageUrl("Connexion"); return; }
+      
+      // Always load FRESH seller data from DB for balance
+      const { data: freshSeller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("id", session.id)
+        .maybeSingle();
+      
+      const seller = freshSeller || session;
+      setCompteVendeur(seller);
+      setForm(f => ({
+        ...f,
+        numero_mobile_money: seller.numero_mobile_money || "",
+        operateur: seller.operateur_mobile_money === "mtn_momo" ? "MTN MoMo" : seller.operateur_mobile_money === "orange_money" ? "Orange Money" : seller.operateur_mobile_money || "Orange Money",
+        nom_titulaire: seller.full_name || "",
+      }));
     };
     charger();
   }, []);
