@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * CACHE MANAGER - Réduit consommation Base44 de 70%+
+ * CACHE MANAGER - Hybrid cache layer
  * Stockage hybride: memory + localStorage + sessionStorage
  * Invalidation intelligente et gestion d'expiration
  */

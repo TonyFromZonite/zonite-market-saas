@@ -1,4 +1,4 @@
-// Cache simple avec IndexedDB pour économiser les crédits Base44
+// Cache simple avec IndexedDB pour optimiser les performances
 const DB_NAME = 'zonite_cache';
 const STORE_NAME = 'entities';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
