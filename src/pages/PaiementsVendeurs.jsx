@@ -140,18 +140,20 @@ export default function PaiementsVendeurs() {
       const montant = Number(rejectingDemande.montant);
 
       // 1. Update demande to rejetee
-      await supabase.from("demandes_paiement_vendeur").update({
+      const { error: demandeError } = await supabase.from("demandes_paiement_vendeur").update({
         statut: "rejetee",
         motif_rejet: rejectReason.trim(),
         traite_par: adminSession?.email || "admin",
         traite_at: new Date().toISOString(),
       }).eq("id", rejectingDemande.id);
+      if (demandeError) throw new Error("Erreur mise à jour demande: " + demandeError.message);
 
       // 2. RESTORE vendor balance
-      await supabase.from("sellers").update({
+      const { error: sellerError } = await supabase.from("sellers").update({
         solde_commission: Number(seller.solde_commission || 0) + montant,
         solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
       }).eq("id", seller.id);
+      if (sellerError) throw new Error("Erreur restauration solde: " + sellerError.message);
 
       // 3. Notify vendor with exact reason
       await supabase.from("notifications_vendeur").insert({
