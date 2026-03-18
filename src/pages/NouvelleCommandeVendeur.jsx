@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getVendeurSession } from "@/components/useSessionGuard";
+import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,6 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
-import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function NouvelleCommandeVendeur() {
@@ -36,11 +35,22 @@ export default function NouvelleCommandeVendeur() {
 
   useEffect(() => {
     const charger = async () => {
-      const session = getVendeurSession();
+      const session = await getVendeurSessionAsync();
       if (!session) { window.location.href = createPageUrl("Connexion"); return; }
-      const sellers = await filterTable("sellers", { email: session.email });
-      if (sellers.length > 0) setCompteVendeur(sellers[0]);
-      else setErreur("Compte vendeur introuvable");
+      
+      // Get fresh seller data
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("id", session.id)
+        .maybeSingle();
+      
+      if (seller) {
+        setCompteVendeur(seller);
+      } else {
+        setErreur("Compte vendeur introuvable. Veuillez vous reconnecter.");
+        return;
+      }
 
       // Pre-fill from navigation state or URL params
       if (prefilledProduct?.produit_id) {

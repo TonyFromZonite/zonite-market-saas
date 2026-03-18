@@ -80,11 +80,34 @@ export default function Connexion() {
       const user = authData.user;
       const role = user.user_metadata?.role || "user";
 
-      const { data: seller } = await supabase.
-      from("sellers").
-      select("*").
-      eq("user_id", user.id).
-      maybeSingle();
+      let seller = null;
+
+      // Try by user_id first
+      const { data: sellerByUserId } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      seller = sellerByUserId;
+
+      // Fallback: try by email if user_id not linked
+      if (!seller) {
+        const { data: sellerByEmail } = await supabase
+          .from("sellers")
+          .select("*")
+          .eq("email", loginEmail)
+          .maybeSingle();
+
+        if (sellerByEmail) {
+          // Fix missing user_id link
+          await supabase
+            .from("sellers")
+            .update({ user_id: user.id })
+            .eq("id", sellerByEmail.id);
+          seller = { ...sellerByEmail, user_id: user.id };
+        }
+      }
 
       if (mode === MODE_ADMIN) {
         if (role !== "admin" && role !== "sous_admin") {
