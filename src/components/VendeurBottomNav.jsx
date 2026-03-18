@@ -15,10 +15,13 @@ export default function VendeurBottomNav({ items = DEFAULT_ITEMS }) {
   const location = useLocation();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
-      <div className="bottom-nav-safe mx-auto grid w-full max-w-screen-md grid-cols-5">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <div className="mx-auto grid w-full max-w-screen-md grid-cols-5">
         {items.map((item) => {
-          const fallback = DEFAULT_ITEMS.find((defaultItem) => defaultItem.page === item.page) || {};
+          const fallback = DEFAULT_ITEMS.find((d) => d.page === item.page) || {};
           const label = item.label || fallback.label;
           const page = item.page || fallback.page;
           const Icon = item.icon || fallback.icon;
@@ -32,7 +35,7 @@ export default function VendeurBottomNav({ items = DEFAULT_ITEMS }) {
                 key={page}
                 type="button"
                 disabled
-                className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium text-muted-foreground/50 sm:text-[11px]"
+                className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium text-slate-300 sm:text-[11px]"
               >
                 <Icon className="h-5 w-5" />
                 <span className="max-w-full truncate">{label}</span>
@@ -44,11 +47,11 @@ export default function VendeurBottomNav({ items = DEFAULT_ITEMS }) {
             <Link
               key={page}
               to={href}
-              className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium transition-colors sm:text-[11px] ${
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors sm:text-[11px] ${
+                isActive ? "text-[#1a1f5e]" : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              <Icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+              <Icon className={`h-5 w-5 ${isActive ? "text-[#1a1f5e]" : "text-slate-400"}`} />
               <span className={`max-w-full truncate ${isActive ? "font-semibold" : "font-medium"}`}>{label}</span>
             </Link>
           );

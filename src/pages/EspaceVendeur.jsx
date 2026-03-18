@@ -388,7 +388,7 @@ export default function EspaceVendeur() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
+    <div className="min-h-screen bg-slate-50 pb-20" style={{ paddingBottom: "max(5rem, calc(5rem + env(safe-area-inset-bottom, 0px)))" }}>
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
@@ -499,11 +499,11 @@ export default function EspaceVendeur() {
 
       {/* SECTION A — Stats personnelles */}
       <div className="px-4 -mt-5">
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Wallet className="w-4 h-4 text-yellow-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{formater(soldeAffiche.solde_commission)}</p>
-            <p className="text-[10px] text-slate-500">💰 Solde Commission</p>
+            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
+            <p className="text-[10px] text-slate-500 truncate">💰 Solde Commission</p>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Package className="w-4 h-4 text-blue-600" /></div>
@@ -512,13 +512,13 @@ export default function EspaceVendeur() {
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Trophy className="w-4 h-4 text-emerald-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{formater(soldeAffiche.total_commissions_gagnees)}</p>
-            <p className="text-[10px] text-slate-500">🏆 Total Gagné</p>
+            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
+            <p className="text-[10px] text-slate-500 truncate">🏆 Total Gagné</p>
           </div>
         </div>
 
         {/* Stats CA par période */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
           {[
             { label: "Cette semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek, icon: "📅" },
             { label: "Ce mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois, icon: "📅" },
@@ -526,8 +526,8 @@ export default function EspaceVendeur() {
           ].map(({ label, ca, comm, icon }) => (
             <div key={label} className="bg-white rounded-2xl p-3 shadow-sm">
               <p className="text-[10px] text-slate-500 font-medium mb-1">{icon} {label}</p>
-              <p className="text-xs font-bold text-slate-900">CA: {formater(ca)}</p>
-              <p className="text-xs text-emerald-600">Com: {formater(comm)}</p>
+              <p className="text-[11px] sm:text-xs font-bold text-slate-900 truncate">CA: {formater(ca)}</p>
+              <p className="text-[11px] sm:text-xs text-emerald-600 truncate">Com: {formater(comm)}</p>
             </div>
           ))}
         </div>

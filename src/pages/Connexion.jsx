@@ -146,12 +146,21 @@ export default function Connexion() {
     setChargementOublie(false);
   };
 
-  const lienFacebook = configs["lien_facebook"] || "";
-  const lienTiktok = configs["lien_tiktok"] || "";
-  const lienInstagram = configs["lien_instagram"] || "";
-  const messageAccueil = configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀";
-  const nomApp = configs["nom_app"] || "ZONITE Vendeurs";
+  // Safely extract config values, truncate to prevent layout breakage
+  const safeStr = (val, maxLen = 200) => {
+    const s = String(val || "").trim();
+    return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+  };
+  const safeUrl = (val) => {
+    const s = String(val || "").trim();
+    try { if (s) new URL(s); return s; } catch { return ""; }
+  };
 
+  const lienFacebook = safeUrl(configs["lien_facebook"]);
+  const lienTiktok = safeUrl(configs["lien_tiktok"]);
+  const lienInstagram = safeUrl(configs["lien_instagram"]);
+  const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
+  const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
   const hasSocialLinks = lienFacebook || lienTiktok || lienInstagram;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
@@ -166,13 +175,13 @@ export default function Connexion() {
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
-        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight">
+        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
           {String(nomApp).split(" ").map((w, i) =>
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
-        <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3">
-          {String(messageAccueil)}
+        <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3 line-clamp-3 overflow-hidden">
+          {messageAccueil}
         </p>
       </div>
 

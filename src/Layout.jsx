@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
@@ -13,14 +13,25 @@ const PAGES_SANS_LAYOUT_ADMIN = new Set([
   "EspaceSousAdmin",
 ]);
 
+const DESKTOP_BP = 1024;
+
 function useResponsive() {
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth >= DESKTOP_BP
+  );
 
   useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024);
-    check();
+    let rafId;
+    const check = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => setIsDesktop(window.innerWidth >= DESKTOP_BP));
+    };
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    check();
+    return () => {
+      window.removeEventListener("resize", check);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return isDesktop;
@@ -32,9 +43,18 @@ export default function Layout({ children, currentPageName }) {
   const vendeurSession = getVendeurSession();
   const isDesktop = useResponsive();
 
+  // Close mobile sidebar when switching to desktop
   useEffect(() => {
     if (isDesktop) setSidebarOuverte(false);
   }, [isDesktop]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (!isDesktop && sidebarOuverte) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isDesktop, sidebarOuverte]);
 
   useEffect(() => {
     if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName)) return;
@@ -52,17 +72,30 @@ export default function Layout({ children, currentPageName }) {
     chargerBadges();
   }, [currentPageName]);
 
+  // Skip admin layout for vendor pages or login
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
     return <>{children}</>;
   }
 
+  const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);
+  const handleMenuClose = useCallback(() => setSidebarOuverte(false), []);
+
   return (
     <div className="min-h-dvh w-full bg-slate-50 lg:flex">
-      {isDesktop && <AdminSidebar isOpen={true} onClose={() => {}} badges={badges} isDesktop={true} />}
-      {!isDesktop && <AdminSidebar isOpen={sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={false} />}
+      {/* Desktop sidebar — always rendered, hidden via CSS below lg */}
+      <AdminSidebar
+        isOpen={isDesktop ? true : sidebarOuverte}
+        onClose={handleMenuClose}
+        badges={badges}
+        isDesktop={isDesktop}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <AdminHeader currentPageName={currentPageName} onMenuOpen={() => setSidebarOuverte(true)} showBurger={!isDesktop} />
+        <AdminHeader
+          currentPageName={currentPageName}
+          onMenuOpen={handleMenuOpen}
+          showBurger={!isDesktop}
+        />
         <main className="flex-1 min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6">
           {children}
         </main>
