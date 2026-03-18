@@ -4,18 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, Facebook, Globe, MessageCircle } from "lucide-react";
-
-const CONFIGS = [
-  { cle: "lien_youtube_formation", label: "Lien YouTube vidéo de formation", placeholder: "https://www.youtube.com/embed/dQw4w9WgXcQ", icone: Globe, couleur: "text-red-600" },
-  { cle: "lien_facebook", label: "Lien Facebook", placeholder: "https://facebook.com/votrepagezone", icone: Facebook, couleur: "text-blue-600" },
-  { cle: "lien_tiktok", label: "Lien TikTok", placeholder: "https://tiktok.com/@votrecompte", icone: Globe, couleur: "text-slate-700" },
-  { cle: "message_accueil", label: "Message de bienvenue (page connexion)", placeholder: "Chaque vente est une victoire. Allons-y ! 🚀", icone: MessageCircle, couleur: "text-emerald-600" },
-  { cle: "nom_app", label: "Nom de l'application (ex: ZONITE Vendeurs)", placeholder: "ZONITE Vendeurs", icone: Globe, couleur: "text-[#1a1f5e]" },
-];
-
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Lock, Youtube } from "lucide-react";
+
+const CONFIGS = [
+  { cle: "nom_app", label: "Nom de l'application", placeholder: "Zonite Market", icone: Globe, couleur: "text-[#1a1f5e]" },
+  { cle: "message_accueil", label: "Message de bienvenue (page connexion)", placeholder: "Chaque vente est une victoire. Allons-y ! 🚀", icone: MessageCircle, couleur: "text-emerald-600" },
+  { cle: "lien_youtube_formation", label: "URL Vidéo de formation YouTube", placeholder: "https://www.youtube.com/watch?v=...", icone: Youtube, couleur: "text-red-600" },
+  { cle: "lien_facebook", label: "Lien Facebook", placeholder: "https://facebook.com/votrepage", icone: Facebook, couleur: "text-blue-600" },
+  { cle: "lien_tiktok", label: "Lien TikTok", placeholder: "https://tiktok.com/@votrecompte", icone: Globe, couleur: "text-slate-700" },
+  { cle: "lien_instagram", label: "Lien Instagram", placeholder: "https://instagram.com/votrecompte", icone: Globe, couleur: "text-pink-600" },
+];
 
 export default function ConfigurationApp() {
   const [valeurs, setValeurs] = useState({});
@@ -49,11 +49,9 @@ export default function ConfigurationApp() {
       for (const { cle } of CONFIGS) {
         const valeur = valeurs[cle] || "";
         if (ids[cle]) {
-          // Update existing
           const { error } = await supabase.from("config_app").update({ valeur }).eq("id", ids[cle]);
           if (error) { console.error(`Update ${cle}:`, error); }
         } else if (valeur) {
-          // Insert new
           const { data, error } = await supabase.from("config_app").insert({ cle, valeur }).select().single();
           if (error) { console.error(`Insert ${cle}:`, error); }
           else if (data) { setIds((prev) => ({ ...prev, [cle]: data.id })); }
@@ -87,7 +85,7 @@ export default function ConfigurationApp() {
                placeholder={placeholder}
              />
              {cle === "lien_youtube_formation" && (
-               <p className="text-xs text-slate-500 mt-1">💡 Collez l'URL complète YouTube ou l'URL embed (ex: https://www.youtube.com/embed/VIDEO_ID)</p>
+               <p className="text-xs text-slate-500 mt-1">💡 Collez l'URL complète YouTube (ex: https://www.youtube.com/watch?v=VIDEO_ID ou https://youtu.be/VIDEO_ID)</p>
              )}
            </div>
          ))}
@@ -110,23 +108,25 @@ export default function ConfigurationApp() {
       {/* Aperçu */}
       <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Aperçu page de connexion</p>
-        <div className="flex gap-3">
-          <a
-            href={valeurs["lien_facebook"] || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 text-blue-700 text-sm font-medium"
-          >
-            <Facebook className="w-4 h-4" /> Facebook
-          </a>
-          <a
-            href={valeurs["lien_tiktok"] || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 text-sm font-medium"
-          >
-            TikTok
-          </a>
+        <div className="flex gap-3 flex-wrap">
+          {valeurs["lien_facebook"] && (
+            <a href={valeurs["lien_facebook"]} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 text-blue-700 text-sm font-medium">
+              <Facebook className="w-4 h-4" /> Facebook
+            </a>
+          )}
+          {valeurs["lien_tiktok"] && (
+            <a href={valeurs["lien_tiktok"]} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 text-sm font-medium">
+              TikTok
+            </a>
+          )}
+          {valeurs["lien_instagram"] && (
+            <a href={valeurs["lien_instagram"]} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-pink-50 border border-pink-200 rounded-xl px-3 py-1.5 text-pink-700 text-sm font-medium">
+              Instagram
+            </a>
+          )}
         </div>
         {valeurs["message_accueil"] && (
           <p className="mt-3 text-sm text-slate-600 italic">"{valeurs["message_accueil"]}"</p>

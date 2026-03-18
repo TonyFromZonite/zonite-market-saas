@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { vendeurApi } from "@/components/vendeurApi";
 import { LOGO_URL } from "@/components/constants";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,35 @@ import { createPageUrl } from "@/utils";
 import { filterTable, getCurrentUser } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 
+const getYoutubeEmbedUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const cleaned = url.replace(/^"|"$/g, '').trim();
+  if (!cleaned) return null;
+
+  let videoId = null;
+  try {
+    const urlObj = new URL(cleaned);
+    if (urlObj.hostname.includes('youtu.be')) {
+      videoId = urlObj.pathname.slice(1).split('/')[0];
+    } else if (urlObj.hostname.includes('youtube.com')) {
+      if (urlObj.pathname.includes('/embed/')) {
+        videoId = urlObj.pathname.split('/embed/')[1]?.split('?')[0]?.split('/')[0];
+      } else if (urlObj.pathname.includes('/shorts/')) {
+        videoId = urlObj.pathname.split('/shorts/')[1]?.split('?')[0];
+      } else {
+        videoId = urlObj.searchParams.get('v');
+      }
+    }
+  } catch {
+    const match = cleaned.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    videoId = match ? match[1] : null;
+  }
+
+  if (!videoId || videoId.length < 11) return null;
+  videoId = videoId.substring(0, 11);
+  return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
+};
+
 export default function VideoFormation() {
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
@@ -15,40 +44,30 @@ export default function VideoFormation() {
   const [accepte, setAccepte] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [videoWatched, setVideoWatched] = useState(false);
+  const timerStarted = useRef(false);
   const navigate = useNavigate();
 
-  // Extraire videoId robustement de tous formats YouTube
-  const extractVideoId = (rawUrl) => {
-    if (!rawUrl || typeof rawUrl !== "string") return null;
-    
-    try {
-      // Format embed: https://www.youtube.com/embed/Yr0uWVJYRiI
-      if (rawUrl.includes("/embed/")) {
-        return rawUrl.split("/embed/")[1]?.split("?")[0]?.split("&")[0];
-      }
-      
-      // Format youtu.be (short): https://youtu.be/Yr0uWVJYRiI?si=xxx
-      if (rawUrl.includes("youtu.be/")) {
-        const match = rawUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-        if (match) return match[1];
-      }
-      
-      // Format youtube.com/watch: https://youtube.com/watch?v=Yr0uWVJYRiI
-      if (rawUrl.includes("youtube.com/watch")) {
-        const match = rawUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-        if (match) return match[1];
-      }
-    } catch (e) {
-      console.error("Parsing YouTube error:", e);
+  // 30s countdown timer - starts when video iframe loads
+  useEffect(() => {
+    if (!timerStarted.current || videoWatched) return;
+    if (timeLeft <= 0) {
+      setVideoWatched(true);
+      return;
     }
-    
-    return null;
-  };
-
-  const convertToEmbedUrl = (videoId) => {
-    if (!videoId) return null;
-    return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&fs=1&controls=1&showinfo=0`;
-  };
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setVideoWatched(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timerStarted.current, videoWatched, timeLeft]);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,28 +83,26 @@ export default function VideoFormation() {
         const sellers = await filterTable("sellers", { email: u.email });
         if (isMounted && sellers.length > 0) setCompteVendeur(sellers[0]);
 
-        // Récupérer config vidéo directement via supabase (config_app n'a pas created_at)
-        let { data: configs } = await supabase
+        // Try both config keys
+        const { data: configs } = await supabase
           .from("config_app")
-          .select("*")
-          .eq("cle", "lien_youtube_formation");
-        if (!configs?.length) {
-          await new Promise(r => setTimeout(r, 300));
-          const retry = await supabase
-            .from("config_app")
-            .select("*")
-            .eq("cle", "lien_youtube_formation");
-          configs = retry.data;
-        }
+          .select("cle, valeur")
+          .in("cle", ["lien_youtube_formation", "formation_video_url"]);
 
         if (!isMounted) return;
 
-        if (configs?.length > 0 && configs[0]?.valeur) {
-          const videoId = extractVideoId(configs[0].valeur);
-          if (videoId) {
-            setVideoUrl(convertToEmbedUrl(videoId));
+        const configMap = {};
+        (configs || []).forEach(c => { configMap[c.cle] = c.valeur; });
+
+        const rawUrl = configMap["formation_video_url"] || configMap["lien_youtube_formation"] || "";
+        const parsed = typeof rawUrl === "string" ? rawUrl.replace(/^"|"$/g, '') : String(rawUrl).replace(/^"|"$/g, '');
+
+        if (parsed) {
+          const embedUrl = getYoutubeEmbedUrl(parsed);
+          if (embedUrl) {
+            setVideoUrl(embedUrl);
           } else {
-            setErreur("Format vidéo invalide.");
+            setErreur("Format vidéo invalide. Contactez l'administrateur.");
           }
         } else {
           setErreur("Vidéo non configurée.");
@@ -100,8 +117,6 @@ export default function VideoFormation() {
     charger();
     return () => { isMounted = false; };
   }, []);
-
-
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
@@ -142,6 +157,7 @@ export default function VideoFormation() {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen={true}
                     referrerPolicy="strict-origin-when-cross-origin"
+                    onLoad={() => { timerStarted.current = true; setTimeLeft(30); }}
                     style={{ 
                       position: 'absolute',
                       top: 0,
@@ -159,13 +175,17 @@ export default function VideoFormation() {
               )}
             </div>
 
-            {/* Bouton confirmer vidéo vue */}
+            {/* Bouton confirmer vidéo vue - with 30s countdown */}
             {videoUrl && !videoTerminee && (
               <Button
                 onClick={() => setVideoTerminee(true)}
-                className="w-full mb-4 bg-emerald-600 hover:bg-emerald-700"
+                disabled={!videoWatched}
+                className={`w-full mb-4 ${videoWatched ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-400 cursor-not-allowed'}`}
               >
-                ✓ J'ai regardé la vidéo complètement
+                {!videoWatched
+                  ? `⏳ Patientez ${timeLeft}s...`
+                  : "✓ J'ai regardé la vidéo complètement"
+                }
               </Button>
             )}
 
@@ -217,7 +237,6 @@ export default function VideoFormation() {
                       setEnCours(true);
                       setErreur("");
                       try {
-                        // Update training_completed and catalogue_debloque directly
                         const { error: updateError } = await supabase
                           .from('sellers')
                           .update({
@@ -229,14 +248,12 @@ export default function VideoFormation() {
 
                         if (updateError) throw new Error(updateError.message);
 
-                        // Update local session
                         const session = JSON.parse(sessionStorage.getItem('vendeur_session') || '{}');
                         session.training_completed = true;
                         session.catalogue_debloque = true;
                         session.conditions_acceptees = true;
                         sessionStorage.setItem('vendeur_session', JSON.stringify(session));
                         setCompteVendeur(prev => ({ ...prev, training_completed: true, catalogue_debloque: true }));
-                        // Show success then redirect
                         setTimeout(() => navigate(createPageUrl("EspaceVendeur")), 1000);
                       } catch (err) {
                         console.error("Finalisation:", err);
