@@ -622,7 +622,7 @@ function PaiementsTab() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Reject modal */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
