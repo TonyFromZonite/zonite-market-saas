@@ -134,23 +134,27 @@ export default function DemandePaiement() {
         solde_en_attente: Number(freshSeller?.solde_en_attente || 0) + montant,
       }).eq("id", compteVendeur.id);
 
-      // Notify vendor
-      await supabase.from("notifications_vendeur").insert({
-        vendeur_id: compteVendeur.id,
-        vendeur_email: compteVendeur.email,
-        titre: "⏳ Demande de paiement envoyée",
-        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été envoyée.\n\n💳 Opérateur : ${form.operateur}\n📱 Numéro : ${form.numero_mobile_money}\n👤 Titulaire : ${form.nom_titulaire}\n\n💰 Solde temporairement réservé : ${montant.toLocaleString("fr-FR")} FCFA`,
-        type: "info",
-      }).catch(() => {});
+      // Notify vendor (non-blocking)
+      try {
+        await supabase.from("notifications_vendeur").insert({
+          vendeur_id: compteVendeur.id,
+          vendeur_email: compteVendeur.email,
+          titre: "⏳ Demande de paiement envoyée",
+          message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été envoyée.\n\n💳 Opérateur : ${form.operateur}\n📱 Numéro : ${form.numero_mobile_money}\n👤 Titulaire : ${form.nom_titulaire}\n\n💰 Solde temporairement réservé : ${montant.toLocaleString("fr-FR")} FCFA`,
+          type: "info",
+        });
+      } catch (_) {}
 
-      // Notify admin
-      await supabase.from("notifications_admin").insert({
-        titre: "💰 Nouvelle demande de paiement",
-        message: `${compteVendeur.full_name} demande un retrait de ${formater(montant)} via ${form.operateur}. Numéro : ${form.numero_mobile_money}. Nom titulaire : ${form.nom_titulaire}`,
-        type: "paiement",
-        vendeur_email: compteVendeur.email,
-        reference_id: demande?.id || null,
-      }).catch(() => {});
+      // Notify admin (non-blocking)
+      try {
+        await supabase.from("notifications_admin").insert({
+          titre: "💰 Nouvelle demande de paiement",
+          message: `${compteVendeur.full_name} demande un retrait de ${formater(montant)} via ${form.operateur}. Numéro : ${form.numero_mobile_money}. Nom titulaire : ${form.nom_titulaire}`,
+          type: "paiement",
+          vendeur_email: compteVendeur.email,
+          reference_id: demande?.id || null,
+        });
+      } catch (_) {}
 
       toast({ title: "✅ Demande envoyée", description: `${montant.toLocaleString("fr-FR")} FCFA en attente de validation.` });
       queryClient.invalidateQueries({ queryKey: ["demandes_paiement"] });
