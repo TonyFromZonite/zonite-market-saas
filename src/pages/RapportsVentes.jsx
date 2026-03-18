@@ -258,18 +258,11 @@ export default function RapportsVentes() {
     return actives.filter(c => new Date(c.created_date) >= dateDebut);
   }, [commandesVendeurs, dateDebut]);
 
-  // ── KPIs ──
-  const caVentes = ventesFiltrees.reduce((s, v) => s + (v.montant_total || 0), 0);
-  const margeVentes = ventesFiltrees.reduce((s, v) => s + (v.profit_zonite || 0), 0);
-  const caCmds = cmdsFiltrees.reduce((s, c) => s + (c.prix_final_client || 0) * (c.quantite || 0), 0);
-  const margeCmds = cmdsFiltrees.reduce((s, c) => {
-    const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-    return s + ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
-  }, 0);
-  const caTotal = caVentes + caCmds;
-  const margeTotal = margeVentes + margeCmds;
-  const tauxMarge = caTotal > 0 ? ((margeTotal / caTotal) * 100).toFixed(1) : 0;
-  const nbTransactions = ventesFiltrees.length + cmdsFiltrees.length;
+  // ── KPIs (all from ventes table) ──
+  const caTotal = ventesFiltrees.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const totalCommissions = ventesFiltrees.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeTotal = ventesFiltrees.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+  const nbTransactions = ventesFiltrees.length;
 
   // ── Graphique période ──
   const donneesGraphique = useMemo(() => {
