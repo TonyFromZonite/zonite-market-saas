@@ -266,7 +266,7 @@ export default function RapportsVentes() {
     const map = {};
     const pj = periodeJours === 0 ? 365 : periodeJours;
     ventesFiltrees.forEach(v => {
-      const date = new Date(v.created_at || v.created_date);
+      const date = new Date(v.created_at);
       const key = getGroupeKey(date, pj);
       if (!map[key]) map[key] = { periode: key, ca: 0, commissions: 0, marge: 0 };
       map[key].ca += v.montant_total || 0;
