@@ -399,13 +399,27 @@ function CommissionsTab() {
   const payerCommission = async () => {
     if (!vendeurPaiement || montantPaiement <= 0) return;
     setEnCours(true);
-    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.full_name || vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
-    await adminApi.updateVendeur(vendeurPaiement.id, { solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement), total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement });
-    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name || vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
-    queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
-    queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
-    setDialogPaiement(false);
-    setEnCours(false);
+    try {
+      await supabase.from("paiements_commission").insert({
+        vendeur_id: vendeurPaiement.id,
+        montant: montantPaiement,
+        methode_paiement: methodePaiement,
+        reference_paiement: `PAY-${Date.now().toString(36).toUpperCase()}`,
+        effectue_par: notesPaiement || "admin",
+      });
+      await adminApi.updateVendeur(vendeurPaiement.id, {
+        solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement),
+        total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement,
+      });
+      await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name}`, entite_id: vendeurPaiement.id });
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+      setDialogPaiement(false);
+    } catch (err) {
+      console.error("Erreur paiement commission:", err);
+    } finally {
+      setEnCours(false);
+    }
   };
 
   const totalAPayer = vendeurs.reduce((s, v) => s + (v.solde_commission || 0), 0);
@@ -509,14 +523,129 @@ function CommissionsTab() {
 // ─── Sous-composant : Paiements Vendeurs ────────────────────────────────────
 function PaiementsTab() {
   const queryClient = useQueryClient();
-  const { data: demandes = [], isLoading } = useQuery({ queryKey: ["demandes_paiement_admin"], queryFn: () => listTable("demandes_paiement_vendeur", "-created_date") });
+  const { toast } = useToast();
+  const [processingId, setProcessingId] = useState(null);
 
-  const marquerPaye = async (demande) => {
-    // Opération atomique via adminApi (service role) : met à jour demande + solde vendeur + notif
-    await adminApi.marquerDemandePaye(demande.id);
+  const { data: demandes = [], isLoading } = useQuery({
+    queryKey: ["demandes_paiement_admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("demandes_paiement_vendeur")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+  });
+
+  const { data: sellers = [] } = useQuery({
+    queryKey: ["sellers_for_payments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sellers").select("id, email, full_name, solde_commission, total_commissions_payees");
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+  });
+
+  const getSellerForDemande = (d) => sellers.find(s => s.id === d.vendeur_id) || null;
+  const getNomTitulaire = (d) => {
+    if (d.notes && d.notes.startsWith("Titulaire: ")) return d.notes.replace("Titulaire: ", "");
+    return null;
+  };
+
+  const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
+    queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+  };
+
+  const traiterPaiement = async (demandeId) => {
+    setProcessingId(demandeId);
+    try {
+      const demande = demandes.find(d => d.id === demandeId);
+      if (!demande) throw new Error("Demande introuvable");
+      if (demande.statut !== "en_attente") throw new Error("Cette demande a déjà été traitée");
+
+      const seller = getSellerForDemande(demande);
+      if (!seller) throw new Error("Vendeur introuvable");
+
+      const montant = Number(demande.montant);
+      const soldeActuel = Number(seller.solde_commission || 0);
+      if (montant > soldeActuel) throw new Error(`Solde insuffisant. Solde actuel : ${soldeActuel.toLocaleString("fr-FR")} FCFA`);
+
+      const { error: updateError } = await supabase.from("demandes_paiement_vendeur").update({
+        statut: "payee",
+        traite_par: "admin",
+        traite_at: new Date().toISOString(),
+      }).eq("id", demandeId);
+      if (updateError) throw updateError;
+
+      const nouveauSolde = soldeActuel - montant;
+      const { error: sellerError } = await supabase.from("sellers").update({
+        solde_commission: Math.max(0, nouveauSolde),
+        total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
+      }).eq("id", seller.id);
+      if (sellerError) throw sellerError;
+
+      await supabase.from("paiements_commission").insert({
+        demande_id: demandeId,
+        vendeur_id: seller.id,
+        montant,
+        methode_paiement: demande.operateur_mobile_money,
+        reference_paiement: `PAY-${Date.now().toString(36).toUpperCase()}`,
+        effectue_par: "admin",
+      });
+
+      await supabase.from("notifications_vendeur").insert({
+        vendeur_id: seller.id,
+        vendeur_email: seller.email,
+        titre: "✅ Paiement effectué !",
+        message: `Votre retrait de ${montant.toLocaleString("fr-FR")} FCFA via ${demande.operateur_mobile_money} au ${demande.numero_mobile_money} a été effectué. Nouveau solde : ${Math.max(0, nouveauSolde).toLocaleString("fr-FR")} FCFA`,
+        type: "paiement",
+      });
+
+      toast({ title: "✅ Paiement effectué", description: `${montant.toLocaleString("fr-FR")} FCFA envoyé à ${seller.full_name}` });
+      refreshAll();
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast({ title: "❌ Erreur de paiement", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectPayment = async (demandeId) => {
+    const reason = window.prompt("Motif du rejet (obligatoire) :");
+    if (!reason?.trim()) return;
+
+    setProcessingId(demandeId);
+    try {
+      const demande = demandes.find(d => d.id === demandeId);
+      if (!demande) throw new Error("Demande introuvable");
+
+      await supabase.from("demandes_paiement_vendeur").update({
+        statut: "rejetee",
+        notes_admin: reason,
+        traite_par: "admin",
+        traite_at: new Date().toISOString(),
+      }).eq("id", demandeId);
+
+      await supabase.from("notifications_vendeur").insert({
+        vendeur_id: demande.vendeur_id,
+        vendeur_email: demande.vendeur_email,
+        titre: "❌ Demande de paiement rejetée",
+        message: `Votre demande de retrait de ${Number(demande.montant).toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif : ${reason}\n\nVotre solde reste inchangé.`,
+        type: "alerte",
+      });
+
+      toast({ title: "✅ Demande rejetée", description: "Le vendeur a été notifié." });
+      refreshAll();
+    } catch (error) {
+      toast({ title: "❌ Erreur", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   if (isLoading) return <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>;
@@ -527,44 +656,109 @@ function PaiementsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="p-3 bg-yellow-50 rounded-xl"><Wallet className="w-5 h-5 text-yellow-600" /></div>
           <div><p className="text-sm text-slate-500">À payer maintenant</p><p className="text-xl font-bold text-yellow-600">{formater(totalEnAttente)}</p><p className="text-xs text-slate-400">{enAttente.length} demande{enAttente.length > 1 ? "s" : ""}</p></div>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="p-3 bg-emerald-50 rounded-xl"><CheckCircle2 className="w-5 h-5 text-emerald-600" /></div>
-          <div><p className="text-sm text-slate-500">Total payé</p><p className="text-xl font-bold text-emerald-600">{formater(traitees.filter(d => d.statut === "paye").reduce((s, d) => s + d.montant, 0))}</p></div>
+          <div><p className="text-sm text-slate-500">Total payé</p><p className="text-xl font-bold text-emerald-600">{formater(traitees.filter(d => d.statut === "payee" || d.statut === "paye").reduce((s, d) => s + (d.montant || 0), 0))}</p></div>
         </div>
       </div>
+
       {enAttente.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b bg-yellow-50 border-yellow-100"><h3 className="font-semibold text-slate-900">Demandes à traiter ({enAttente.length})</h3></div>
+          <div className="p-4 border-b bg-yellow-50 border-yellow-100"><h3 className="font-semibold text-slate-900">💰 Demandes à traiter ({enAttente.length})</h3></div>
           <div className="divide-y divide-slate-100">
-            {enAttente.map(d => (
-              <div key={d.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-slate-900">{formater(d.montant)}</p>
-                  <p className="text-sm text-slate-700 font-medium">{d.vendeur_email}</p>
-                  <p className="text-xs text-slate-500">{d.operateur_mobile_money} : {d.numero_mobile_money}</p>
-                  <p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p>
+            {enAttente.map(d => {
+              const seller = getSellerForDemande(d);
+              const nomTitulaire = getNomTitulaire(d);
+              const namesMatch = nomTitulaire && seller && nomTitulaire.toLowerCase().trim() === seller.full_name?.toLowerCase().trim();
+              const hasNomTitulaire = !!nomTitulaire;
+
+              return (
+                <div key={d.id} className="p-4 space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Vendeur</span>
+                      <span className="font-semibold text-slate-900">{seller?.full_name || d.vendeur_email}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Montant</span>
+                      <span className="font-bold text-lg text-yellow-600">{formater(d.montant)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Opérateur</span>
+                      <span className="font-semibold text-slate-900">{d.operateur_mobile_money}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Numéro</span>
+                      <span className="font-semibold text-slate-900">{d.numero_mobile_money}</span>
+                    </div>
+                    {hasNomTitulaire && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Titulaire du compte</span>
+                        <span className="font-semibold text-slate-900">{nomTitulaire}</span>
+                      </div>
+                    )}
+                    {hasNomTitulaire && !namesMatch && (
+                      <div className="flex items-start gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg mt-1">
+                        <span className="text-sm">⚠️</span>
+                        <div>
+                          <p className="text-xs font-semibold text-red-600">Nom non correspondant</p>
+                          <p className="text-xs text-red-500">Le nom du compte Mobile Money "{nomTitulaire}" ne correspond pas au nom du vendeur "{seller?.full_name}". Vérifiez avant de payer.</p>
+                        </div>
+                      </div>
+                    )}
+                    {hasNomTitulaire && namesMatch && (
+                      <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg mt-1">
+                        <span>✅</span>
+                        <span className="text-xs text-emerald-600 font-medium">Nom vérifié — correspond au compte vendeur</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Demande du</span>
+                      <span className="text-xs text-slate-500">{formaterDate(d.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleRejectPayment(d.id)} disabled={processingId === d.id} className="flex-1 text-red-600 border-red-200 hover:bg-red-50">
+                      <XCircle className="w-4 h-4 mr-1" /> Rejeter
+                    </Button>
+                    <Button size="sm" onClick={() => traiterPaiement(d.id)} disabled={processingId === d.id} className="flex-[2] bg-emerald-600 hover:bg-emerald-700">
+                      {processingId === d.id ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+                      {processingId === d.id ? "Traitement..." : "💸 Marquer comme payé"}
+                    </Button>
+                  </div>
                 </div>
-                <Button size="sm" onClick={() => marquerPaye(d)} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="w-4 h-4 mr-1" /> Payé</Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
+
       {traitees.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="p-4 border-b border-slate-100"><h3 className="font-semibold text-slate-900">Historique ({traitees.length})</h3></div>
           <div className="divide-y divide-slate-100">
-            {traitees.map(d => (
-              <div key={d.id} className="p-4 flex items-center justify-between">
-                <div><p className="font-bold">{formater(d.montant)}</p><p className="text-sm text-slate-600">{d.vendeur_email} • {d.operateur_mobile_money}</p><p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p></div>
-                <Badge className={`border-0 ${d.statut === "paye" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{d.statut === "paye" ? "Payé ✓" : "Rejeté"}</Badge>
-              </div>
-            ))}
+            {traitees.map(d => {
+              const seller = getSellerForDemande(d);
+              return (
+                <div key={d.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <p className="font-bold">{formater(d.montant)}</p>
+                    <p className="text-sm text-slate-600">{seller?.full_name || d.vendeur_email} • {d.operateur_mobile_money}</p>
+                    <p className="text-xs text-slate-500">{d.numero_mobile_money}</p>
+                    {d.notes_admin && <p className="text-xs text-red-500">Motif rejet : {d.notes_admin}</p>}
+                    <p className="text-xs text-slate-400">{formaterDate(d.created_at)}{d.traite_at ? ` → Traité: ${formaterDate(d.traite_at)}` : ""}</p>
+                  </div>
+                  <Badge className={`border-0 ${(d.statut === "payee" || d.statut === "paye") ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                    {(d.statut === "payee" || d.statut === "paye") ? "Payé ✓" : "Rejeté"}
+                  </Badge>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
