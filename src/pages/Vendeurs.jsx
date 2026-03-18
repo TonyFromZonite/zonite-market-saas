@@ -382,9 +382,11 @@ function CommissionsTab() {
       const { data, error } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
-    }
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
-  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
+  const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100), refetchInterval: 10000 });
 
   const totalAPayer = vendeurs.reduce((s, v) => s + (v.solde_commission || 0), 0);
 
