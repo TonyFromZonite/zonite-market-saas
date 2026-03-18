@@ -146,12 +146,21 @@ export default function Connexion() {
     setChargementOublie(false);
   };
 
-  const lienFacebook = configs["lien_facebook"] || "";
-  const lienTiktok = configs["lien_tiktok"] || "";
-  const lienInstagram = configs["lien_instagram"] || "";
-  const messageAccueil = configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀";
-  const nomApp = configs["nom_app"] || "ZONITE Vendeurs";
+  // Safely extract config values, truncate to prevent layout breakage
+  const safeStr = (val, maxLen = 200) => {
+    const s = String(val || "").trim();
+    return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+  };
+  const safeUrl = (val) => {
+    const s = String(val || "").trim();
+    try { if (s) new URL(s); return s; } catch { return ""; }
+  };
 
+  const lienFacebook = safeUrl(configs["lien_facebook"]);
+  const lienTiktok = safeUrl(configs["lien_tiktok"]);
+  const lienInstagram = safeUrl(configs["lien_instagram"]);
+  const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
+  const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
   const hasSocialLinks = lienFacebook || lienTiktok || lienInstagram;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
