@@ -65,7 +65,7 @@ export default function VideoFormation() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [timerStarted.current, videoWatched, timeLeft]);
+  }, [timerStarted, videoWatched, timeLeft]);
 
   useEffect(() => {
     let isMounted = true;
