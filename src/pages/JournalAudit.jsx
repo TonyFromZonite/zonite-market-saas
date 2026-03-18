@@ -104,7 +104,7 @@ export default function JournalAudit() {
         ))}
       </div>
 
-      {ongletActif === "rapports" && <RapportsVentes />}
+      {ongletActif === "rapports" && <Suspense fallback={<div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>}><RapportsVentes /></Suspense>}
       {ongletActif === "journal" && (
       <div className="space-y-4">
       {/* Filtres */}
