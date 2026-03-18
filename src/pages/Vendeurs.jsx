@@ -561,7 +561,7 @@ function PaiementsTab() {
           <div className="divide-y divide-slate-100">
             {traitees.map(d => (
               <div key={d.id} className="p-4 flex items-center justify-between">
-                <div><p className="font-bold">{formater(d.montant)}</p><p className="text-sm text-slate-600">{d.vendeur_nom} • {d.operateur}</p><p className="text-xs text-slate-400">{formaterDate(d.created_date)}</p></div>
+                <div><p className="font-bold">{formater(d.montant)}</p><p className="text-sm text-slate-600">{d.vendeur_email} • {d.operateur_mobile_money}</p><p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p></div>
                 <Badge className={`border-0 ${d.statut === "paye" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{d.statut === "paye" ? "Payé ✓" : "Rejeté"}</Badge>
               </div>
             ))}
