@@ -497,36 +497,36 @@ export default function EspaceVendeur() {
       </div>
 
       {/* SECTION A — Stats personnelles */}
-      <div className="px-4 -mt-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Wallet className="w-4 h-4 text-yellow-600" /></div>
-            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
-            <p className="text-[10px] text-slate-500 truncate">💰 Solde Commission</p>
+      <div className="px-3 -mt-4">
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-yellow-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Wallet className="w-3.5 h-3.5 text-yellow-600" /></div>
+            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
+            <p className="text-[9px] text-slate-500 truncate">Solde</p>
           </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Package className="w-4 h-4 text-blue-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
-            <p className="text-[10px] text-slate-500">📦 Commandes en cours</p>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Package className="w-3.5 h-3.5 text-blue-600" /></div>
+            <p className="text-sm font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
+            <p className="text-[9px] text-slate-500">En cours</p>
           </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Trophy className="w-4 h-4 text-emerald-600" /></div>
-            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
-            <p className="text-[10px] text-slate-500 truncate">🏆 Total Gagné</p>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Trophy className="w-3.5 h-3.5 text-emerald-600" /></div>
+            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
+            <p className="text-[9px] text-slate-500 truncate">Total gagné</p>
           </div>
         </div>
 
         {/* Stats CA par période */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           {[
-            { label: "Cette semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek, icon: "📅" },
-            { label: "Ce mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois, icon: "📅" },
-            { label: "Cette année", ca: vendeurStats?.caAnnee, comm: vendeurStats?.commAnnee, icon: "📅" },
-          ].map(({ label, ca, comm, icon }) => (
-            <div key={label} className="bg-white rounded-2xl p-3 shadow-sm">
-              <p className="text-[10px] text-slate-500 font-medium mb-1">{icon} {label}</p>
-              <p className="text-[11px] sm:text-xs font-bold text-slate-900 truncate">CA: {formater(ca)}</p>
-              <p className="text-[11px] sm:text-xs text-emerald-600 truncate">Com: {formater(comm)}</p>
+            { label: "Semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek },
+            { label: "Mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois },
+            { label: "Année", ca: vendeurStats?.caAnnee, comm: vendeurStats?.commAnnee },
+          ].map(({ label, ca, comm }) => (
+            <div key={label} className="bg-white rounded-xl p-2.5 shadow-sm">
+              <p className="text-[9px] text-slate-500 font-medium mb-0.5">{label}</p>
+              <p className="text-[11px] font-bold text-slate-900 truncate">{formater(ca)}</p>
+              <p className="text-[10px] text-emerald-600 truncate">+{formater(comm)}</p>
             </div>
           ))}
         </div>
