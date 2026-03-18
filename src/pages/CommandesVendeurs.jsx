@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { requireAdminOrSousAdmin } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateQuery } from "@/components/CacheManager";
 import { adminApi } from "@/components/adminApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { filterTable, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente validation", couleur: "bg-yellow-100 text-yellow-800 border-yellow-200" },
@@ -38,36 +37,58 @@ export default function CommandesVendeurs() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  // Load commandes with vendeur name via join
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeurs_admin"],
-    queryFn: () => listTable("commandes_vendeur", "-created_date", 200),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("commandes_vendeur")
+        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name)")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) { console.error("load commandes:", error); return []; }
+      return (data || []).map(c => ({
+        ...c,
+        vendeur_nom: c.sellers?.full_name || c.vendeur_email,
+        // Compute commission: (prix_final_client - prix_unitaire) * quantite
+        commission_calculee: c.prix_final_client
+          ? Math.max(0, (Number(c.prix_final_client) - Number(c.prix_unitaire || 0)) * (c.quantite || 1))
+          : 0,
+      }));
+    },
   });
 
   const { data: livreurs = [] } = useQuery({
     queryKey: ["livreurs_actifs"],
-    queryFn: () => filterTable("livraisons", { statut: "actif" }),
+    queryFn: async () => {
+      const { data } = await supabase.from("livraisons").select("*").eq("actif", true);
+      return data || [];
+    },
   });
 
   const nbEnAttente = commandes.filter(c => c.statut === "en_attente_validation_admin").length;
 
   const validerCommande = async () => {
     setEnCours(true);
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, {
-      statut: "validee_admin",
-      notes_admin: notesAdmin || commandeSelectionnee.notes_admin,
-    });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Commande validée ✓",
-      message: `Votre commande de ${commandeSelectionnee.quantite}x ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} a été validée par l'équipe ZONITE.`,
-      type: "succes",
-    });
-    await adminApi.createJournalAudit({
-      action: "Validation commande vendeur",
-      module: "commande",
-      details: `Commande ${commandeSelectionnee.id} validée — Vendeur: ${commandeSelectionnee.vendeur_nom}`,
-      entite_id: commandeSelectionnee.id,
-    });
+    try {
+      await adminApi.updateCommandeVendeur(commandeSelectionnee.id, {
+        statut: "validee_admin",
+        notes_admin: notesAdmin || commandeSelectionnee.notes_admin,
+      });
+      await adminApi.createNotificationVendeur({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Commande validée ✓",
+        message: `Votre commande de ${commandeSelectionnee.quantite}x ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} a été validée par l'équipe ZONITE.`,
+        type: "succes",
+      });
+      await adminApi.createJournalAudit({
+        action: "Validation commande vendeur",
+        module: "commande",
+        details: `Commande ${commandeSelectionnee.id} validée — Vendeur: ${commandeSelectionnee.vendeur_nom}`,
+        entite_id: commandeSelectionnee.id,
+      });
+    } catch (err) { console.error("validerCommande:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -76,23 +97,26 @@ export default function CommandesVendeurs() {
   const attribuerLivreur = async () => {
     if (!livreurNom.trim()) return;
     setEnCours(true);
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, {
-      statut: "attribuee_livreur",
-      livreur_nom: livreurNom,
-      notes_admin: notesAdmin || commandeSelectionnee.notes_admin,
-    });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Livreur attribué",
-      message: `Un livreur (${livreurNom}) a été attribué à votre commande pour ${commandeSelectionnee.client_nom}.`,
-      type: "info",
-    });
-    await adminApi.createJournalAudit({
-      action: "Attribution livreur",
-      module: "commande",
-      details: `Livreur "${livreurNom}" attribué à la commande ${commandeSelectionnee.id}`,
-      entite_id: commandeSelectionnee.id,
-    });
+    try {
+      await adminApi.updateCommandeVendeur(commandeSelectionnee.id, {
+        statut: "attribuee_livreur",
+        coursier_nom: livreurNom,
+        notes_admin: notesAdmin || commandeSelectionnee.notes_admin,
+      });
+      await adminApi.createNotificationVendeur({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Livreur attribué",
+        message: `Un livreur (${livreurNom}) a été attribué à votre commande pour ${commandeSelectionnee.client_nom}.`,
+        type: "info",
+      });
+      await adminApi.createJournalAudit({
+        action: "Attribution livreur",
+        module: "commande",
+        details: `Livreur "${livreurNom}" attribué à la commande ${commandeSelectionnee.id}`,
+        entite_id: commandeSelectionnee.id,
+      });
+    } catch (err) { console.error("attribuerLivreur:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -100,13 +124,16 @@ export default function CommandesVendeurs() {
 
   const marquerEnLivraison = async () => {
     setEnCours(true);
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, { statut: "en_livraison" });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Commande en livraison 🚚",
-      message: `La commande de ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} est en cours de livraison.`,
-      type: "info",
-    });
+    try {
+      await adminApi.updateCommandeVendeur(commandeSelectionnee.id, { statut: "en_livraison" });
+      await adminApi.createNotificationVendeur({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Commande en livraison 🚚",
+        message: `La commande de ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} est en cours de livraison.`,
+        type: "info",
+      });
+    } catch (err) { console.error("marquerEnLivraison:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -114,39 +141,102 @@ export default function CommandesVendeurs() {
 
   const marquerLivree = async () => {
     setEnCours(true);
-    const produits = await listTable("produits");
-    const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
-    if (produit) {
-      await adminApi.updateProduit(produit.id, {
-        stock_reserve: Math.max(0, (produit.stock_reserve || 0) - commandeSelectionnee.quantite),
-        total_vendu: (produit.total_vendu || 0) + commandeSelectionnee.quantite,
-      });
-    }
+    try {
+      const cmd = commandeSelectionnee;
+      const quantite = cmd.quantite || 1;
 
-    const sellers = await filterTable("sellers", { id: commandeSelectionnee.vendeur_id });
-    if (sellers.length > 0) {
-      const seller = sellers[0];
-      await updateRecord("sellers", seller.id, {
-        solde_commission: (seller.solde_commission || 0) + (commandeSelectionnee.commission_vendeur || 0),
-        total_commissions_gagnees: (seller.total_commissions_gagnees || 0) + (commandeSelectionnee.commission_vendeur || 0),
-        ventes_reussies: (seller.ventes_reussies || 0) + 1,
-      });
-    }
+      // Fetch product for prix_achat
+      const { data: produit } = await supabase
+        .from("produits")
+        .select("prix_achat, prix_vente, stock_global")
+        .eq("id", cmd.produit_id)
+        .single();
 
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, { statut: "livree", notes_admin: notesAdmin || commandeSelectionnee.notes_admin });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Commande livrée ✓",
-      message: `La commande de ${commandeSelectionnee.produit_nom} a été livrée à ${commandeSelectionnee.client_nom}. Commission de ${Math.round(commandeSelectionnee.commission_vendeur || 0).toLocaleString("fr-FR")} FCFA créditée.`,
-      type: "succes",
-    });
-    await adminApi.createJournalAudit({
-      action: "Livraison confirmée",
-      module: "commande",
-      details: `Commande ${commandeSelectionnee.id} livrée — Commission: ${commandeSelectionnee.commission_vendeur} FCFA`,
-      entite_id: commandeSelectionnee.id,
-    });
-    invalidateQuery('PRODUITS');
+      // Fetch seller for commission rate & balance
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("solde_commission, total_commissions_gagnees, taux_commission")
+        .eq("id", cmd.vendeur_id)
+        .single();
+
+      if (produit && seller) {
+        const prixAchat = Number(produit.prix_achat) || 0;
+        const tauxCommission = Number(seller.taux_commission) || 10;
+        const montantTotal = Number(cmd.montant_total) || 0;
+        const prixFinalClient = Number(cmd.prix_final_client) || montantTotal;
+        const prixUnitaire = Number(cmd.prix_unitaire) || 0;
+
+        // Commission = (prix_final_client - prix_unitaire) × quantite
+        const commissionVendeur = cmd.prix_final_client
+          ? (prixFinalClient - prixUnitaire) * quantite
+          : (montantTotal * tauxCommission) / 100;
+
+        const profitZonite = montantTotal - commissionVendeur - (prixAchat * quantite);
+
+        const now = new Date();
+        const getWeekNumber = (d) => {
+          const start = new Date(d.getFullYear(), 0, 1);
+          return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+        };
+
+        // 1. Insert vente
+        await supabase.from("ventes").insert({
+          vendeur_id: cmd.vendeur_id,
+          vendeur_email: cmd.vendeur_email,
+          produit_id: cmd.produit_id,
+          commande_id: cmd.id,
+          quantite,
+          montant_total: montantTotal,
+          commission_vendeur: Math.max(0, commissionVendeur),
+          profit_zonite: profitZonite,
+          prix_achat_unitaire: prixAchat,
+          taux_commission_applique: tauxCommission,
+          semaine: getWeekNumber(now),
+          mois: now.getMonth() + 1,
+          annee: now.getFullYear(),
+        });
+
+        // 2. Credit seller balance
+        await supabase.from("sellers").update({
+          solde_commission: (Number(seller.solde_commission) || 0) + Math.max(0, commissionVendeur),
+          total_commissions_gagnees: (Number(seller.total_commissions_gagnees) || 0) + Math.max(0, commissionVendeur),
+        }).eq("id", cmd.vendeur_id);
+
+        // 3. Record stock movement
+        await supabase.from("mouvements_stock").insert({
+          produit_id: cmd.produit_id,
+          quantite,
+          type: "sortie",
+          notes: `Livraison confirmée - Commande ${cmd.reference_commande || cmd.id}`,
+          reference_id: cmd.id,
+          localisation: cmd.coursier_nom || "Coursier",
+          stock_avant: produit.stock_global,
+          stock_apres: produit.stock_global,
+        });
+      }
+
+      // Update order status
+      await adminApi.updateCommandeVendeur(cmd.id, {
+        statut: "livree",
+        date_livraison_effective: new Date().toISOString(),
+        notes_admin: notesAdmin || cmd.notes_admin,
+      });
+
+      const commDisplay = cmd.commission_calculee || 0;
+      await adminApi.createNotificationVendeur({
+        vendeur_id: cmd.vendeur_id,
+        vendeur_email: cmd.vendeur_email,
+        titre: "Commande livrée ✓",
+        message: `La commande de ${cmd.produit_nom} a été livrée à ${cmd.client_nom}. Commission de ${Math.round(commDisplay).toLocaleString("fr-FR")} FCFA créditée.`,
+        type: "succes",
+      });
+      await adminApi.createJournalAudit({
+        action: "Livraison confirmée",
+        module: "commande",
+        details: `Commande ${cmd.id} livrée — Commission: ${Math.round(commDisplay)} FCFA`,
+        entite_id: cmd.id,
+      });
+    } catch (err) { console.error("marquerLivree:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -154,38 +244,67 @@ export default function CommandesVendeurs() {
 
   const marquerEchec = async () => {
     setEnCours(true);
-    const produits = await listTable("produits");
-    const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
-    if (produit) {
-      await adminApi.updateProduit(produit.id, {
-        stock_global: (produit.stock_global || 0) + commandeSelectionnee.quantite,
-        stock_reserve: Math.max(0, (produit.stock_reserve || 0) - commandeSelectionnee.quantite),
+    try {
+      const cmd = commandeSelectionnee;
+      const quantite = cmd.quantite || 1;
+
+      // Restore stock to coursier
+      if (cmd.produit_id) {
+        const { data: produit } = await supabase
+          .from("produits")
+          .select("stocks_par_coursier, stock_global")
+          .eq("id", cmd.produit_id)
+          .single();
+
+        if (produit) {
+          const stockGlobal = (Number(produit.stock_global) || 0) + quantite;
+          const stocksParCoursier = Array.isArray(produit.stocks_par_coursier) ? [...produit.stocks_par_coursier] : [];
+
+          if (cmd.coursier_id) {
+            const idx = stocksParCoursier.findIndex(s => s.coursier_id === cmd.coursier_id);
+            if (idx >= 0) {
+              stocksParCoursier[idx] = { ...stocksParCoursier[idx] };
+              stocksParCoursier[idx].stock_total = (stocksParCoursier[idx].stock_total || 0) + quantite;
+              if (cmd.variation && Array.isArray(stocksParCoursier[idx].stock_par_variation)) {
+                stocksParCoursier[idx].stock_par_variation = stocksParCoursier[idx].stock_par_variation.map(v =>
+                  v.variation_key === cmd.variation
+                    ? { ...v, quantite: (v.quantite || 0) + quantite }
+                    : v
+                );
+              }
+            }
+          }
+
+          await supabase.from("produits").update({
+            stock_global: stockGlobal,
+            stocks_par_coursier: stocksParCoursier,
+          }).eq("id", cmd.produit_id);
+
+          await supabase.from("mouvements_stock").insert({
+            produit_id: cmd.produit_id,
+            quantite,
+            type: "entree",
+            notes: `Stock restauré - Échec livraison - Commande ${cmd.reference_commande || cmd.id}`,
+            reference_id: cmd.id,
+            localisation: cmd.coursier_nom || "Entrepôt",
+            stock_avant: produit.stock_global,
+            stock_apres: stockGlobal,
+          });
+        }
+      }
+
+      await adminApi.updateCommandeVendeur(cmd.id, {
+        statut: "echec_livraison",
+        notes_admin: notesAdmin || cmd.notes_admin,
       });
-      await adminApi.createMouvementStock({
-        produit_id: produit.id,
-        produit_nom: produit.nom,
-        type_mouvement: "entree",
-        quantite: commandeSelectionnee.quantite,
-        stock_avant: produit.stock_global || 0,
-        stock_apres: (produit.stock_global || 0) + commandeSelectionnee.quantite,
-        raison: `Échec livraison — commande ${commandeSelectionnee.id}`,
+      await adminApi.createNotificationVendeur({
+        vendeur_id: cmd.vendeur_id,
+        vendeur_email: cmd.vendeur_email,
+        titre: "Échec de livraison",
+        message: `La livraison de ${cmd.produit_nom} pour ${cmd.client_nom} a échoué. Le stock a été restitué.`,
+        type: "alerte",
       });
-    }
-    const sellersEchec = await filterTable("sellers", { id: commandeSelectionnee.vendeur_id });
-    if (sellersEchec.length > 0) {
-      const sellerEchec = sellersEchec[0];
-      await updateRecord("sellers", sellerEchec.id, {
-        ventes_echouees: (sellerEchec.ventes_echouees || 0) + 1,
-      });
-    }
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, { statut: "echec_livraison", notes_admin: notesAdmin || commandeSelectionnee.notes_admin });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Échec de livraison",
-      message: `La livraison de ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} a échoué. Le stock a été restitué.`,
-      type: "alerte",
-    });
-    invalidateQuery('PRODUITS');
+    } catch (err) { console.error("marquerEchec:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -193,30 +312,32 @@ export default function CommandesVendeurs() {
 
   const enregistrerRetour = async () => {
     setEnCours(true);
-    await adminApi.createRetourProduit({
-      commande_id: commandeSelectionnee.id,
-      vendeur_id: commandeSelectionnee.vendeur_id,
-      vendeur_nom: commandeSelectionnee.vendeur_nom,
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      produit_id: commandeSelectionnee.produit_id,
-      produit_nom: commandeSelectionnee.produit_nom,
-      quantite_retournee: parseInt(retourForm.quantite) || 1,
-      raison: retourForm.raison,
-      raison_detail: retourForm.raison_detail,
-      statut: "en_attente",
-    });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Retour enregistré",
-      message: `Un retour de ${retourForm.quantite}x ${commandeSelectionnee.produit_nom} a été enregistré et est en cours de traitement.`,
-      type: "alerte",
-    });
-    await adminApi.createJournalAudit({
-      action: "Retour produit enregistré",
-      module: "commande",
-      details: `Retour de ${retourForm.quantite}x ${commandeSelectionnee.produit_nom} — Raison: ${retourForm.raison}`,
-      entite_id: commandeSelectionnee.id,
-    });
+    try {
+      await adminApi.createRetourProduit({
+        commande_id: commandeSelectionnee.id,
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        produit_id: commandeSelectionnee.produit_id,
+        produit_nom: commandeSelectionnee.produit_nom,
+        quantite_retournee: parseInt(retourForm.quantite) || 1,
+        raison: retourForm.raison,
+        raison_detail: retourForm.raison_detail,
+        statut: "en_attente",
+      });
+      await adminApi.createNotificationVendeur({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Retour enregistré",
+        message: `Un retour de ${retourForm.quantite}x ${commandeSelectionnee.produit_nom} a été enregistré et est en cours de traitement.`,
+        type: "alerte",
+      });
+      await adminApi.createJournalAudit({
+        action: "Retour produit enregistré",
+        module: "commande",
+        details: `Retour de ${retourForm.quantite}x ${commandeSelectionnee.produit_nom} — Raison: ${retourForm.raison}`,
+        entite_id: commandeSelectionnee.id,
+      });
+    } catch (err) { console.error("enregistrerRetour:", err); }
     setModalRetour(false);
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -225,27 +346,74 @@ export default function CommandesVendeurs() {
 
   const annulerCommande = async () => {
     setEnCours(true);
-    // Restituer le stock si la commande était encore en cours (pas livrée)
-    const statutsAvecStockReserve = ["en_attente_validation_admin", "validee_admin", "attribuee_livreur", "en_livraison"];
-    if (statutsAvecStockReserve.includes(commandeSelectionnee.statut)) {
-      const produits = await listTable("produits");
-      const produit = produits.find(p => p.id === commandeSelectionnee.produit_id);
-      if (produit) {
-        await adminApi.updateProduit(produit.id, {
-          stock_global: (produit.stock_global || 0) + commandeSelectionnee.quantite,
-          stock_reserve: Math.max(0, (produit.stock_reserve || 0) - commandeSelectionnee.quantite),
-        });
+    try {
+      const cmd = commandeSelectionnee;
+      const quantite = cmd.quantite || 1;
+
+      // Restore stock if order was in progress
+      const statutsAvecStock = ["en_attente_validation_admin", "validee_admin", "attribuee_livreur", "en_livraison"];
+      if (statutsAvecStock.includes(cmd.statut) && cmd.produit_id) {
+        const { data: produit } = await supabase
+          .from("produits")
+          .select("stocks_par_coursier, stock_global")
+          .eq("id", cmd.produit_id)
+          .single();
+
+        if (produit) {
+          const stockGlobal = (Number(produit.stock_global) || 0) + quantite;
+          const stocksParCoursier = Array.isArray(produit.stocks_par_coursier) ? [...produit.stocks_par_coursier] : [];
+
+          if (cmd.coursier_id) {
+            const idx = stocksParCoursier.findIndex(s => s.coursier_id === cmd.coursier_id);
+            if (idx >= 0) {
+              stocksParCoursier[idx] = { ...stocksParCoursier[idx] };
+              stocksParCoursier[idx].stock_total = (stocksParCoursier[idx].stock_total || 0) + quantite;
+              if (cmd.variation && Array.isArray(stocksParCoursier[idx].stock_par_variation)) {
+                stocksParCoursier[idx].stock_par_variation = stocksParCoursier[idx].stock_par_variation.map(v =>
+                  v.variation_key === cmd.variation
+                    ? { ...v, quantite: (v.quantite || 0) + quantite }
+                    : v
+                );
+              }
+            }
+          }
+
+          await supabase.from("produits").update({
+            stock_global: stockGlobal,
+            stocks_par_coursier: stocksParCoursier,
+          }).eq("id", cmd.produit_id);
+
+          await supabase.from("mouvements_stock").insert({
+            produit_id: cmd.produit_id,
+            quantite,
+            type: "entree",
+            notes: `Stock restauré - Annulation - Commande ${cmd.reference_commande || cmd.id}`,
+            reference_id: cmd.id,
+            localisation: cmd.coursier_nom || "Entrepôt",
+            stock_avant: produit.stock_global,
+            stock_apres: stockGlobal,
+          });
+        }
       }
-    }
-    await adminApi.updateCommandeVendeur(commandeSelectionnee.id, { statut: "annulee", notes_admin: notesAdmin || commandeSelectionnee.notes_admin });
-    await adminApi.createNotificationVendeur({
-      vendeur_email: commandeSelectionnee.vendeur_email,
-      titre: "Commande annulée",
-      message: `Votre commande de ${commandeSelectionnee.produit_nom} pour ${commandeSelectionnee.client_nom} a été annulée.`,
-      type: "alerte",
-    });
-    await adminApi.createJournalAudit({ action: "Commande annulée", module: "commande", details: `Commande ${commandeSelectionnee.id} annulée`, entite_id: commandeSelectionnee.id });
-    invalidateQuery('PRODUITS');
+
+      await adminApi.updateCommandeVendeur(cmd.id, {
+        statut: "annulee",
+        notes_admin: notesAdmin || cmd.notes_admin,
+      });
+      await adminApi.createNotificationVendeur({
+        vendeur_id: cmd.vendeur_id,
+        vendeur_email: cmd.vendeur_email,
+        titre: "Commande annulée",
+        message: `Votre commande de ${cmd.produit_nom} pour ${cmd.client_nom} a été annulée.`,
+        type: "alerte",
+      });
+      await adminApi.createJournalAudit({
+        action: "Commande annulée",
+        module: "commande",
+        details: `Commande ${cmd.id} annulée`,
+        entite_id: cmd.id,
+      });
+    } catch (err) { console.error("annulerCommande:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
     setCommandeSelectionnee(null);
@@ -289,11 +457,11 @@ export default function CommandesVendeurs() {
           <div className="p-8 text-center text-slate-400">Aucune commande</div>
         )}
         {commandesFiltrees.map(c => (
-          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.livreur_nom || ""); }}>
+          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); }}>
             <div className="flex-1 min-w-0 mr-3">
               <p className="font-medium text-sm text-slate-900 truncate">{c.produit_nom} <span className="text-slate-400 font-normal">× {c.quantite}</span></p>
               <p className="text-xs text-slate-500">{c.vendeur_nom} → {c.client_nom} ({c.client_ville})</p>
-              <p className="text-xs text-slate-400">{formaterDate(c.created_date)} • Commission: {formater(c.commission_vendeur)}</p>
+              <p className="text-xs text-slate-400">{formaterDate(c.created_at)} • Commission: {formater(c.commission_calculee)}</p>
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`${STATUTS[c.statut]?.couleur} border text-xs whitespace-nowrap`}>{STATUTS[c.statut]?.label}</Badge>
@@ -307,6 +475,7 @@ export default function CommandesVendeurs() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Commande : {commandeSelectionnee?.produit_nom}</DialogTitle>
+            <DialogDescription>Réf: {commandeSelectionnee?.reference_commande || "—"}</DialogDescription>
           </DialogHeader>
           {commandeSelectionnee && (
             <div className="space-y-4 text-sm">
@@ -316,11 +485,11 @@ export default function CommandesVendeurs() {
                 <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Quantité</p><p className="font-medium">{commandeSelectionnee.quantite}</p></div>
                 <div><p className="text-slate-400 text-xs">Prix client</p><p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p></div>
-                <div><p className="text-slate-400 text-xs">Commission vendeur</p><p className="font-bold text-yellow-600">{formater(commandeSelectionnee.commission_vendeur)}</p></div>
+                <div><p className="text-slate-400 text-xs">Commission vendeur</p><p className="font-bold text-yellow-600">{formater(commandeSelectionnee.commission_calculee)}</p></div>
                 <div><p className="text-slate-400 text-xs">Client</p><p className="font-medium">{commandeSelectionnee.client_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Téléphone</p><p className="font-medium">{commandeSelectionnee.client_telephone}</p></div>
                 <div className="col-span-2"><p className="text-slate-400 text-xs">Adresse</p><p className="font-medium">{commandeSelectionnee.client_ville}{commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}{commandeSelectionnee.client_adresse ? ` – ${commandeSelectionnee.client_adresse}` : ""}</p></div>
-                {commandeSelectionnee.livreur_nom && <div className="col-span-2"><p className="text-slate-400 text-xs">Livreur</p><p className="font-medium">{commandeSelectionnee.livreur_nom}</p></div>}
+                {commandeSelectionnee.coursier_nom && <div className="col-span-2"><p className="text-slate-400 text-xs">Coursier</p><p className="font-medium">{commandeSelectionnee.coursier_nom}</p></div>}
                 {commandeSelectionnee.notes && <div className="col-span-2"><p className="text-slate-400 text-xs">Notes vendeur</p><p>{commandeSelectionnee.notes}</p></div>}
               </div>
 
@@ -338,7 +507,6 @@ export default function CommandesVendeurs() {
                 )}
                 {(commandeSelectionnee.statut === "validee_admin") && (
                   <div className="space-y-2">
-                    {/* Livreurs suggérés selon la ville du client */}
                     {(() => {
                       const villeClient = (commandeSelectionnee.client_ville || "").toLowerCase().trim();
                       const livreursVille = livreurs.filter(l =>
@@ -350,7 +518,6 @@ export default function CommandesVendeurs() {
                           {livreursVille.map(l => (
                             <button key={l.id} onClick={() => setLivreurNom(l.nom)} className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${livreurNom === l.nom ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-emerald-200 hover:bg-emerald-100 text-slate-800"}`}>
                               <span className="font-medium">{l.nom}</span>
-                              {l.vehicule && <span className="ml-2 text-xs opacity-70">· {l.vehicule}</span>}
                             </button>
                           ))}
                         </div>
@@ -406,6 +573,7 @@ export default function CommandesVendeurs() {
           <DialogTitle className="flex items-center gap-2">
             <RotateCcw className="w-4 h-4 text-orange-500" /> Enregistrer un retour
           </DialogTitle>
+          <DialogDescription>Renseignez les détails du retour produit.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <p className="text-slate-500">Commande : <span className="font-medium text-slate-800">{commandeSelectionnee?.produit_nom} × {commandeSelectionnee?.quantite}</span></p>
