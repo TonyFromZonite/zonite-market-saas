@@ -268,21 +268,16 @@ export default function RapportsVentes() {
   const donneesGraphique = useMemo(() => {
     const map = {};
     const pj = periodeJours === 0 ? 365 : periodeJours;
-    const ajouter = (dateStr, caVal, margeVal, type) => {
-      const date = new Date(dateStr);
+    ventesFiltrees.forEach(v => {
+      const date = new Date(v.created_at || v.created_date);
       const key = getGroupeKey(date, pj);
-      if (!map[key]) map[key] = { periode: key, caVentes: 0, caVendeurs: 0, marge: 0 };
-      if (type === "vente") { map[key].caVentes += caVal; map[key].marge += margeVal; }
-      else { map[key].caVendeurs += caVal; map[key].marge += margeVal; }
-    };
-    ventesFiltrees.forEach(v => ajouter(v.date_vente || v.created_date, v.montant_total || 0, v.profit_zonite || 0, "vente"));
-    cmdsFiltrees.forEach(c => {
-      const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-      const marge = ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
-      ajouter(c.created_date, ca, marge, "vendeur");
+      if (!map[key]) map[key] = { periode: key, ca: 0, commissions: 0, marge: 0 };
+      map[key].ca += v.montant_total || 0;
+      map[key].commissions += v.commission_vendeur || 0;
+      map[key].marge += v.marge_zonite || v.profit_zonite || 0;
     });
     return Object.values(map).sort((a, b) => a.periode.localeCompare(b.periode));
-  }, [ventesFiltrees, cmdsFiltrees, periodeJours]);
+  }, [ventesFiltrees, periodeJours]);
 
   // ── Top Produits ──
   const topProduits = useMemo(() => {
