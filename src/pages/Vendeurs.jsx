@@ -161,9 +161,6 @@ function ListeVendeurs() {
                   <TableCell className="text-sm"><p>{v.email || "—"}</p><p className="text-slate-500">{v.telephone || "—"}</p></TableCell>
                   <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="text-xs">{v.taux_commission || 10}%</Badge>
-                  </TableCell>
                   <TableCell>
                     <Badge className={v.seller_status === "active_seller" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>
                       {v.seller_status === "active_seller" ? "Actif" : v.seller_status === "kyc_pending" ? "KYC en attente" : v.seller_status === "pending_verification" ? "Non vérifié" : v.seller_status}
