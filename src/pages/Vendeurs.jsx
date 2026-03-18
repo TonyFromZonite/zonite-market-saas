@@ -67,8 +67,8 @@ function ListeVendeurs() {
     if (!vendeurEdite) return;
     setEnCours(true);
     try {
-      await adminApi.updateVendeur(vendeurEdite.id, { nom_complet: form.nom_complet, telephone: form.telephone, statut: form.statut, date_embauche: form.date_embauche });
-      await adminApi.createJournalAudit({ action: "Vendeur modifié", module: "vendeur", details: `Vendeur ${form.nom_complet} modifié`, entite_id: vendeurEdite.id });
+      await adminApi.updateVendeur(vendeurEdite.id, { full_name: form.full_name || form.nom_complet, telephone: form.telephone });
+      await adminApi.createJournalAudit({ action: "Vendeur modifié", module: "vendeur", details: `Vendeur ${form.full_name || form.nom_complet} modifié`, entite_id: vendeurEdite.id });
       toast({ title: "Vendeur modifié avec succès", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
       setDialogOuvert(false);
@@ -103,7 +103,7 @@ function ListeVendeurs() {
         user_email: vendeurRoleEdite.email,
         new_role: nouveauRoleVendeur
       });
-      await adminApi.createJournalAudit({ action: "Rôle utilisateur changé", module: "vendeur", details: `Rôle de ${vendeurRoleEdite.nom_complet} changé en ${nouveauRoleVendeur}`, entite_id: vendeurRoleEdite.id });
+      await adminApi.createJournalAudit({ action: "Rôle utilisateur changé", module: "vendeur", details: `Rôle de ${vendeurRoleEdite.full_name || vendeurRoleEdite.nom_complet} changé en ${nouveauRoleVendeur}`, entite_id: vendeurRoleEdite.id });
       toast({ title: "Rôle changé avec succès", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
       setDialogRoleOuvert(false);
@@ -136,7 +136,7 @@ function ListeVendeurs() {
                 <TableHead>Contact</TableHead>
                 <TableHead className="text-right">CA Généré</TableHead>
                 <TableHead className="text-right">Solde Commission</TableHead>
-                <TableHead className="text-center">Ventes</TableHead>
+                <TableHead className="text-center">Commission</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
@@ -149,19 +149,23 @@ function ListeVendeurs() {
                 <TableRow key={v.id} className="hover:bg-slate-50">
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{v.nom_complet?.[0]?.toUpperCase() || "V"}</div>
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">{(v.full_name || v.nom_complet)?.[0]?.toUpperCase() || "V"}</div>
                       <div>
-                        <p className="font-medium">{v.nom_complet}</p>
-                        <p className="text-xs text-slate-500">{v.date_embauche ? new Date(v.date_embauche).toLocaleDateString("fr-FR") : ""}</p>
+                        <p className="font-medium">{v.full_name || v.nom_complet}</p>
+                        <p className="text-xs text-slate-500">{v.created_at ? new Date(v.created_at).toLocaleDateString("fr-FR") : ""}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm"><p>{v.email || "—"}</p><p className="text-slate-500">{v.telephone || "—"}</p></TableCell>
-                  <TableCell className="text-right font-medium">{formater(v.chiffre_affaires_genere)}</TableCell>
+                  <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
-                  <TableCell className="text-center">{v.nombre_ventes || 0}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="text-xs">{v.taux_commission || 10}%</Badge>
+                  </TableCell>
                   <TableCell>
-                    <Badge className={v.statut === "actif" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>{v.statut === "actif" ? "Actif" : "Inactif"}</Badge>
+                    <Badge className={v.seller_status === "active_seller" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>
+                      {v.seller_status === "active_seller" ? "Actif" : v.seller_status === "kyc_pending" ? "KYC en attente" : v.seller_status === "pending_verification" ? "Non vérifié" : v.seller_status}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -182,14 +186,14 @@ function ListeVendeurs() {
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Modifier le Vendeur</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nom Complet *</Label><Input value={form.nom_complet} onChange={(e) => modifier("nom_complet", e.target.value)} /></div>
+            <div className="space-y-2"><Label>Nom Complet *</Label><Input value={form.full_name || form.nom_complet || ''} onChange={(e) => modifier("full_name", e.target.value)} /></div>
             <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} disabled /></div>
             <div className="space-y-2"><Label>Téléphone</Label><Input value={form.telephone} onChange={(e) => modifier("telephone", e.target.value)} /></div>
             <div className="space-y-2"><Label>Date d'Embauche</Label><Input type="date" value={form.date_embauche} onChange={(e) => modifier("date_embauche", e.target.value)} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOuvert(false)}>Annuler</Button>
-            <Button onClick={sauvegarder} disabled={enCours || !form.nom_complet} className="bg-[#1a1f5e] hover:bg-[#141952]">
+            <Button onClick={sauvegarder} disabled={enCours || !(form.full_name || form.nom_complet)} className="bg-[#1a1f5e] hover:bg-[#141952]">
               {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
             </Button>
           </DialogFooter>
@@ -199,7 +203,7 @@ function ListeVendeurs() {
       {/* Dialog Changement Rôle */}
       <Dialog open={dialogRoleOuvert} onOpenChange={setDialogRoleOuvert}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Modifier le rôle - {vendeurRoleEdite?.nom_complet}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Modifier le rôle - {vendeurRoleEdite?.full_name || vendeurRoleEdite?.nom_complet}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <p className="text-sm text-slate-600 mb-2">Rôle actuel: <span className="font-bold">{vendeurRoleEdite?.role || 'user'}</span></p>
@@ -255,7 +259,7 @@ function ValidationKYC() {
        if (response.data.success) {
          toast({ 
            title: statut === "valide" ? "KYC Validé" : "KYC Rejeté", 
-           description: statut === "valide" ? `${compteSelectionne.nom_complet} a reçu ses identifiants.` : `${compteSelectionne.nom_complet} a été notifié du rejet.`,
+           description: statut === "valide" ? `${compteSelectionne.full_name || compteSelectionne.nom_complet} a reçu ses identifiants.` : `${compteSelectionne.full_name || compteSelectionne.nom_complet} a été notifié du rejet.`,
            duration: 5000 
          });
        } else {
@@ -296,9 +300,9 @@ function ValidationKYC() {
             {enAttente.map(s => (
                 <div key={s.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center"><span className="text-blue-700 font-bold text-sm">{s.nom_complet?.[0]?.toUpperCase()}</span></div>
+                    <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center"><span className="text-blue-700 font-bold text-sm">{(s.full_name || s.nom_complet)?.[0]?.toUpperCase()}</span></div>
                     <div>
-                      <p className="font-medium text-slate-900">{s.nom_complet}</p>
+                      <p className="font-medium text-slate-900">{s.full_name || s.nom_complet}</p>
                       <p className="text-sm text-slate-500">{s.ville}{s.quartier ? `, ${s.quartier}` : ""}</p>
                       <p className="text-xs text-slate-400">{s.email}</p>
                     </div>
@@ -315,7 +319,7 @@ function ValidationKYC() {
           <div className="divide-y divide-slate-100">
             {traites.map(s => (
                 <div key={s.id} className="p-4 flex items-center justify-between">
-                  <div><p className="font-medium text-slate-900">{s.nom_complet}</p><p className="text-sm text-slate-500">{s.ville} • {s.telephone}</p></div>
+                  <div><p className="font-medium text-slate-900">{s.full_name || s.nom_complet}</p><p className="text-sm text-slate-500">{s.ville} • {s.telephone}</p></div>
                   <div className="flex items-center gap-2">
                     <Badge className={`border-0 ${s.statut_kyc === "valide" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{s.statut_kyc === "valide" ? "Validé" : "Rejeté"}</Badge>
                     <Button size="sm" variant="ghost" onClick={() => { setCompteSelectionne(s); setNotes(s.notes_admin || ""); }}><Eye className="w-4 h-4" /></Button>
@@ -327,7 +331,7 @@ function ValidationKYC() {
       )}
       <Dialog open={!!compteSelectionne} onOpenChange={() => setCompteSelectionne(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Dossier KYC : {compteSelectionne?.nom_complet}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Dossier KYC : {compteSelectionne?.full_name || compteSelectionne?.nom_complet}</DialogTitle></DialogHeader>
           {compteSelectionne && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -339,11 +343,14 @@ function ValidationKYC() {
                 <div><p className="text-slate-400">Opérateur</p><p className="font-medium">{compteSelectionne.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {compteSelectionne.photo_identite_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité</p><img src={compteSelectionne.photo_identite_url} alt="ID" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.photo_identite_url)} /></div>
+                {compteSelectionne.kyc_document_recto_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (recto)</p><img src={compteSelectionne.kyc_document_recto_url} alt="ID Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} /></div>
                 )}
-                {compteSelectionne.selfie_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><img src={compteSelectionne.selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.selfie_url)} /></div>
+                {compteSelectionne.kyc_document_verso_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (verso)</p><img src={compteSelectionne.kyc_document_verso_url} alt="ID Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} /></div>
+                )}
+                {compteSelectionne.kyc_selfie_url && (
+                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><img src={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_selfie_url)} /></div>
                 )}
               </div>
               <div className="space-y-1">
@@ -392,9 +399,9 @@ function CommissionsTab() {
   const payerCommission = async () => {
     if (!vendeurPaiement || montantPaiement <= 0) return;
     setEnCours(true);
-    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
+    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.full_name || vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
     await adminApi.updateVendeur(vendeurPaiement.id, { solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement), total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement });
-    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
+    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name || vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
     setDialogPaiement(false);
@@ -425,9 +432,9 @@ function CommissionsTab() {
           <Table>
             <TableHeader><TableRow className="bg-slate-50"><TableHead>Vendeur</TableHead><TableHead className="text-right">Gagné</TableHead><TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Solde à Payer</TableHead><TableHead className="w-32">Action</TableHead></TableRow></TableHeader>
             <TableBody>
-              {vendeurs.filter(v => v.statut === "actif").map((v) => (
+              {vendeurs.filter(v => v.seller_status === "active_seller").map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
-                  <TableCell className="font-medium">{v.nom_complet}</TableCell>
+                  <TableCell className="font-medium">{v.full_name || v.nom_complet}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_payees)}</TableCell>
                   <TableCell className="text-right"><span className={`font-bold ${(v.solde_commission || 0) > 0 ? "text-yellow-600" : "text-emerald-600"}`}>{formater(v.solde_commission)}</span></TableCell>
@@ -447,8 +454,8 @@ function CommissionsTab() {
               {paiements.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-6 text-slate-400">Aucun paiement enregistré</TableCell></TableRow>}
               {paiements.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-sm">{formaterDate(p.created_date)}</TableCell>
-                  <TableCell className="font-medium">{p.vendeur_nom}</TableCell>
+                  <TableCell className="text-sm">{formaterDate(p.created_at)}</TableCell>
+                  <TableCell className="font-medium">{p.vendeur_nom || p.effectue_par || "—"}</TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">{formater(p.montant)}</TableCell>
                   <TableCell><Badge variant="outline" className="text-xs capitalize">{p.methode_paiement?.replace("_", " ")}</Badge></TableCell>
                   <TableCell className="text-sm text-slate-500">{p.notes || "—"}</TableCell>
@@ -464,7 +471,7 @@ function CommissionsTab() {
           {vendeurPaiement && (
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.nom_complet}</span></p>
+                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.full_name || vendeurPaiement.nom_complet}</span></p>
                 <p className="text-sm text-slate-600">Solde actuel: <span className="font-bold text-yellow-600">{formater(vendeurPaiement.solde_commission)}</span></p>
               </div>
               <div className="space-y-2">
@@ -538,9 +545,9 @@ function PaiementsTab() {
               <div key={d.id} className="p-4 flex items-center justify-between">
                 <div>
                   <p className="font-bold text-slate-900">{formater(d.montant)}</p>
-                  <p className="text-sm text-slate-700 font-medium">{d.vendeur_nom}</p>
-                  <p className="text-xs text-slate-500">{d.operateur} : {d.numero_mobile_money}</p>
-                  <p className="text-xs text-slate-400">{formaterDate(d.created_date)}</p>
+                  <p className="text-sm text-slate-700 font-medium">{d.vendeur_email}</p>
+                  <p className="text-xs text-slate-500">{d.operateur_mobile_money} : {d.numero_mobile_money}</p>
+                  <p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p>
                 </div>
                 <Button size="sm" onClick={() => marquerPaye(d)} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="w-4 h-4 mr-1" /> Payé</Button>
               </div>
@@ -554,7 +561,7 @@ function PaiementsTab() {
           <div className="divide-y divide-slate-100">
             {traitees.map(d => (
               <div key={d.id} className="p-4 flex items-center justify-between">
-                <div><p className="font-bold">{formater(d.montant)}</p><p className="text-sm text-slate-600">{d.vendeur_nom} • {d.operateur}</p><p className="text-xs text-slate-400">{formaterDate(d.created_date)}</p></div>
+                <div><p className="font-bold">{formater(d.montant)}</p><p className="text-sm text-slate-600">{d.vendeur_email} • {d.operateur_mobile_money}</p><p className="text-xs text-slate-400">{formaterDate(d.created_at)}</p></div>
                 <Badge className={`border-0 ${d.statut === "paye" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{d.statut === "paye" ? "Payé ✓" : "Rejeté"}</Badge>
               </div>
             ))}
