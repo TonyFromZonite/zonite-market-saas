@@ -598,7 +598,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* SECTION B — Top vendeurs */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Classement des vendeurs</h3>
           </div>
