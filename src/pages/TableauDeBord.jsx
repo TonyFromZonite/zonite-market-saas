@@ -273,7 +273,7 @@ function DashboardAdmin() {
       </ResponsiveRow>
 
       <ResponsiveRow>
-        <TopProduits produits={produitsArray} />
+        <TopProduits produits={produitsArray} ventes={ventesArray} />
         <TopVendeurs vendeurs={vendeursArray} />
       </ResponsiveRow>
     </div>
