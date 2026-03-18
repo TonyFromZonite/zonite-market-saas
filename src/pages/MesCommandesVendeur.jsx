@@ -10,6 +10,7 @@ import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import VendeurBottomNav from "@/components/VendeurBottomNav";
 import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "⏳ En attente validation", couleur: "bg-yellow-100 text-yellow-800" },
@@ -44,7 +45,13 @@ export default function MesCommandesVendeur() {
 
   const { data: commandes = [], isLoading } = useQuery({
     queryKey: ["commandes_vendeur", compteVendeur?.id],
-    queryFn: () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_date", 100),
+    queryFn: async () => {
+      const { data } = await supabase.from("commandes_vendeur").select("*")
+        .eq("vendeur_id", compteVendeur.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
     enabled: !!compteVendeur?.id,
   });
 
@@ -85,34 +92,39 @@ export default function MesCommandesVendeur() {
             <p>Aucune commande trouvée</p>
           </div>
         ) : (
-          commandesFiltrees.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1 min-w-0 mr-3">
-                  <p className="font-semibold text-slate-900 truncate">{c.produit_nom}</p>
-                  <p className="text-xs text-slate-500">{c.quantite} unité{c.quantite > 1 ? "s" : ""} • {formaterDate(c.created_date)}</p>
+          commandesFiltrees.map(c => {
+            const prixFinal = Number(c.prix_final_client) || 0;
+            const prixGros = Number(c.prix_unitaire) || 0;
+            const commEst = Math.max(0, (prixFinal - prixGros) * (c.quantite || 1));
+            return (
+              <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="font-semibold text-slate-900 truncate">{c.produit_nom}</p>
+                    <p className="text-xs text-slate-500">{c.quantite} unité{c.quantite > 1 ? "s" : ""} • {formaterDate(c.created_at)}</p>
+                  </div>
+                  <Badge className={`${STATUTS[c.statut]?.couleur} text-xs border-0 flex-shrink-0`}>
+                    {STATUTS[c.statut]?.label}
+                  </Badge>
                 </div>
-                <Badge className={`${STATUTS[c.statut]?.couleur} text-xs border-0 flex-shrink-0`}>
-                  {STATUTS[c.statut]?.label}
-                </Badge>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400">Client</p>
+                    <p className="text-sm font-medium text-slate-700">{c.client_nom} • {c.client_ville}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Commission estimée</p>
+                    <p className="font-bold text-emerald-600">{formater(commEst)}</p>
+                  </div>
+                </div>
+                {c.notes_admin && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+                    📋 Admin : {c.notes_admin}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400">Client</p>
-                  <p className="text-sm font-medium text-slate-700">{c.client_nom} • {c.client_ville}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-400">Votre commission</p>
-                  <p className="font-bold text-emerald-600">{formater(c.commission_vendeur)}</p>
-                </div>
-              </div>
-              {c.notes_admin && (
-                <div className="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
-                  📋 Admin : {c.notes_admin}
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

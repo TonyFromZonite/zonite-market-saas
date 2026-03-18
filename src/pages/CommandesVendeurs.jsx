@@ -43,18 +43,20 @@ export default function CommandesVendeurs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commandes_vendeur")
-        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name)")
+        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name), produits!commandes_vendeur_produit_id_fkey(prix_gros)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) { console.error("load commandes:", error); return []; }
-      return (data || []).map(c => ({
-        ...c,
-        vendeur_nom: c.sellers?.full_name || c.vendeur_email,
-        // Compute commission: (prix_final_client - prix_unitaire) * quantite
-        commission_calculee: c.prix_final_client
-          ? Math.max(0, (Number(c.prix_final_client) - Number(c.prix_unitaire || 0)) * (c.quantite || 1))
-          : 0,
-      }));
+      return (data || []).map(c => {
+        const prixGros = Number(c.produits?.prix_gros) || Number(c.prix_unitaire) || 0;
+        const prixFinal = Number(c.prix_final_client) || 0;
+        return {
+          ...c,
+          vendeur_nom: c.sellers?.full_name || c.vendeur_email,
+          // Commission = (prix_final_client - prix_gros) × quantite
+          commission_calculee: Math.max(0, (prixFinal - prixGros) * (c.quantite || 1)),
+        };
+      });
     },
   });
 
@@ -145,33 +147,33 @@ export default function CommandesVendeurs() {
       const cmd = commandeSelectionnee;
       const quantite = cmd.quantite || 1;
 
-      // Fetch product for prix_achat
+      // Fetch product prices
       const { data: produit } = await supabase
         .from("produits")
-        .select("prix_achat, prix_vente, stock_global")
+        .select("prix_achat, prix_gros, prix_vente, stock_global")
         .eq("id", cmd.produit_id)
         .single();
 
-      // Fetch seller for commission rate & balance
+      // Fetch seller balance
       const { data: seller } = await supabase
         .from("sellers")
-        .select("solde_commission, total_commissions_gagnees, taux_commission")
+        .select("solde_commission, total_commissions_gagnees")
         .eq("id", cmd.vendeur_id)
         .single();
 
+      let commissionVendeur = 0;
+      let nouveauSolde = 0;
+
       if (produit && seller) {
+        const prixFinalClient = Number(cmd.prix_final_client) || Number(cmd.prix_unitaire) || Number(produit.prix_vente) || 0;
+        const prixGros = Number(produit.prix_gros) || 0;
         const prixAchat = Number(produit.prix_achat) || 0;
-        const tauxCommission = Number(seller.taux_commission) || 10;
-        const montantTotal = Number(cmd.montant_total) || 0;
-        const prixFinalClient = Number(cmd.prix_final_client) || montantTotal;
-        const prixUnitaire = Number(cmd.prix_unitaire) || 0;
 
-        // Commission = (prix_final_client - prix_unitaire) × quantite
-        const commissionVendeur = cmd.prix_final_client
-          ? (prixFinalClient - prixUnitaire) * quantite
-          : (montantTotal * tauxCommission) / 100;
-
-        const profitZonite = montantTotal - commissionVendeur - (prixAchat * quantite);
+        // Commission vendeur = (prix_vente - prix_gros) × quantite
+        commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
+        // Marge ZONITE = (prix_gros - prix_achat) × quantite
+        const margeZonite = (prixGros - prixAchat) * quantite;
+        const caVente = prixFinalClient * quantite;
 
         const now = new Date();
         const getWeekNumber = (d) => {
@@ -179,27 +181,31 @@ export default function CommandesVendeurs() {
           return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
         };
 
-        // 1. Insert vente
+        // 1. Insert vente with correct calculations
         await supabase.from("ventes").insert({
           vendeur_id: cmd.vendeur_id,
           vendeur_email: cmd.vendeur_email,
           produit_id: cmd.produit_id,
           commande_id: cmd.id,
           quantite,
-          montant_total: montantTotal,
-          commission_vendeur: Math.max(0, commissionVendeur),
-          profit_zonite: profitZonite,
+          montant_total: caVente,
+          prix_final_client: prixFinalClient,
+          prix_gros: prixGros,
+          prix_achat: prixAchat,
+          commission_vendeur: commissionVendeur,
+          profit_zonite: margeZonite,
+          marge_zonite: margeZonite,
           prix_achat_unitaire: prixAchat,
-          taux_commission_applique: tauxCommission,
           semaine: getWeekNumber(now),
           mois: now.getMonth() + 1,
           annee: now.getFullYear(),
         });
 
         // 2. Credit seller balance
+        nouveauSolde = (Number(seller.solde_commission) || 0) + commissionVendeur;
         await supabase.from("sellers").update({
-          solde_commission: (Number(seller.solde_commission) || 0) + Math.max(0, commissionVendeur),
-          total_commissions_gagnees: (Number(seller.total_commissions_gagnees) || 0) + Math.max(0, commissionVendeur),
+          solde_commission: nouveauSolde,
+          total_commissions_gagnees: (Number(seller.total_commissions_gagnees) || 0) + commissionVendeur,
         }).eq("id", cmd.vendeur_id);
 
         // 3. Record stock movement
@@ -222,18 +228,19 @@ export default function CommandesVendeurs() {
         notes_admin: notesAdmin || cmd.notes_admin,
       });
 
-      const commDisplay = cmd.commission_calculee || 0;
-      await adminApi.createNotificationVendeur({
+      // Notify vendor with commission breakdown
+      await supabase.from("notifications_vendeur").insert({
         vendeur_id: cmd.vendeur_id,
         vendeur_email: cmd.vendeur_email,
-        titre: "Commande livrée ✓",
-        message: `La commande de ${cmd.produit_nom} a été livrée à ${cmd.client_nom}. Commission de ${Math.round(commDisplay).toLocaleString("fr-FR")} FCFA créditée.`,
+        titre: "🎉 Livraison confirmée !",
+        message: `Votre commande ${cmd.reference_commande || cmd.id} a été livrée avec succès !\n\n📦 Produit : ${cmd.produit_nom}\n🔢 Quantité : ${cmd.quantite}\n\n💰 Commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
         type: "succes",
       });
+
       await adminApi.createJournalAudit({
         action: "Livraison confirmée",
         module: "commande",
-        details: `Commande ${cmd.id} livrée — Commission: ${Math.round(commDisplay)} FCFA`,
+        details: `Commande ${cmd.id} livrée — Commission: ${Math.round(commissionVendeur)} FCFA`,
         entite_id: cmd.id,
       });
     } catch (err) { console.error("marquerLivree:", err); }

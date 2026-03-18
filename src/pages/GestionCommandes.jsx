@@ -34,7 +34,10 @@ export default function GestionCommandes() {
 
   const { data: commandes = [], isLoading: loadingCommandes } = useQuery({
     queryKey: ["commandes_vendeur"],
-    queryFn: () => listTable("commandes_vendeur", "-created_date"),
+    queryFn: async () => {
+      const { data } = await supabase.from("commandes_vendeur").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
   const commandesFiltrees = filtreStatut === "all"
