@@ -130,5 +130,9 @@ export const getRequiredModal = (sellerStatus, trainingCompleted = false) => {
  * @returns {boolean} - True if training modal should appear
  */
 export const shouldShowTrainingModal = (sellerStatus, trainingCompleted = false) => {
-  return sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED && !trainingCompleted;
+  // Show training modal for active_seller who hasn't completed training too
+  return (
+    (sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED || sellerStatus === SELLER_STATUSES.ACTIVE_SELLER) 
+    && !trainingCompleted
+  );
 };
