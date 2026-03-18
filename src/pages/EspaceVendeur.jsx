@@ -518,7 +518,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* Stats CA par période */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
           {[
             { label: "Cette semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek, icon: "📅" },
             { label: "Ce mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois, icon: "📅" },
