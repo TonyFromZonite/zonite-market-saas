@@ -399,13 +399,27 @@ function CommissionsTab() {
   const payerCommission = async () => {
     if (!vendeurPaiement || montantPaiement <= 0) return;
     setEnCours(true);
-    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.full_name || vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
-    await adminApi.updateVendeur(vendeurPaiement.id, { solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement), total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement });
-    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name || vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
-    queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
-    queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
-    setDialogPaiement(false);
-    setEnCours(false);
+    try {
+      await supabase.from("paiements_commission").insert({
+        vendeur_id: vendeurPaiement.id,
+        montant: montantPaiement,
+        methode_paiement: methodePaiement,
+        reference_paiement: `PAY-${Date.now().toString(36).toUpperCase()}`,
+        effectue_par: notesPaiement || "admin",
+      });
+      await adminApi.updateVendeur(vendeurPaiement.id, {
+        solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement),
+        total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement,
+      });
+      await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name}`, entite_id: vendeurPaiement.id });
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+      setDialogPaiement(false);
+    } catch (err) {
+      console.error("Erreur paiement commission:", err);
+    } finally {
+      setEnCours(false);
+    }
   };
 
   const totalAPayer = vendeurs.reduce((s, v) => s + (v.solde_commission || 0), 0);
