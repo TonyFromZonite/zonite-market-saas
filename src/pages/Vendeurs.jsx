@@ -319,7 +319,7 @@ function ValidationKYC() {
           <div className="divide-y divide-slate-100">
             {traites.map(s => (
                 <div key={s.id} className="p-4 flex items-center justify-between">
-                  <div><p className="font-medium text-slate-900">{s.nom_complet}</p><p className="text-sm text-slate-500">{s.ville} • {s.telephone}</p></div>
+                  <div><p className="font-medium text-slate-900">{s.full_name || s.nom_complet}</p><p className="text-sm text-slate-500">{s.ville} • {s.telephone}</p></div>
                   <div className="flex items-center gap-2">
                     <Badge className={`border-0 ${s.statut_kyc === "valide" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{s.statut_kyc === "valide" ? "Validé" : "Rejeté"}</Badge>
                     <Button size="sm" variant="ghost" onClick={() => { setCompteSelectionne(s); setNotes(s.notes_admin || ""); }}><Eye className="w-4 h-4" /></Button>
