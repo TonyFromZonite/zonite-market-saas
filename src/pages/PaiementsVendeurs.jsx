@@ -279,19 +279,22 @@ export default function PaiementsVendeurs() {
             {traitees.map(d => {
               const seller = getSellerForDemande(d);
               return (
-                <div key={d.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
+                <div key={d.id} className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="space-y-0.5">
                     <p className="font-bold">{formater(d.montant)}</p>
-                    <p className="text-sm text-slate-600">{seller?.full_name || d.vendeur_email} • {d.operateur_mobile_money}</p>
-                    <p className="text-xs text-slate-500">{d.numero_mobile_money}</p>
-                    {d.notes && <p className="text-xs text-slate-400">{d.notes}</p>}
-                    {d.motif_rejet && (
-                      <p className="text-xs text-red-600 mt-1">Motif rejet : {d.motif_rejet}</p>
+                    <p className="text-sm text-slate-600">{seller?.full_name || d.vendeur_email}</p>
+                    <p className="text-sm text-slate-500">💳 {d.operateur_mobile_money} • 📱 {d.numero_mobile_money}</p>
+                    {d.notes && <p className="text-xs text-slate-400">👤 {d.notes}</p>}
+                    {d.reference_paiement && (
+                      <p className="text-xs text-emerald-600 font-medium">Réf: {d.reference_paiement}</p>
                     )}
-                    <p className="text-xs text-slate-400">{formaterDate(d.created_at)}{d.traite_at ? ` → Traité: ${formaterDate(d.traite_at)}` : ""}</p>
+                    {d.motif_rejet && (
+                      <p className="text-xs text-red-600 mt-1">❌ Motif rejet : {d.motif_rejet}</p>
+                    )}
+                    <p className="text-xs text-slate-400">📅 Demandé : {formaterDate(d.created_at)}{d.traite_at ? ` → Traité : ${formaterDate(d.traite_at)}` : ""}</p>
                     {d.traite_par && <p className="text-xs text-slate-400">Par : {d.traite_par}</p>}
                   </div>
-                  <Badge className={`${STATUTS[d.statut]?.couleur || 'bg-slate-100 text-slate-800'} border-0`}>{STATUTS[d.statut]?.label || d.statut}</Badge>
+                  <Badge className={`${STATUTS[d.statut]?.couleur || 'bg-slate-100 text-slate-800'} border-0 flex-shrink-0`}>{STATUTS[d.statut]?.label || d.statut}</Badge>
                 </div>
               );
             })}
