@@ -55,6 +55,8 @@ export default function PaiementsVendeurs() {
   const loadDemandes = () => {
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
+    queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+    queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
   };
 
   // ─── APPROVE PAYMENT (Phase 3 flow) ───
