@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getVendeurSession } from "@/components/useSessionGuard";
+import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { createPageUrl } from "@/utils";
-import { filterTable } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Hook centralisé pour récupérer le compte vendeur et calculer les droits d'accès.
@@ -12,22 +12,22 @@ export function useSellerAccess() {
 
   useEffect(() => {
     const charger = async () => {
-      const session = getVendeurSession();
+      const session = await getVendeurSessionAsync();
       if (!session) {
         window.location.href = createPageUrl("Connexion");
         return;
       }
-      // Si session contient déjà les données vendeur
-      if (session.id && session.nom_complet) {
-        setSeller(session);
-        setLoading(false);
-        return;
-      }
-      const sellers = await filterTable("sellers", { email: session.email });
-      if (sellers.length > 0) {
-        setSeller(sellers[0]);
+      // Get fresh data from DB
+      const { data: freshSeller } = await supabase
+        .from("sellers")
+        .select("*")
+        .eq("id", session.id)
+        .maybeSingle();
+      
+      if (freshSeller) {
+        setSeller(freshSeller);
       } else {
-        window.location.href = createPageUrl("Connexion");
+        setSeller(session);
       }
       setLoading(false);
     };
