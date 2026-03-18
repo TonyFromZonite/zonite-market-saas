@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { Wallet, DollarSign, Loader2, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { createRecord, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Commissions() {
   const [dialogPaiement, setDialogPaiement] = useState(false);
@@ -41,18 +42,28 @@ export default function Commissions() {
 
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
     queryKey: ["vendeurs"],
-    queryFn: () => listTable("sellers"),
+    queryFn: async () => {
+      const { data } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
+      return data || [];
+    },
   });
 
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({
     queryKey: ["paiements_commissions"],
-    queryFn: () => listTable("paiements_commission", "-created_date", 100),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("paiements_commission")
+        .select("*, sellers!paiements_commission_vendeur_id_fkey(full_name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
   });
 
   const ouvrirPaiement = (vendeur) => {
     setVendeurPaiement(vendeur);
     setMontantPaiement(vendeur.solde_commission || 0);
-    setMethodePaiement("especes");
+    setMethodePaiement("mobile_money");
     setNotesPaiement("");
     setDialogPaiement(true);
   };
@@ -63,10 +74,9 @@ export default function Commissions() {
 
     await createRecord("paiements_commission", {
       vendeur_id: vendeurPaiement.id,
-      vendeur_nom: vendeurPaiement.nom_complet,
       montant: montantPaiement,
       methode_paiement: methodePaiement,
-      notes: notesPaiement,
+      effectue_par: "admin",
     });
 
     await updateRecord("sellers", vendeurPaiement.id, {
@@ -77,7 +87,7 @@ export default function Commissions() {
     await createRecord("journal_audit", {
       action: "Commission payée",
       module: "paiement",
-      details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.nom_complet} (${methodePaiement})`,
+      details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name} (${methodePaiement})`,
       entite_id: vendeurPaiement.id,
     });
 
@@ -156,9 +166,9 @@ export default function Commissions() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendeurs.filter(v => v.statut === "actif").map((v) => (
+              {vendeurs.filter(v => v.seller_status === "active_seller").map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
-                  <TableCell className="font-medium">{v.nom_complet}</TableCell>
+                  <TableCell className="font-medium">{v.full_name}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_payees)}</TableCell>
                   <TableCell className="text-right">
@@ -205,8 +215,8 @@ export default function Commissions() {
               )}
               {paiements.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-sm">{formaterDate(p.created_date)}</TableCell>
-                  <TableCell className="font-medium">{p.vendeur_nom}</TableCell>
+                  <TableCell className="text-sm">{formaterDate(p.created_at)}</TableCell>
+                  <TableCell className="font-medium">{p.sellers?.full_name || "—"}</TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">{formater(p.montant)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs capitalize">
@@ -230,7 +240,7 @@ export default function Commissions() {
           {vendeurPaiement && (
             <div className="space-y-4">
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.nom_complet}</span></p>
+                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.full_name}</span></p>
                 <p className="text-sm text-slate-600">Solde actuel: <span className="font-bold text-yellow-600">{formater(vendeurPaiement.solde_commission)}</span></p>
               </div>
               <div className="space-y-2">
