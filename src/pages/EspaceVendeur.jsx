@@ -617,7 +617,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* Commandes récentes */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="flex items-center justify-between p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm">Commandes récentes</h3>
             <Link to={createPageUrl("MesCommandesVendeur")}><span className="text-xs text-blue-600">Voir tout →</span></Link>
