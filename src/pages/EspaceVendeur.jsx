@@ -502,8 +502,8 @@ export default function EspaceVendeur() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Wallet className="w-4 h-4 text-yellow-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{formater(soldeAffiche.solde_commission)}</p>
-            <p className="text-[10px] text-slate-500">💰 Solde Commission</p>
+            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
+            <p className="text-[10px] text-slate-500 truncate">💰 Solde Commission</p>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
             <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Package className="w-4 h-4 text-blue-600" /></div>
