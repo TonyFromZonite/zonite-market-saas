@@ -103,7 +103,7 @@ function ListeVendeurs() {
         user_email: vendeurRoleEdite.email,
         new_role: nouveauRoleVendeur
       });
-      await adminApi.createJournalAudit({ action: "Rôle utilisateur changé", module: "vendeur", details: `Rôle de ${vendeurRoleEdite.nom_complet} changé en ${nouveauRoleVendeur}`, entite_id: vendeurRoleEdite.id });
+      await adminApi.createJournalAudit({ action: "Rôle utilisateur changé", module: "vendeur", details: `Rôle de ${vendeurRoleEdite.full_name || vendeurRoleEdite.nom_complet} changé en ${nouveauRoleVendeur}`, entite_id: vendeurRoleEdite.id });
       toast({ title: "Rôle changé avec succès", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
       setDialogRoleOuvert(false);
