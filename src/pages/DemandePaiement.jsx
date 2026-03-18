@@ -75,13 +75,6 @@ export default function DemandePaiement() {
     if (!form.numero_mobile_money) return setErreur("Renseignez votre numéro Mobile Money");
     if (!form.nom_titulaire) return setErreur("Renseignez le nom du titulaire du compte");
 
-    if (form.nom_titulaire.toLowerCase().trim() !== compteVendeur?.full_name?.toLowerCase().trim()) {
-      const confirmed = window.confirm(
-        `⚠️ ATTENTION\n\nLe nom "${form.nom_titulaire}" ne correspond pas à votre nom sur Zonite Market "${compteVendeur?.full_name}".\n\nVotre paiement risque d'être rejeté par l'administrateur.\n\nVoulez-vous quand même continuer ?`
-      );
-      if (!confirmed) return;
-    }
-
     setEnCours(true);
     setErreur("");
 
