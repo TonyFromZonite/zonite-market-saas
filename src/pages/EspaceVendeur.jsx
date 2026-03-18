@@ -535,15 +535,15 @@ export default function EspaceVendeur() {
         {(soldeAffiche.solde_commission || 0) > 0 ? (
           <button
             onClick={() => navigate(createPageUrl("DemandePaiement"))}
-            className="w-full mb-5 p-4 rounded-xl border-none text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #f5a623, #e8940f)', boxShadow: '0 4px 15px rgba(245,166,35,0.4)' }}
+            className="w-full mb-3 p-3 rounded-xl border-none text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #f5a623, #e8940f)', boxShadow: '0 4px 12px rgba(245,166,35,0.3)' }}
           >
             💰 Demander un paiement
-            <span className="bg-white/30 px-3 py-1 rounded-full text-sm">{formater(soldeAffiche.solde_commission)}</span>
+            <span className="bg-white/30 px-2.5 py-0.5 rounded-full text-xs">{formater(soldeAffiche.solde_commission)}</span>
           </button>
         ) : (
-          <div className="w-full mb-5 p-4 rounded-xl bg-slate-100 text-center text-slate-400 text-sm">
-            💰 Aucune commission disponible pour le moment
+          <div className="w-full mb-3 p-3 rounded-xl bg-slate-100 text-center text-slate-400 text-xs">
+            💰 Aucune commission disponible
           </div>
         )}
 
