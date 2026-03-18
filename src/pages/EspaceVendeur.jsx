@@ -488,11 +488,10 @@ export default function EspaceVendeur() {
           </div>
         </div>
 
-        {/* Solde */}
+      {/* Solde */}
         <div className="mt-3 bg-white/10 rounded-xl p-3">
-          <p className="text-slate-300 text-[11px] mb-0.5">Solde commissions</p>
+          <p className="text-slate-300 text-[11px] mb-0.5">💰 Solde disponible au retrait</p>
           <p className="text-2xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
-          <p className="text-[11px] text-slate-300 mt-0.5">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
         </div>
       </div>
 
