@@ -221,8 +221,8 @@ export default function Connexion() {
         </div>
       </div>
 
-      <div className="w-full max-w-sm relative z-10 flex-1 flex flex-col justify-center px-3">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-5 md:p-6 border border-white/20 shadow-2xl">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 flex-1 flex flex-col justify-center px-1">
+        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl">
           {!modeMdpOublie &&
           <div>
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">
