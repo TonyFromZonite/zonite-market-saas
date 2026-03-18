@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { Wallet, DollarSign, Loader2, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createRecord, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { createRecord, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Commissions() {
   const [dialogPaiement, setDialogPaiement] = useState(false);
