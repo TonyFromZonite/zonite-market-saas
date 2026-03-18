@@ -3,7 +3,7 @@ import VentesVendeurTab from "@/components/rapports/VentesVendeurTab";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download, Loader2 } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download, Loader2, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -94,11 +94,9 @@ export default function RapportsVentes() {
     y += 6;
 
     const kpis = [
-      ["CA Total", fmt(caTotal)],
-      ["CA Ventes Directes", fmt(caVentes)],
-      ["CA Vendeurs", fmt(caCmds)],
-      ["Marge Brute", fmt(margeTotal)],
-      ["Taux de Marge", `${tauxMarge}%`],
+      ["CA Total ZONITE", fmt(caTotal)],
+      ["Total Commissions Vendeurs", fmt(totalCommissions)],
+      ["Marge ZONITE", fmt(margeTotal)],
       ["Nb Transactions", `${nbTransactions}`],
       ["Panier Moyen", fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
     ];
@@ -111,7 +109,7 @@ export default function RapportsVentes() {
       doc.text(k, x, y);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text(v, x + 50, y);
+      doc.text(v, x + 55, y);
     });
     y += 14;
 
@@ -258,93 +256,68 @@ export default function RapportsVentes() {
     return actives.filter(c => new Date(c.created_date) >= dateDebut);
   }, [commandesVendeurs, dateDebut]);
 
-  // ── KPIs ──
-  const caVentes = ventesFiltrees.reduce((s, v) => s + (v.montant_total || 0), 0);
-  const margeVentes = ventesFiltrees.reduce((s, v) => s + (v.profit_zonite || 0), 0);
-  const caCmds = cmdsFiltrees.reduce((s, c) => s + (c.prix_final_client || 0) * (c.quantite || 0), 0);
-  const margeCmds = cmdsFiltrees.reduce((s, c) => {
-    const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-    return s + ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
-  }, 0);
-  const caTotal = caVentes + caCmds;
-  const margeTotal = margeVentes + margeCmds;
-  const tauxMarge = caTotal > 0 ? ((margeTotal / caTotal) * 100).toFixed(1) : 0;
-  const nbTransactions = ventesFiltrees.length + cmdsFiltrees.length;
+  // ── KPIs (all from ventes table) ──
+  const caTotal = ventesFiltrees.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const totalCommissions = ventesFiltrees.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeTotal = ventesFiltrees.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+  const nbTransactions = ventesFiltrees.length;
 
   // ── Graphique période ──
   const donneesGraphique = useMemo(() => {
     const map = {};
     const pj = periodeJours === 0 ? 365 : periodeJours;
-    const ajouter = (dateStr, caVal, margeVal, type) => {
-      const date = new Date(dateStr);
+    ventesFiltrees.forEach(v => {
+      const date = new Date(v.created_at || v.created_date);
       const key = getGroupeKey(date, pj);
-      if (!map[key]) map[key] = { periode: key, caVentes: 0, caVendeurs: 0, marge: 0 };
-      if (type === "vente") { map[key].caVentes += caVal; map[key].marge += margeVal; }
-      else { map[key].caVendeurs += caVal; map[key].marge += margeVal; }
-    };
-    ventesFiltrees.forEach(v => ajouter(v.date_vente || v.created_date, v.montant_total || 0, v.profit_zonite || 0, "vente"));
-    cmdsFiltrees.forEach(c => {
-      const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-      const marge = ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
-      ajouter(c.created_date, ca, marge, "vendeur");
+      if (!map[key]) map[key] = { periode: key, ca: 0, commissions: 0, marge: 0 };
+      map[key].ca += v.montant_total || 0;
+      map[key].commissions += v.commission_vendeur || 0;
+      map[key].marge += v.marge_zonite || v.profit_zonite || 0;
     });
     return Object.values(map).sort((a, b) => a.periode.localeCompare(b.periode));
-  }, [ventesFiltrees, cmdsFiltrees, periodeJours]);
+  }, [ventesFiltrees, periodeJours]);
 
   // ── Top Produits ──
   const topProduits = useMemo(() => {
     const map = {};
     ventesFiltrees.forEach(v => {
-      const key = v.produit_id || v.produit_nom;
-      if (!map[key]) map[key] = { nom: v.produit_nom || "Inconnu", qte: 0, ca: 0, marge: 0 };
+      const key = v.produit_id;
+      if (!map[key]) map[key] = { nom: "Inconnu", qte: 0, ca: 0, commissions: 0, marge: 0 };
+      // Try to get product name from produits list
+      const prod = produits.find(p => p.id === v.produit_id);
+      if (prod) map[key].nom = prod.nom;
       map[key].qte += v.quantite || 0;
       map[key].ca += v.montant_total || 0;
-      map[key].marge += v.profit_zonite || 0;
-    });
-    cmdsFiltrees.forEach(c => {
-      const key = c.produit_id || c.produit_nom;
-      if (!map[key]) map[key] = { nom: c.produit_nom || "Inconnu", qte: 0, ca: 0, marge: 0 };
-      const ca = (c.prix_final_client || 0) * (c.quantite || 0);
-      map[key].qte += c.quantite || 0;
-      map[key].ca += ca;
-      map[key].marge += ca - (c.prix_gros || 0) * (c.quantite || 0) - (c.commission_vendeur || 0);
+      map[key].commissions += v.commission_vendeur || 0;
+      map[key].marge += v.marge_zonite || v.profit_zonite || 0;
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca).slice(0, 10);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [ventesFiltrees, produits]);
 
   // ── Top Vendeurs ──
   const topVendeurs = useMemo(() => {
     const map = {};
     ventesFiltrees.forEach(v => {
-      const key = v.vendeur_id || v.vendeur_nom || "direct";
-      if (!map[key]) map[key] = { nom: v.vendeur_nom || "Vente Directe", nb: 0, ca: 0, commissions: 0 };
-      map[key].nb += 1; map[key].ca += v.montant_total || 0; map[key].commissions += v.commission_vendeur || 0;
-    });
-    cmdsFiltrees.forEach(c => {
-      const key = c.vendeur_id || c.vendeur_email || c.vendeur_nom;
-      if (!map[key]) map[key] = { nom: c.vendeur_nom || c.vendeur_email || "Inconnu", nb: 0, ca: 0, commissions: 0 };
+      const key = v.vendeur_id;
+      if (!map[key]) map[key] = { nom: v.vendeur_email || "Inconnu", nb: 0, ca: 0, commissions: 0 };
       map[key].nb += 1;
-      map[key].ca += (c.prix_final_client || 0) * (c.quantite || 0);
-      map[key].commissions += c.commission_vendeur || 0;
+      map[key].ca += v.montant_total || 0;
+      map[key].commissions += v.commission_vendeur || 0;
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca).slice(0, 10);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [ventesFiltrees]);
 
-  // ── Top Villes ──
+  // ── Top Villes (from commandes_vendeur) ──
   const topVilles = useMemo(() => {
     const map = {};
-    ventesFiltrees.forEach(v => {
-      const ville = v.client_adresse?.split(",")[0]?.trim() || "Non précisée";
-      if (!map[ville]) map[ville] = { ville, nb: 0, ca: 0 };
-      map[ville].nb += 1; map[ville].ca += v.montant_total || 0;
-    });
     cmdsFiltrees.forEach(c => {
       const ville = c.client_ville || "Non précisée";
       if (!map[ville]) map[ville] = { ville, nb: 0, ca: 0 };
-      map[ville].nb += 1; map[ville].ca += (c.prix_final_client || 0) * (c.quantite || 0);
+      map[ville].nb += 1;
+      map[ville].ca += (c.montant_total || 0);
     });
     return Object.values(map).sort((a, b) => b.ca - a.ca);
-  }, [ventesFiltrees, cmdsFiltrees]);
+  }, [cmdsFiltrees]);
 
   const totalCAVilles = topVilles.reduce((s, v) => s + v.ca, 0);
   const badgeRank = (i) => i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-slate-200 text-slate-600" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500";
@@ -401,11 +374,10 @@ export default function RapportsVentes() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard titre="Chiffre d'Affaires Total" valeur={fmt(caTotal)} sous={`Direct: ${fmt(caVentes)} | Vendeurs: ${fmt(caCmds)}`} icone={DollarSign} couleurBg="bg-blue-50" couleurTexte="text-blue-600" />
-        <KPICard titre="Marge Brute Globale" valeur={fmt(margeTotal)} sous={`Taux: ${tauxMarge}%`} icone={TrendingUp} couleurBg="bg-emerald-50" couleurTexte="text-emerald-600" />
-        <KPICard titre="Transactions" valeur={nbTransactions} sous={`${ventesFiltrees.length} directes • ${cmdsFiltrees.length} vendeurs`} icone={ShoppingCart} couleurBg="bg-purple-50" couleurTexte="text-purple-600" />
-        <KPICard titre="Panier Moyen" valeur={fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)} sous="Par transaction" icone={Package} couleurBg="bg-yellow-50" couleurTexte="text-yellow-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard titre="CA Total ZONITE" valeur={fmt(caTotal)} sous={`${nbTransactions} transaction(s)`} icone={DollarSign} couleurBg="bg-blue-50" couleurTexte="text-blue-600" />
+        <KPICard titre="Total Commissions Vendeurs" valeur={fmt(totalCommissions)} icone={Wallet} couleurBg="bg-yellow-50" couleurTexte="text-yellow-600" />
+        <KPICard titre="Marge ZONITE" valeur={fmt(margeTotal)} sous="prix_gros − prix_achat" icone={TrendingUp} couleurBg="bg-emerald-50" couleurTexte="text-emerald-600" />
       </div>
 
       {/* Graphique évolution */}
@@ -424,9 +396,9 @@ export default function RapportsVentes() {
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="caVentes" name="CA Ventes Directes" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="caVendeurs" name="CA Ventes Vendeurs" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="marge" name="Marge Brute" fill="#10b981" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="ca" name="CA Total" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="commissions" name="Commissions Vendeurs" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="marge" name="Marge ZONITE" fill="#10b981" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -449,6 +421,7 @@ export default function RapportsVentes() {
                           <th className="text-left px-2 md:px-4 py-2 font-medium">Produit</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">Qté</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">CA</th>
+                          <th className="text-right px-2 md:px-4 py-2 font-medium">Commission</th>
                           <th className="text-right px-2 md:px-4 py-2 font-medium">Marge</th>
                         </tr></thead>
                 <tbody>
@@ -462,6 +435,7 @@ export default function RapportsVentes() {
                       </td>
                       <td className="px-2 md:px-4 py-2.5 text-right text-slate-600 text-xs md:text-sm">{l.qte}</td>
                       <td className="px-2 md:px-4 py-2.5 text-right font-medium text-slate-800 text-xs md:text-sm">{fmt(l.ca)}</td>
+                      <td className="px-2 md:px-4 py-2.5 text-right font-medium text-orange-600 text-xs md:text-sm">{fmt(l.commissions)}</td>
                       <td className={`px-2 md:px-4 py-2.5 text-right font-semibold text-xs md:text-sm ${l.marge >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(l.marge)}</td>
                     </tr>
                   ))}

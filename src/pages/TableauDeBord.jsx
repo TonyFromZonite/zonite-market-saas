@@ -185,25 +185,39 @@ function DashboardAdmin() {
   const kycArray = Array.isArray(kycEnAttente) && kycEnAttente !== null ? kycEnAttente : [];
   const paiementsArray = Array.isArray(paiementsEnAttente) && paiementsEnAttente !== null ? paiementsEnAttente : [];
 
-  const chiffreAffaires = ventesArray
-    .filter(v => v.statut_commande !== "annulee" && v.statut_commande !== "retournee")
-    .reduce((s, v) => s + (v.montant_total || 0), 0);
+  // CA ZONITE = sum all montant_total from ventes
+  const chiffreAffaires = ventesArray.reduce((s, v) => s + (v.montant_total || 0), 0);
 
-  const profitNet = ventesArray
-    .filter(v => v.statut_commande !== "annulee" && v.statut_commande !== "retournee")
-    .reduce((s, v) => s + (v.profit_zonite || 0), 0);
+  // Total commissions paid to vendors
+  const totalCommissionsVendeurs = ventesArray.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+
+  // Marge ZONITE = sum all marge_zonite (or profit_zonite for backward compat)
+  const margeZonite = ventesArray.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
 
   const commissionsAPayer = vendeursArray.reduce((s, v) => s + (v.solde_commission || 0), 0);
-  const stockCritique = produitsArray.filter(p => (p.stock_global || 0) <= (p.seuil_alerte_global || 5)).length;
+  const stockCritique = produitsArray.filter(p => (p.stock_global || 0) <= (p.seuil_alerte_stock || 5)).length;
 
   const aujourdhui = new Date().toISOString().split("T")[0];
-  const commandesDuJour = ventesArray.filter(v => {
-    const d = v.date_vente ? v.date_vente.split("T")[0] : v.created_date?.split("T")[0];
-    return d === aujourdhui;
-  }).length;
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-  const topProduit = [...produitsArray].sort((a, b) => (b.total_vendu || 0) - (a.total_vendu || 0))[0] || {};
-  const commandesVendeursAujourdhui = commandesArray.filter(c => c.created_date?.split("T")[0] === aujourdhui).length;
+  const ventesAujourdhui = ventesArray.filter(v => {
+    const d = v.created_at ? v.created_at.split("T")[0] : v.created_date?.split("T")[0];
+    return d === aujourdhui;
+  });
+  const caAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const commAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+
+  const ventesMonth = ventesArray.filter(v => {
+    const d = new Date(v.created_at || v.created_date);
+    return d >= startOfMonth;
+  });
+  const caMois = ventesMonth.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const commMois = ventesMonth.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeMois = ventesMonth.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+
+  const commandesVendeursAujourdhui = commandesArray.filter(c => (c.created_at || c.created_date)?.split("T")[0] === aujourdhui).length;
   const commissionsVendeursAPayer = paiementsArray.reduce((s, p) => s + (p.montant || 0), 0);
 
   if (enChargement) {
@@ -244,25 +258,41 @@ function DashboardAdmin() {
         </div>
       )}
 
-      {/* Ventes Directes */}
+      {/* CA ZONITE */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Ventes Directes (Admin)</p>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>📊 Chiffre d'Affaires</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          <CarteStatistique titre="Chiffre d'Affaires" valeur={formaterMontant(chiffreAffaires)} icone={DollarSign} couleur="bleu" />
-          <CarteStatistique titre="Profit Net" valeur={formaterMontant(profitNet)} icone={TrendingUp} couleur="vert" />
-          <CarteStatistique titre="Commissions à Payer" valeur={formaterMontant(commissionsAPayer)} icone={Wallet} couleur="orange" />
-          <CarteStatistique titre="Commandes du Jour" valeur={commandesDuJour} icone={ShoppingCart} couleur="violet" />
+          <CarteStatistique titre="CA Aujourd'hui" valeur={formaterMontant(caAujourdhui)} icone={DollarSign} couleur="bleu" />
+          <CarteStatistique titre="CA Ce Mois" valeur={formaterMontant(caMois)} icone={DollarSign} couleur="bleu" />
         </div>
       </div>
 
-      {/* Application Vendeurs */}
+      {/* Commissions vendeurs */}
       <div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Application Vendeurs</p>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>💸 Commissions Vendeurs</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          <CarteStatistique titre="Comm. Aujourd'hui" valeur={formaterMontant(commAujourdhui)} icone={Wallet} couleur="orange" />
+          <CarteStatistique titre="Comm. Ce Mois" valeur={formaterMontant(commMois)} icone={Wallet} couleur="orange" />
+        </div>
+      </div>
+
+      {/* Marge ZONITE */}
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>🏦 Marge ZONITE Market</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          <CarteStatistique titre="Marge Aujourd'hui" valeur={formaterMontant(margeAujourdhui)} icone={TrendingUp} couleur="vert" />
+          <CarteStatistique titre="Marge Ce Mois" valeur={formaterMontant(margeMois)} icone={TrendingUp} couleur="vert" />
+        </div>
+      </div>
+
+      {/* Opérationnel */}
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Opérationnel</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
           <CarteStatistique titre="Cmds Vendeurs Aujourd'hui" valeur={commandesVendeursAujourdhui} icone={ShoppingCart} couleur="indigo" />
-          <CarteStatistique titre="Total Commandes" valeur={commandesArray.length} icone={Package} couleur="jaune" />
+          <CarteStatistique titre="Commissions à Payer" valeur={formaterMontant(commissionsAPayer)} icone={Wallet} couleur="orange" />
           <CarteStatistique titre="Stock Critique" valeur={stockCritique} icone={AlertTriangle} couleur={stockCritique > 0 ? "rouge" : "vert"} />
-          <CarteStatistique titre="Top Produit" valeur={topProduit?.nom || "—"} icone={Package} couleur="bleu" />
+          <CarteStatistique titre="Total Commandes" valeur={commandesArray.length} icone={Package} couleur="jaune" />
         </div>
       </div>
 

@@ -981,7 +981,6 @@ export type Database = {
           seller_status: string
           solde_commission: number | null
           statut_kyc: string | null
-          taux_commission: number | null
           telephone: string | null
           total_commissions_gagnees: number | null
           total_commissions_payees: number | null
@@ -1018,7 +1017,6 @@ export type Database = {
           seller_status?: string
           solde_commission?: number | null
           statut_kyc?: string | null
-          taux_commission?: number | null
           telephone?: string | null
           total_commissions_gagnees?: number | null
           total_commissions_payees?: number | null
@@ -1055,7 +1053,6 @@ export type Database = {
           seller_status?: string
           solde_commission?: number | null
           statut_kyc?: string | null
-          taux_commission?: number | null
           telephone?: string | null
           total_commissions_gagnees?: number | null
           total_commissions_payees?: number | null
@@ -1262,14 +1259,17 @@ export type Database = {
           commission_vendeur: number
           created_at: string
           id: string
+          marge_zonite: number | null
           mois: number | null
           montant_total: number
+          prix_achat: number | null
           prix_achat_unitaire: number | null
+          prix_final_client: number | null
+          prix_gros: number | null
           produit_id: string
           profit_zonite: number
           quantite: number
           semaine: number | null
-          taux_commission_applique: number | null
           vendeur_email: string
           vendeur_id: string
         }
@@ -1279,14 +1279,17 @@ export type Database = {
           commission_vendeur?: number
           created_at?: string
           id?: string
+          marge_zonite?: number | null
           mois?: number | null
           montant_total: number
+          prix_achat?: number | null
           prix_achat_unitaire?: number | null
+          prix_final_client?: number | null
+          prix_gros?: number | null
           produit_id: string
           profit_zonite?: number
           quantite: number
           semaine?: number | null
-          taux_commission_applique?: number | null
           vendeur_email: string
           vendeur_id: string
         }
@@ -1296,14 +1299,17 @@ export type Database = {
           commission_vendeur?: number
           created_at?: string
           id?: string
+          marge_zonite?: number | null
           mois?: number | null
           montant_total?: number
+          prix_achat?: number | null
           prix_achat_unitaire?: number | null
+          prix_final_client?: number | null
+          prix_gros?: number | null
           produit_id?: string
           profit_zonite?: number
           quantite?: number
           semaine?: number | null
-          taux_commission_applique?: number | null
           vendeur_email?: string
           vendeur_id?: string
         }

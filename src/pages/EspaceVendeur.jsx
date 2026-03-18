@@ -488,47 +488,52 @@ export default function EspaceVendeur() {
           </div>
         </div>
 
-        {/* Solde */}
+      {/* Solde */}
         <div className="mt-3 bg-white/10 rounded-xl p-3">
-          <p className="text-slate-300 text-[11px] mb-0.5">Solde commissions</p>
+          <p className="text-slate-300 text-[11px] mb-0.5">💰 Solde disponible au retrait</p>
           <p className="text-2xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
-          <p className="text-[11px] text-slate-300 mt-0.5">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
         </div>
       </div>
 
       {/* SECTION A — Stats personnelles */}
       <div className="px-3 -mt-4">
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        {/* Stats row 1: Total gagné / Total reçu */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
-            <div className="w-7 h-7 bg-yellow-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Wallet className="w-3.5 h-3.5 text-yellow-600" /></div>
-            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
-            <p className="text-[9px] text-slate-500 truncate">Solde</p>
-          </div>
-          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
-            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Package className="w-3.5 h-3.5 text-blue-600" /></div>
-            <p className="text-sm font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
-            <p className="text-[9px] text-slate-500">En cours</p>
-          </div>
-          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
-            <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Trophy className="w-3.5 h-3.5 text-emerald-600" /></div>
+            <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto mb-1"><TrendingUp className="w-3.5 h-3.5 text-emerald-600" /></div>
             <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
-            <p className="text-[9px] text-slate-500 truncate">Total gagné</p>
+            <p className="text-[9px] text-slate-500 truncate">📈 Total gagné (depuis début)</p>
+          </div>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Wallet className="w-3.5 h-3.5 text-blue-600" /></div>
+            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_payees)}</p>
+            <p className="text-[9px] text-slate-500 truncate">✅ Total reçu (déjà payé)</p>
           </div>
         </div>
 
-        {/* Stats CA par période */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        {/* Stats row 2: Semaine / Mois */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {[
-            { label: "Semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek },
-            { label: "Mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois },
-            { label: "Année", ca: vendeurStats?.caAnnee, comm: vendeurStats?.commAnnee },
+            { label: "📅 Cette semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek },
+            { label: "📅 Ce mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois },
           ].map(({ label, ca, comm }) => (
             <div key={label} className="bg-white rounded-xl p-2.5 shadow-sm">
               <p className="text-[9px] text-slate-500 font-medium mb-0.5">{label}</p>
-              <p className="text-[11px] font-bold text-slate-900 truncate">{formater(ca)}</p>
-              <p className="text-[10px] text-emerald-600 truncate">+{formater(comm)}</p>
+              <p className="text-[11px] text-slate-700 truncate">CA: {formater(ca)}</p>
+              <p className="text-[10px] text-emerald-600 truncate">Com: {formater(comm)}</p>
             </div>
           ))}
+        </div>
+
+        {/* Commandes en cours */}
+        <div className="grid grid-cols-1 gap-2 mb-3">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm flex items-center gap-3">
+            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center"><Package className="w-3.5 h-3.5 text-blue-600" /></div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
+              <p className="text-[9px] text-slate-500">Commandes en cours</p>
+            </div>
+          </div>
         </div>
 
         {/* SECTION C — Quick payment button */}
