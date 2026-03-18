@@ -245,15 +245,14 @@ export default function RapportsVentes() {
   }, [periodeJours]);
 
   const ventesFiltrees = useMemo(() => {
-    const actives = ventes.filter(v => v.statut_commande !== "annulee" && v.statut_commande !== "retournee");
-    if (!dateDebut) return actives;
-    return actives.filter(v => new Date(v.date_vente || v.created_date) >= dateDebut);
+    if (!dateDebut) return ventes;
+    return ventes.filter(v => new Date(v.created_at) >= dateDebut);
   }, [ventes, dateDebut]);
 
   const cmdsFiltrees = useMemo(() => {
     const actives = commandesVendeurs.filter(c => c.statut === "livree");
     if (!dateDebut) return actives;
-    return actives.filter(c => new Date(c.created_date) >= dateDebut);
+    return actives.filter(c => new Date(c.created_at) >= dateDebut);
   }, [commandesVendeurs, dateDebut]);
 
   // ── KPIs (all from ventes table) ──
