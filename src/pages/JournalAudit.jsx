@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Search, ChevronLeft, ChevronRight, Shield, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import RapportsVentes from "./RapportsVentes";
+const RapportsVentes = lazy(() => import("./RapportsVentes"));
 import { supabase } from "@/integrations/supabase/client";
 
 const MODULES = {
@@ -104,7 +104,7 @@ export default function JournalAudit() {
         ))}
       </div>
 
-      {ongletActif === "rapports" && <RapportsVentes />}
+      {ongletActif === "rapports" && <Suspense fallback={<div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>}><RapportsVentes /></Suspense>}
       {ongletActif === "journal" && (
       <div className="space-y-4">
       {/* Filtres */}
