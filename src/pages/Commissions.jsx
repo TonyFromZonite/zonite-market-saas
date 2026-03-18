@@ -63,7 +63,7 @@ export default function Commissions() {
   const ouvrirPaiement = (vendeur) => {
     setVendeurPaiement(vendeur);
     setMontantPaiement(vendeur.solde_commission || 0);
-    setMethodePaiement("especes");
+    setMethodePaiement("mobile_money");
     setNotesPaiement("");
     setDialogPaiement(true);
   };
