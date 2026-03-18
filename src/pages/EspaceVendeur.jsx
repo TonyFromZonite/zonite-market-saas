@@ -548,23 +548,23 @@ export default function EspaceVendeur() {
         )}
 
         {/* Order stats cards */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-4 gap-2 mb-3">
           {[
-            { label: "En attente", val: commandesEnAttente, icone: Clock, couleur: "text-yellow-600", bg: "bg-yellow-50" },
-            { label: "En livraison", val: commandesEnLivraison, icone: Truck, couleur: "text-purple-600", bg: "bg-purple-50" },
+            { label: "Attente", val: commandesEnAttente, icone: Clock, couleur: "text-yellow-600", bg: "bg-yellow-50" },
+            { label: "Livraison", val: commandesEnLivraison, icone: Truck, couleur: "text-purple-600", bg: "bg-purple-50" },
             { label: "Réussies", val: commandesReussies, icone: CheckCircle2, couleur: "text-emerald-600", bg: "bg-emerald-50" },
             { label: "Échouées", val: commandesEchouees, icone: XCircle, couleur: "text-red-600", bg: "bg-red-50" },
           ].map(({ label, val, icone: Icone, couleur, bg }) => (
-            <div key={label} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}><Icone className={`w-4 h-4 ${couleur}`} /></div>
-              <p className="text-2xl font-bold text-slate-900">{val}</p>
-              <p className="text-xs text-slate-500">{label}</p>
+            <div key={label} className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+              <div className={`w-7 h-7 ${bg} rounded-lg flex items-center justify-center mx-auto mb-1`}><Icone className={`w-3.5 h-3.5 ${couleur}`} /></div>
+              <p className="text-lg font-bold text-slate-900">{val}</p>
+              <p className="text-[9px] text-slate-500">{label}</p>
             </div>
           ))}
         </div>
 
         {/* Actions rapides */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("NouvelleCommandeVendeur")}>
               <div className="bg-[#1a1f5e] text-white rounded-2xl p-4 flex items-center gap-3 hover:bg-[#141952] transition-colors">
