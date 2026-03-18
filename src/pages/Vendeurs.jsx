@@ -331,7 +331,7 @@ function ValidationKYC() {
       )}
       <Dialog open={!!compteSelectionne} onOpenChange={() => setCompteSelectionne(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Dossier KYC : {compteSelectionne?.nom_complet}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Dossier KYC : {compteSelectionne?.full_name || compteSelectionne?.nom_complet}</DialogTitle></DialogHeader>
           {compteSelectionne && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
