@@ -241,7 +241,7 @@ export default function RapportsVentes() {
     refetchOnWindowFocus: true,
   });
 
-  const isLoading = chargVentes || chargCmds;
+  const isLoading = chargVentes || chargCmds || chargProduits;
 
   const dateDebut = useMemo(() => {
     if (periodeJours === 0) return null;

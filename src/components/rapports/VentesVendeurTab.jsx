@@ -35,6 +35,8 @@ export default function VentesVendeurTab() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: produits = [] } = useQuery({
@@ -44,6 +46,8 @@ export default function VentesVendeurTab() {
       if (error) return [];
       return data || [];
     },
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: sellers = [] } = useQuery({
@@ -53,6 +57,8 @@ export default function VentesVendeurTab() {
       if (error) return [];
       return data || [];
     },
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 
   const isLoading = chargVentes;
