@@ -73,6 +73,7 @@ export const PAGES = {
     "TableauDeBord": TableauDeBord,
     "Vendeurs": Vendeurs,
     "VideoFormation": VideoFormation,
+    "FormationCours": FormationCours,
 }
 
 export const pagesConfig = {
