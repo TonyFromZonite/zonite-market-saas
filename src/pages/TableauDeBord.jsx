@@ -185,25 +185,39 @@ function DashboardAdmin() {
   const kycArray = Array.isArray(kycEnAttente) && kycEnAttente !== null ? kycEnAttente : [];
   const paiementsArray = Array.isArray(paiementsEnAttente) && paiementsEnAttente !== null ? paiementsEnAttente : [];
 
-  const chiffreAffaires = ventesArray
-    .filter(v => v.statut_commande !== "annulee" && v.statut_commande !== "retournee")
-    .reduce((s, v) => s + (v.montant_total || 0), 0);
+  // CA ZONITE = sum all montant_total from ventes
+  const chiffreAffaires = ventesArray.reduce((s, v) => s + (v.montant_total || 0), 0);
 
-  const profitNet = ventesArray
-    .filter(v => v.statut_commande !== "annulee" && v.statut_commande !== "retournee")
-    .reduce((s, v) => s + (v.profit_zonite || 0), 0);
+  // Total commissions paid to vendors
+  const totalCommissionsVendeurs = ventesArray.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+
+  // Marge ZONITE = sum all marge_zonite (or profit_zonite for backward compat)
+  const margeZonite = ventesArray.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
 
   const commissionsAPayer = vendeursArray.reduce((s, v) => s + (v.solde_commission || 0), 0);
-  const stockCritique = produitsArray.filter(p => (p.stock_global || 0) <= (p.seuil_alerte_global || 5)).length;
+  const stockCritique = produitsArray.filter(p => (p.stock_global || 0) <= (p.seuil_alerte_stock || 5)).length;
 
   const aujourdhui = new Date().toISOString().split("T")[0];
-  const commandesDuJour = ventesArray.filter(v => {
-    const d = v.date_vente ? v.date_vente.split("T")[0] : v.created_date?.split("T")[0];
-    return d === aujourdhui;
-  }).length;
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-  const topProduit = [...produitsArray].sort((a, b) => (b.total_vendu || 0) - (a.total_vendu || 0))[0] || {};
-  const commandesVendeursAujourdhui = commandesArray.filter(c => c.created_date?.split("T")[0] === aujourdhui).length;
+  const ventesAujourdhui = ventesArray.filter(v => {
+    const d = v.created_at ? v.created_at.split("T")[0] : v.created_date?.split("T")[0];
+    return d === aujourdhui;
+  });
+  const caAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const commAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeAujourdhui = ventesAujourdhui.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+
+  const ventesMonth = ventesArray.filter(v => {
+    const d = new Date(v.created_at || v.created_date);
+    return d >= startOfMonth;
+  });
+  const caMois = ventesMonth.reduce((s, v) => s + (v.montant_total || 0), 0);
+  const commMois = ventesMonth.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
+  const margeMois = ventesMonth.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
+
+  const commandesVendeursAujourdhui = commandesArray.filter(c => (c.created_at || c.created_date)?.split("T")[0] === aujourdhui).length;
   const commissionsVendeursAPayer = paiementsArray.reduce((s, p) => s + (p.montant || 0), 0);
 
   if (enChargement) {
