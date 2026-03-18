@@ -399,9 +399,9 @@ function CommissionsTab() {
   const payerCommission = async () => {
     if (!vendeurPaiement || montantPaiement <= 0) return;
     setEnCours(true);
-    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
+    await adminApi.createPaiementCommission({ vendeur_id: vendeurPaiement.id, vendeur_nom: vendeurPaiement.full_name || vendeurPaiement.nom_complet, montant: montantPaiement, methode_paiement: methodePaiement, notes: notesPaiement });
     await adminApi.updateVendeur(vendeurPaiement.id, { solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement), total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement });
-    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
+    await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name || vendeurPaiement.nom_complet}`, entite_id: vendeurPaiement.id });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
     queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
     setDialogPaiement(false);
