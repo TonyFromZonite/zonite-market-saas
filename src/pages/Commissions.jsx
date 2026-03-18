@@ -87,7 +87,7 @@ export default function Commissions() {
     await createRecord("journal_audit", {
       action: "Commission payée",
       module: "paiement",
-      details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.nom_complet} (${methodePaiement})`,
+      details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name} (${methodePaiement})`,
       entite_id: vendeurPaiement.id,
     });
 
