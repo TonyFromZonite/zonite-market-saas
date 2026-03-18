@@ -14,6 +14,7 @@ import BanniereKycPending from "@/components/BanniereKycPending";
 
 export default function ProfilVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
+  const [nombreVentes, setNombreVentes] = useState(0);
   const [chargement, setChargement] = useState(true);
   const [ouvrirChangeMdp, setOuvrirChangeMdp] = useState(false);
   const [ancienMdp, setAncienMdp] = useState("");
@@ -54,7 +55,15 @@ export default function ProfilVendeur() {
         seller = data;
       }
 
-      if (seller) setCompteVendeur(seller);
+      if (seller) {
+        setCompteVendeur(seller);
+        // Fetch actual sales count from ventes table
+        const { count } = await supabase
+          .from('ventes')
+          .select('*', { count: 'exact', head: true })
+          .eq('vendeur_id', seller.id);
+        setNombreVentes(count || 0);
+      }
       setChargement(false);
     };
     charger();
@@ -125,7 +134,7 @@ export default function ProfilVendeur() {
       <div className="px-3 sm:px-4 -mt-5 space-y-3 sm:space-y-4 max-w-screen-md mx-auto w-full">
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Ventes", val: compteVendeur?.nombre_ventes || 0, icone: ShoppingBag },
+            { label: "Ventes", val: nombreVentes, icone: ShoppingBag },
             { label: "Commissions", val: formater(compteVendeur?.total_commissions_gagnees), icone: TrendingUp },
             { label: "Solde", val: formater(compteVendeur?.solde_commission), icone: Wallet },
           ].map(({ label, val, icone: Icone }) => (
