@@ -300,9 +300,9 @@ function ValidationKYC() {
             {enAttente.map(s => (
                 <div key={s.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center"><span className="text-blue-700 font-bold text-sm">{s.nom_complet?.[0]?.toUpperCase()}</span></div>
+                    <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center"><span className="text-blue-700 font-bold text-sm">{(s.full_name || s.nom_complet)?.[0]?.toUpperCase()}</span></div>
                     <div>
-                      <p className="font-medium text-slate-900">{s.nom_complet}</p>
+                      <p className="font-medium text-slate-900">{s.full_name || s.nom_complet}</p>
                       <p className="text-sm text-slate-500">{s.ville}{s.quartier ? `, ${s.quartier}` : ""}</p>
                       <p className="text-xs text-slate-400">{s.email}</p>
                     </div>
