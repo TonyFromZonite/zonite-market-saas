@@ -388,7 +388,7 @@ export default function EspaceVendeur() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20" style={{ paddingBottom: "max(5rem, calc(5rem + env(safe-area-inset-bottom, 0px)))" }}>
+    <div className="min-h-screen bg-slate-50" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}>
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
@@ -468,66 +468,65 @@ export default function EspaceVendeur() {
       {compteVendeur.seller_status === SELLER_STATUSES.KYC_PENDING && <BanniereKycPending />}
 
       {/* Header with logout */}
-      <div className="bg-[#1a1f5e] text-white px-4 pt-6 pb-10" style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))" }}>
+      <div className="bg-[#1a1f5e] text-white px-3 pt-4 pb-8" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex justify-between items-center mb-1">
-          <div className="flex items-center gap-3">
-            <img src={LOGO} alt="Zonite" className="h-9 w-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
+          <div className="flex items-center gap-2">
+            <img src={LOGO} alt="Zonite" className="h-8 w-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <span className="text-xs font-bold tracking-tight leading-none">ZONITE <span className="text-[#F5C518]">Vendeurs</span></span>
-              <p className="text-slate-300 text-xs mt-0.5">Bonjour 👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+              <p className="text-slate-300 text-[11px] mt-0.5 truncate max-w-[160px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <NotificationCenterVendeur />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-none text-red-300 hover:text-red-200 hover:bg-white/10 transition-colors text-xs font-medium"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg border-none text-red-300 hover:text-red-200 hover:bg-white/10 transition-colors text-xs font-medium"
             >
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Déconnexion</span>
+              <LogOut size={14} />
             </button>
           </div>
         </div>
 
         {/* Solde */}
-        <div className="mt-4 bg-white/10 rounded-2xl p-4">
-          <p className="text-slate-300 text-xs mb-1">Solde commissions disponible</p>
-          <p className="text-3xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
-          <p className="text-xs text-slate-300 mt-1">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
+        <div className="mt-3 bg-white/10 rounded-xl p-3">
+          <p className="text-slate-300 text-[11px] mb-0.5">Solde commissions</p>
+          <p className="text-2xl font-bold text-[#F5C518]">{formater(soldeAffiche.solde_commission)}</p>
+          <p className="text-[11px] text-slate-300 mt-0.5">Total gagné : {formater(soldeAffiche.total_commissions_gagnees)}</p>
         </div>
       </div>
 
       {/* SECTION A — Stats personnelles */}
-      <div className="px-4 -mt-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Wallet className="w-4 h-4 text-yellow-600" /></div>
-            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
-            <p className="text-[10px] text-slate-500 truncate">💰 Solde Commission</p>
+      <div className="px-3 -mt-4">
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-yellow-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Wallet className="w-3.5 h-3.5 text-yellow-600" /></div>
+            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.solde_commission)}</p>
+            <p className="text-[9px] text-slate-500 truncate">Solde</p>
           </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Package className="w-4 h-4 text-blue-600" /></div>
-            <p className="text-lg font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
-            <p className="text-[10px] text-slate-500">📦 Commandes en cours</p>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Package className="w-3.5 h-3.5 text-blue-600" /></div>
+            <p className="text-sm font-bold text-slate-900">{vendeurStats?.commandesEnCours || 0}</p>
+            <p className="text-[9px] text-slate-500">En cours</p>
           </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-            <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-1"><Trophy className="w-4 h-4 text-emerald-600" /></div>
-            <p className="text-sm sm:text-lg font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
-            <p className="text-[10px] text-slate-500 truncate">🏆 Total Gagné</p>
+          <div className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+            <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto mb-1"><Trophy className="w-3.5 h-3.5 text-emerald-600" /></div>
+            <p className="text-xs font-bold text-slate-900 truncate">{formater(soldeAffiche.total_commissions_gagnees)}</p>
+            <p className="text-[9px] text-slate-500 truncate">Total gagné</p>
           </div>
         </div>
 
         {/* Stats CA par période */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           {[
-            { label: "Cette semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek, icon: "📅" },
-            { label: "Ce mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois, icon: "📅" },
-            { label: "Cette année", ca: vendeurStats?.caAnnee, comm: vendeurStats?.commAnnee, icon: "📅" },
-          ].map(({ label, ca, comm, icon }) => (
-            <div key={label} className="bg-white rounded-2xl p-3 shadow-sm">
-              <p className="text-[10px] text-slate-500 font-medium mb-1">{icon} {label}</p>
-              <p className="text-[11px] sm:text-xs font-bold text-slate-900 truncate">CA: {formater(ca)}</p>
-              <p className="text-[11px] sm:text-xs text-emerald-600 truncate">Com: {formater(comm)}</p>
+            { label: "Semaine", ca: vendeurStats?.caWeek, comm: vendeurStats?.commWeek },
+            { label: "Mois", ca: vendeurStats?.caMois, comm: vendeurStats?.commMois },
+            { label: "Année", ca: vendeurStats?.caAnnee, comm: vendeurStats?.commAnnee },
+          ].map(({ label, ca, comm }) => (
+            <div key={label} className="bg-white rounded-xl p-2.5 shadow-sm">
+              <p className="text-[9px] text-slate-500 font-medium mb-0.5">{label}</p>
+              <p className="text-[11px] font-bold text-slate-900 truncate">{formater(ca)}</p>
+              <p className="text-[10px] text-emerald-600 truncate">+{formater(comm)}</p>
             </div>
           ))}
         </div>
@@ -536,70 +535,70 @@ export default function EspaceVendeur() {
         {(soldeAffiche.solde_commission || 0) > 0 ? (
           <button
             onClick={() => navigate(createPageUrl("DemandePaiement"))}
-            className="w-full mb-5 p-4 rounded-xl border-none text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #f5a623, #e8940f)', boxShadow: '0 4px 15px rgba(245,166,35,0.4)' }}
+            className="w-full mb-3 p-3 rounded-xl border-none text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #f5a623, #e8940f)', boxShadow: '0 4px 12px rgba(245,166,35,0.3)' }}
           >
             💰 Demander un paiement
-            <span className="bg-white/30 px-3 py-1 rounded-full text-sm">{formater(soldeAffiche.solde_commission)}</span>
+            <span className="bg-white/30 px-2.5 py-0.5 rounded-full text-xs">{formater(soldeAffiche.solde_commission)}</span>
           </button>
         ) : (
-          <div className="w-full mb-5 p-4 rounded-xl bg-slate-100 text-center text-slate-400 text-sm">
-            💰 Aucune commission disponible pour le moment
+          <div className="w-full mb-3 p-3 rounded-xl bg-slate-100 text-center text-slate-400 text-xs">
+            💰 Aucune commission disponible
           </div>
         )}
 
         {/* Order stats cards */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-4 gap-2 mb-3">
           {[
-            { label: "En attente", val: commandesEnAttente, icone: Clock, couleur: "text-yellow-600", bg: "bg-yellow-50" },
-            { label: "En livraison", val: commandesEnLivraison, icone: Truck, couleur: "text-purple-600", bg: "bg-purple-50" },
+            { label: "Attente", val: commandesEnAttente, icone: Clock, couleur: "text-yellow-600", bg: "bg-yellow-50" },
+            { label: "Livraison", val: commandesEnLivraison, icone: Truck, couleur: "text-purple-600", bg: "bg-purple-50" },
             { label: "Réussies", val: commandesReussies, icone: CheckCircle2, couleur: "text-emerald-600", bg: "bg-emerald-50" },
             { label: "Échouées", val: commandesEchouees, icone: XCircle, couleur: "text-red-600", bg: "bg-red-50" },
           ].map(({ label, val, icone: Icone, couleur, bg }) => (
-            <div key={label} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}><Icone className={`w-4 h-4 ${couleur}`} /></div>
-              <p className="text-2xl font-bold text-slate-900">{val}</p>
-              <p className="text-xs text-slate-500">{label}</p>
+            <div key={label} className="bg-white rounded-xl p-2.5 shadow-sm text-center">
+              <div className={`w-7 h-7 ${bg} rounded-lg flex items-center justify-center mx-auto mb-1`}><Icone className={`w-3.5 h-3.5 ${couleur}`} /></div>
+              <p className="text-lg font-bold text-slate-900">{val}</p>
+              <p className="text-[9px] text-slate-500">{label}</p>
             </div>
           ))}
         </div>
 
         {/* Actions rapides */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("NouvelleCommandeVendeur")}>
-              <div className="bg-[#1a1f5e] text-white rounded-2xl p-4 flex items-center gap-3 hover:bg-[#141952] transition-colors">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Nouvelle</p><p className="text-xs text-slate-300">commande</p></div>
+              <div className="bg-[#1a1f5e] text-white rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#141952] transition-colors">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px] text-slate-300">commande</p></div>
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed">
-              <div className="bg-slate-300 text-slate-500 rounded-2xl p-4 flex items-center gap-3 opacity-60">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Nouvelle</p><p className="text-xs">commande</p></div>
+            <button disabled className="cursor-not-allowed w-full">
+              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px]">commande</p></div>
               </div>
             </button>
           )}
           {canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("CatalogueVendeur")}>
-              <div className="bg-[#F5C518] text-[#1a1f5e] rounded-2xl p-4 flex items-center gap-3 hover:bg-[#e0b010] transition-colors">
-                <div className="w-10 h-10 bg-[#1a1f5e]/10 rounded-xl flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Catalogue</p><p className="text-xs text-[#1a1f5e]/70">produits</p></div>
+              <div className="bg-[#F5C518] text-[#1a1f5e] rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#e0b010] transition-colors">
+                <div className="w-8 h-8 bg-[#1a1f5e]/10 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px] text-[#1a1f5e]/70">produits</p></div>
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed">
-              <div className="bg-slate-300 text-slate-500 rounded-2xl p-4 flex items-center gap-3 opacity-60">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><Package className="w-5 h-5" /></div>
-                <div><p className="font-bold text-sm">Catalogue</p><p className="text-xs">produits</p></div>
+            <button disabled className="cursor-not-allowed w-full">
+              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px]">produits</p></div>
               </div>
             </button>
           )}
         </div>
 
         {/* SECTION B — Top vendeurs */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Classement des vendeurs</h3>
           </div>
@@ -618,7 +617,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* Commandes récentes */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="flex items-center justify-between p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm">Commandes récentes</h3>
             <Link to={createPageUrl("MesCommandesVendeur")}><span className="text-xs text-blue-600">Voir tout →</span></Link>
@@ -644,7 +643,7 @@ export default function EspaceVendeur() {
         </div>
 
         {/* SECTION E — Transaction history */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-semibold text-slate-900 text-sm">📋 Historique des transactions</h3>
             <div className="flex gap-2 mt-3 flex-wrap">
