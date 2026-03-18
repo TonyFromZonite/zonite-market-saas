@@ -376,11 +376,10 @@ export default function RapportsVentes() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard titre="Chiffre d'Affaires Total" valeur={fmt(caTotal)} sous={`Direct: ${fmt(caVentes)} | Vendeurs: ${fmt(caCmds)}`} icone={DollarSign} couleurBg="bg-blue-50" couleurTexte="text-blue-600" />
-        <KPICard titre="Marge Brute Globale" valeur={fmt(margeTotal)} sous={`Taux: ${tauxMarge}%`} icone={TrendingUp} couleurBg="bg-emerald-50" couleurTexte="text-emerald-600" />
-        <KPICard titre="Transactions" valeur={nbTransactions} sous={`${ventesFiltrees.length} directes • ${cmdsFiltrees.length} vendeurs`} icone={ShoppingCart} couleurBg="bg-purple-50" couleurTexte="text-purple-600" />
-        <KPICard titre="Panier Moyen" valeur={fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)} sous="Par transaction" icone={Package} couleurBg="bg-yellow-50" couleurTexte="text-yellow-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard titre="CA Total ZONITE" valeur={fmt(caTotal)} sous={`${nbTransactions} transaction(s)`} icone={DollarSign} couleurBg="bg-blue-50" couleurTexte="text-blue-600" />
+        <KPICard titre="Total Commissions Vendeurs" valeur={fmt(totalCommissions)} icone={Wallet} couleurBg="bg-yellow-50" couleurTexte="text-yellow-600" />
+        <KPICard titre="Marge ZONITE" valeur={fmt(margeTotal)} sous="prix_gros − prix_achat" icone={TrendingUp} couleurBg="bg-emerald-50" couleurTexte="text-emerald-600" />
       </div>
 
       {/* Graphique évolution */}
