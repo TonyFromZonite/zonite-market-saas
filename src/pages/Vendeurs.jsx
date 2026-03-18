@@ -186,7 +186,7 @@ function ListeVendeurs() {
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Modifier le Vendeur</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nom Complet *</Label><Input value={form.nom_complet} onChange={(e) => modifier("nom_complet", e.target.value)} /></div>
+            <div className="space-y-2"><Label>Nom Complet *</Label><Input value={form.full_name || form.nom_complet || ''} onChange={(e) => modifier("full_name", e.target.value)} /></div>
             <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} disabled /></div>
             <div className="space-y-2"><Label>Téléphone</Label><Input value={form.telephone} onChange={(e) => modifier("telephone", e.target.value)} /></div>
             <div className="space-y-2"><Label>Date d'Embauche</Label><Input type="date" value={form.date_embauche} onChange={(e) => modifier("date_embauche", e.target.value)} /></div>
