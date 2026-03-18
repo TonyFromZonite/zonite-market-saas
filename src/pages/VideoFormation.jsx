@@ -45,7 +45,7 @@ export default function VideoFormation() {
   const [confirmWatched, setConfirmWatched] = useState(false);
   const [acceptConditions, setAcceptConditions] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const timerStarted = useRef(false);
+  const [timerStarted, setTimerStarted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
