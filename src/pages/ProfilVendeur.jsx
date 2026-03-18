@@ -14,6 +14,7 @@ import BanniereKycPending from "@/components/BanniereKycPending";
 
 export default function ProfilVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
+  const [nombreVentes, setNombreVentes] = useState(0);
   const [chargement, setChargement] = useState(true);
   const [ouvrirChangeMdp, setOuvrirChangeMdp] = useState(false);
   const [ancienMdp, setAncienMdp] = useState("");
