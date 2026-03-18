@@ -148,8 +148,8 @@ function DashboardAdmin() {
     { ttl: 60 * 60 * 1000 }
   );
 
-  // Filtrer les vendeurs inactifs
-  const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.statut === 'actif');
+  // Filtrer les vendeurs actifs
+  const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.seller_status === 'active_seller');
 
   const { data: commandesVendeurs = [] } = useCachedQuery(
     'COMMANDES',

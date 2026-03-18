@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateQuery } from "@/components/CacheManager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +54,8 @@ export default function PaiementsVendeurs() {
   const getSellerForDemande = (demande) => sellers.find(s => s.id === demande.vendeur_id) || null;
 
   const loadDemandes = () => {
+    invalidateQuery("VENDEURS");
+    invalidateQuery("PAIEMENTS");
     queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
     queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
     queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
