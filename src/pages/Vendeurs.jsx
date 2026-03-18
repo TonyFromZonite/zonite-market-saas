@@ -259,7 +259,7 @@ function ValidationKYC() {
        if (response.data.success) {
          toast({ 
            title: statut === "valide" ? "KYC Validé" : "KYC Rejeté", 
-           description: statut === "valide" ? `${compteSelectionne.nom_complet} a reçu ses identifiants.` : `${compteSelectionne.nom_complet} a été notifié du rejet.`,
+           description: statut === "valide" ? `${compteSelectionne.full_name || compteSelectionne.nom_complet} a reçu ses identifiants.` : `${compteSelectionne.full_name || compteSelectionne.nom_complet} a été notifié du rejet.`,
            duration: 5000 
          });
        } else {
