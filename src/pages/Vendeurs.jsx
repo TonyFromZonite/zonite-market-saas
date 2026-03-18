@@ -67,8 +67,8 @@ function ListeVendeurs() {
     if (!vendeurEdite) return;
     setEnCours(true);
     try {
-      await adminApi.updateVendeur(vendeurEdite.id, { nom_complet: form.nom_complet, telephone: form.telephone, statut: form.statut, date_embauche: form.date_embauche });
-      await adminApi.createJournalAudit({ action: "Vendeur modifié", module: "vendeur", details: `Vendeur ${form.nom_complet} modifié`, entite_id: vendeurEdite.id });
+      await adminApi.updateVendeur(vendeurEdite.id, { full_name: form.full_name || form.nom_complet, telephone: form.telephone });
+      await adminApi.createJournalAudit({ action: "Vendeur modifié", module: "vendeur", details: `Vendeur ${form.full_name || form.nom_complet} modifié`, entite_id: vendeurEdite.id });
       toast({ title: "Vendeur modifié avec succès", duration: 5000 });
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
       setDialogOuvert(false);
