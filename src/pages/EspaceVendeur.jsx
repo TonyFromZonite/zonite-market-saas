@@ -526,8 +526,8 @@ export default function EspaceVendeur() {
           ].map(({ label, ca, comm, icon }) => (
             <div key={label} className="bg-white rounded-2xl p-3 shadow-sm">
               <p className="text-[10px] text-slate-500 font-medium mb-1">{icon} {label}</p>
-              <p className="text-xs font-bold text-slate-900">CA: {formater(ca)}</p>
-              <p className="text-xs text-emerald-600">Com: {formater(comm)}</p>
+              <p className="text-[11px] sm:text-xs font-bold text-slate-900 truncate">CA: {formater(ca)}</p>
+              <p className="text-[11px] sm:text-xs text-emerald-600 truncate">Com: {formater(comm)}</p>
             </div>
           ))}
         </div>
