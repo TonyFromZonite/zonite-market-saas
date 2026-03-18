@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck,
-  ClipboardList, Shield, MessageSquare, UserCog, Settings,
-  Database, ScrollText, FileCheck, MapPin, Bike
+  ClipboardList, MessageSquare, UserCog, Settings,
+  ScrollText, FileCheck, MapPin, Bike
 } from "lucide-react";
 
 /**
@@ -109,17 +109,10 @@ export const ADMIN_MENU = [
     roles: ["admin"],
   },
   {
-    id: "permissions",
-    label: "Permissions Admin",
-    icon: Shield,
-    page: "GestionPermissionsAdmin",
-    roles: ["admin"],
-  },
-  {
-    id: "sous_admins",
-    label: "Sous-Admins",
+    id: "gestion_admins",
+    label: "Gestion Admins",
     icon: UserCog,
-    page: "GestionSousAdmins",
+    page: "GestionAdmins",
     roles: ["admin"],
   },
   {
