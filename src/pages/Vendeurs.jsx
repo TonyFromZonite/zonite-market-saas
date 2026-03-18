@@ -375,14 +375,6 @@ function ValidationKYC() {
 
 // ─── Sous-composant : Commissions ────────────────────────────────────────────
 function CommissionsTab() {
-  const [dialogPaiement, setDialogPaiement] = useState(false);
-  const [vendeurPaiement, setVendeurPaiement] = useState(null);
-  const [montantPaiement, setMontantPaiement] = useState(0);
-  const [methodePaiement, setMethodePaiement] = useState("especes");
-  const [notesPaiement, setNotesPaiement] = useState("");
-  const [enCours, setEnCours] = useState(false);
-  const queryClient = useQueryClient();
-
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({ 
     queryKey: ["vendeurs"], 
     queryFn: async () => {
@@ -393,57 +385,29 @@ function CommissionsTab() {
   });
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({ queryKey: ["paiements_commissions"], queryFn: () => listTable("paiements_commission", "-created_date", 100) });
 
-  const ouvrirPaiement = (vendeur) => { setVendeurPaiement(vendeur); setMontantPaiement(vendeur.solde_commission || 0); setMethodePaiement("especes"); setNotesPaiement(""); setDialogPaiement(true); };
-
-  const payerCommission = async () => {
-    if (!vendeurPaiement || montantPaiement <= 0) return;
-    setEnCours(true);
-    try {
-      await supabase.from("paiements_commission").insert({
-        vendeur_id: vendeurPaiement.id,
-        montant: montantPaiement,
-        methode_paiement: methodePaiement,
-        reference_paiement: `PAY-${Date.now().toString(36).toUpperCase()}`,
-        effectue_par: notesPaiement || "admin",
-      });
-      await adminApi.updateVendeur(vendeurPaiement.id, {
-        solde_commission: Math.max(0, (vendeurPaiement.solde_commission || 0) - montantPaiement),
-        total_commissions_payees: (vendeurPaiement.total_commissions_payees || 0) + montantPaiement,
-      });
-      await adminApi.createJournalAudit({ action: "Commission payée", module: "paiement", details: `Paiement de ${montantPaiement} FCFA à ${vendeurPaiement.full_name}`, entite_id: vendeurPaiement.id });
-      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
-      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
-      setDialogPaiement(false);
-    } catch (err) {
-      console.error("Erreur paiement commission:", err);
-    } finally {
-      setEnCours(false);
-    }
-  };
-
   const totalAPayer = vendeurs.reduce((s, v) => s + (v.solde_commission || 0), 0);
 
   if (chargementVendeurs || chargementPaiements) return <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: "Total à Payer", val: totalAPayer, icon: Wallet, bg: "bg-yellow-50", color: "text-yellow-600" },
           { label: "Total Payé", val: vendeurs.reduce((s, v) => s + (v.total_commissions_payees || 0), 0), icon: DollarSign, bg: "bg-emerald-50", color: "text-emerald-600" },
           { label: "Total Gagné", val: vendeurs.reduce((s, v) => s + (v.total_commissions_gagnees || 0), 0), icon: DollarSign, bg: "bg-blue-50", color: "text-blue-600" },
         ].map(({ label, val, icon: Icon, bg, color }) => (
-          <div key={label} className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${bg}`}><Icon className={`w-5 h-5 ${color}`} /></div>
-            <div><p className="text-sm text-slate-500">{label}</p><p className="text-xl font-bold text-slate-900">{formater(val)}</p></div>
+          <div key={label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${bg}`}><Icon className={`w-5 h-5 ${color}`} /></div>
+            <div><p className="text-xs text-slate-500">{label}</p><p className="text-lg font-bold text-slate-900">{formater(val)}</p></div>
           </div>
         ))}
       </div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200"><h3 className="font-semibold text-slate-900">Soldes des Vendeurs</h3></div>
+        <div className="p-3 border-b border-slate-200"><h3 className="font-semibold text-slate-900 text-sm">Soldes des Vendeurs</h3></div>
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader><TableRow className="bg-slate-50"><TableHead>Vendeur</TableHead><TableHead className="text-right">Gagné</TableHead><TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Solde à Payer</TableHead><TableHead className="w-32">Action</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="bg-slate-50"><TableHead>Vendeur</TableHead><TableHead className="text-right">Gagné</TableHead><TableHead className="text-right">Payé</TableHead><TableHead className="text-right">Solde à Payer</TableHead></TableRow></TableHeader>
             <TableBody>
               {vendeurs.filter(v => v.seller_status === "active_seller").map((v) => (
                 <TableRow key={v.id} className="hover:bg-slate-50">
@@ -451,7 +415,6 @@ function CommissionsTab() {
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right text-sm">{formater(v.total_commissions_payees)}</TableCell>
                   <TableCell className="text-right"><span className={`font-bold ${(v.solde_commission || 0) > 0 ? "text-yellow-600" : "text-emerald-600"}`}>{formater(v.solde_commission)}</span></TableCell>
-                  <TableCell><Button size="sm" disabled={(v.solde_commission || 0) <= 0} onClick={() => ouvrirPaiement(v)} className="bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">Payer</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -459,62 +422,24 @@ function CommissionsTab() {
         </div>
       </div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200"><h3 className="font-semibold text-slate-900">Historique des Paiements</h3></div>
+        <div className="p-3 border-b border-slate-200"><h3 className="font-semibold text-slate-900 text-sm">Historique des Paiements</h3></div>
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader><TableRow className="bg-slate-50"><TableHead>Date</TableHead><TableHead>Vendeur</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Méthode</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="bg-slate-50"><TableHead>Date</TableHead><TableHead>Vendeur</TableHead><TableHead className="text-right">Montant</TableHead><TableHead>Méthode</TableHead></TableRow></TableHeader>
             <TableBody>
-              {paiements.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-6 text-slate-400">Aucun paiement enregistré</TableCell></TableRow>}
+              {paiements.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-6 text-slate-400">Aucun paiement enregistré</TableCell></TableRow>}
               {paiements.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="text-sm">{formaterDate(p.created_at)}</TableCell>
                   <TableCell className="font-medium">{p.vendeur_nom || p.effectue_par || "—"}</TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">{formater(p.montant)}</TableCell>
                   <TableCell><Badge variant="outline" className="text-xs capitalize">{p.methode_paiement?.replace("_", " ")}</Badge></TableCell>
-                  <TableCell className="text-sm text-slate-500">{p.notes || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       </div>
-      <Dialog open={dialogPaiement} onOpenChange={setDialogPaiement}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Payer la Commission</DialogTitle></DialogHeader>
-          {vendeurPaiement && (
-            <div className="space-y-4">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-slate-600">Vendeur: <span className="font-bold text-slate-900">{vendeurPaiement.full_name || vendeurPaiement.nom_complet}</span></p>
-                <p className="text-sm text-slate-600">Solde actuel: <span className="font-bold text-yellow-600">{formater(vendeurPaiement.solde_commission)}</span></p>
-              </div>
-              <div className="space-y-2">
-                <Label>Montant à Payer (FCFA)</Label>
-                <Input type="number" min="0" max={vendeurPaiement.solde_commission || 0} value={montantPaiement} onChange={(e) => setMontantPaiement(parseFloat(e.target.value) || 0)} />
-                {montantPaiement > (vendeurPaiement.solde_commission || 0) && <div className="flex items-center gap-1 text-xs text-red-600"><AlertCircle className="w-3 h-3" /> Le montant dépasse le solde</div>}
-              </div>
-              <div className="space-y-2">
-                <Label>Méthode de Paiement</Label>
-                <Select value={methodePaiement} onValueChange={setMethodePaiement}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="especes">Espèces</SelectItem>
-                    <SelectItem value="virement">Virement</SelectItem>
-                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                    <SelectItem value="cheque">Chèque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>Notes</Label><Input value={notesPaiement} onChange={(e) => setNotesPaiement(e.target.value)} placeholder="Notes optionnelles..." /></div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogPaiement(false)}>Annuler</Button>
-            <Button onClick={payerCommission} disabled={enCours || montantPaiement <= 0 || montantPaiement > (vendeurPaiement?.solde_commission || 0)} className="bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">
-              {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer le Paiement"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
