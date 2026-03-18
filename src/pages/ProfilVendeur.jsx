@@ -122,7 +122,7 @@ export default function ProfilVendeur() {
         </div>
       </div>
 
-      <div className="px-4 -mt-5 space-y-4">
+      <div className="px-3 sm:px-4 -mt-5 space-y-3 sm:space-y-4 max-w-screen-md mx-auto w-full">
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Ventes", val: compteVendeur?.nombre_ventes || 0, icone: ShoppingBag },
