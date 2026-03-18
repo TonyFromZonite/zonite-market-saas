@@ -146,6 +146,140 @@ export default function GestionCommandes() {
     await findCoursiersForCommande(cmd);
   };
 
+  // === BUSINESS LOGIC: Livraison réussie ===
+  const handleLivree = async (commande) => {
+    const quantite = commande.quantite || 1;
+
+    // Fetch product for prix_achat
+    const { data: produit } = await supabase
+      .from("produits")
+      .select("prix_achat, prix_vente, stock_global")
+      .eq("id", commande.produit_id)
+      .single();
+
+    // Fetch seller for commission rate & balance
+    const { data: seller } = await supabase
+      .from("sellers")
+      .select("solde_commission, total_commissions_gagnees, taux_commission")
+      .eq("id", commande.vendeur_id)
+      .single();
+
+    if (!produit || !seller) {
+      console.warn("handleLivree: produit ou vendeur introuvable, commission non calculée");
+      return;
+    }
+
+    const prixAchat = Number(produit.prix_achat) || 0;
+    const tauxCommission = Number(seller.taux_commission) || 10;
+    const montantTotal = Number(commande.montant_total) || 0;
+    const prixFinalClient = Number(commande.prix_final_client) || montantTotal;
+    const prixUnitaire = Number(commande.prix_unitaire) || 0;
+
+    // Commission = (prix_final_client - prix_unitaire) × quantite
+    // Si pas de prix_final_client, fallback: montant_total × taux / 100
+    const commissionVendeur = commande.prix_final_client
+      ? (prixFinalClient - prixUnitaire) * quantite
+      : (montantTotal * tauxCommission) / 100;
+
+    const profitZonite = montantTotal - commissionVendeur - (prixAchat * quantite);
+
+    const now = new Date();
+    const getWeekNumber = (d) => {
+      const start = new Date(d.getFullYear(), 0, 1);
+      return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+    };
+
+    // 1. Insert vente
+    await supabase.from("ventes").insert({
+      vendeur_id: commande.vendeur_id,
+      vendeur_email: commande.vendeur_email,
+      produit_id: commande.produit_id,
+      commande_id: commande.id,
+      quantite,
+      montant_total: montantTotal,
+      commission_vendeur: Math.max(0, commissionVendeur),
+      profit_zonite: profitZonite,
+      prix_achat_unitaire: prixAchat,
+      taux_commission_applique: tauxCommission,
+      semaine: getWeekNumber(now),
+      mois: now.getMonth() + 1,
+      annee: now.getFullYear(),
+    });
+
+    // 2. Credit seller balance
+    const nouveauSolde = (Number(seller.solde_commission) || 0) + Math.max(0, commissionVendeur);
+    const nouveauTotal = (Number(seller.total_commissions_gagnees) || 0) + Math.max(0, commissionVendeur);
+    await supabase.from("sellers").update({
+      solde_commission: nouveauSolde,
+      total_commissions_gagnees: nouveauTotal,
+    }).eq("id", commande.vendeur_id);
+
+    // 3. Record stock movement (sortie confirmée)
+    await supabase.from("mouvements_stock").insert({
+      produit_id: commande.produit_id,
+      quantite,
+      type: "sortie",
+      notes: `Livraison confirmée - Commande ${commande.reference_commande || commande.id}`,
+      reference_id: commande.id,
+      localisation: commande.coursier_nom || "Coursier",
+      stock_avant: produit.stock_global,
+      stock_apres: produit.stock_global,
+    });
+  };
+
+  // === BUSINESS LOGIC: Échec livraison / Annulation ===
+  const handleEchecOrAnnulee = async (commande) => {
+    if (!commande.produit_id) return;
+    const quantite = commande.quantite || 1;
+
+    const { data: produit } = await supabase
+      .from("produits")
+      .select("stocks_par_coursier, stock_global")
+      .eq("id", commande.produit_id)
+      .single();
+
+    if (!produit) return;
+
+    const stockGlobal = (Number(produit.stock_global) || 0) + quantite;
+    const stocksParCoursier = Array.isArray(produit.stocks_par_coursier) ? [...produit.stocks_par_coursier] : [];
+
+    // Restore stock to coursier
+    if (commande.coursier_id) {
+      const idx = stocksParCoursier.findIndex(s => s.coursier_id === commande.coursier_id);
+      if (idx >= 0) {
+        stocksParCoursier[idx] = { ...stocksParCoursier[idx] };
+        stocksParCoursier[idx].stock_total = (stocksParCoursier[idx].stock_total || 0) + quantite;
+
+        // Restore variation stock if applicable
+        if (commande.variation && Array.isArray(stocksParCoursier[idx].stock_par_variation)) {
+          stocksParCoursier[idx].stock_par_variation = stocksParCoursier[idx].stock_par_variation.map(v =>
+            v.variation_key === commande.variation
+              ? { ...v, quantite: (v.quantite || 0) + quantite }
+              : v
+          );
+        }
+      }
+    }
+
+    // Update product stock
+    await supabase.from("produits").update({
+      stock_global: stockGlobal,
+      stocks_par_coursier: stocksParCoursier,
+    }).eq("id", commande.produit_id);
+
+    // Record stock movement (entree)
+    await supabase.from("mouvements_stock").insert({
+      produit_id: commande.produit_id,
+      quantite,
+      type: "entree",
+      notes: `Stock restauré - ${nouveauStatut === "annulee" ? "Annulation" : "Échec livraison"} - Commande ${commande.reference_commande || commande.id}`,
+      reference_id: commande.id,
+      localisation: commande.coursier_nom || "Entrepôt",
+      stock_avant: produit.stock_global,
+      stock_apres: stockGlobal,
+    });
+  };
+
   const sauvegarder = async () => {
     if (!commandeSelectionnee) return;
     setEnCours(true);
@@ -161,7 +295,19 @@ export default function GestionCommandes() {
         }
       }
 
+      // Add delivery date if livree
+      if (nouveauStatut === "livree") {
+        updateData.date_livraison_effective = new Date().toISOString();
+      }
+
       await adminApi.updateCommandeVendeur(commandeSelectionnee.id, updateData);
+
+      // === Business logic based on status transition ===
+      if (nouveauStatut === "livree" && commandeSelectionnee.produit_id) {
+        await handleLivree(commandeSelectionnee);
+      } else if (nouveauStatut === "echec_livraison" || nouveauStatut === "annulee") {
+        await handleEchecOrAnnulee(commandeSelectionnee);
+      }
 
       // Notification vendeur
       const statusLabels = {
@@ -173,11 +319,17 @@ export default function GestionCommandes() {
         annulee: "🚫 Annulée",
       };
 
+      const notifMessage = nouveauStatut === "livree"
+        ? `${commandeSelectionnee.produit_nom} - 🎉 Livrée ! Commission créditée sur votre solde.`
+        : nouveauStatut === "echec_livraison"
+        ? `${commandeSelectionnee.produit_nom} - ❌ Livraison échouée. Stock restauré.`
+        : `${commandeSelectionnee.produit_nom} - Statut: ${statusLabels[nouveauStatut] || nouveauStatut}`;
+
       await adminApi.createNotificationVendeur({
         vendeur_id: commandeSelectionnee.vendeur_id,
         vendeur_email: commandeSelectionnee.vendeur_email,
         titre: "📦 Mise à jour commande",
-        message: `${commandeSelectionnee.produit_nom} - Statut: ${statusLabels[nouveauStatut] || nouveauStatut}`,
+        message: notifMessage,
         type: nouveauStatut === "livree" ? "succes" : nouveauStatut === "echec_livraison" ? "alerte" : "info",
         lien: `/MesCommandesVendeur`,
       });
