@@ -232,7 +232,8 @@ export default function EspaceVendeur() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // SECTION E — Transaction history
+  // SECTION E — Transaction history (lazy-loaded)
+  const [loadHistorique, setLoadHistorique] = useState(false);
   const { data: historique = [] } = useQuery({
     queryKey: ["vendeur_historique", compteVendeur?.id],
     queryFn: async () => {
@@ -268,7 +269,7 @@ export default function EspaceVendeur() {
 
       return history;
     },
-    enabled: !!compteVendeur?.id,
+    enabled: !!compteVendeur?.id && loadHistorique,
     staleTime: 2 * 60 * 1000,
   });
 
