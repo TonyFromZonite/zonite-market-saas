@@ -94,11 +94,9 @@ export default function RapportsVentes() {
     y += 6;
 
     const kpis = [
-      ["CA Total", fmt(caTotal)],
-      ["CA Ventes Directes", fmt(caVentes)],
-      ["CA Vendeurs", fmt(caCmds)],
-      ["Marge Brute", fmt(margeTotal)],
-      ["Taux de Marge", `${tauxMarge}%`],
+      ["CA Total ZONITE", fmt(caTotal)],
+      ["Total Commissions Vendeurs", fmt(totalCommissions)],
+      ["Marge ZONITE", fmt(margeTotal)],
       ["Nb Transactions", `${nbTransactions}`],
       ["Panier Moyen", fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
     ];
@@ -111,7 +109,7 @@ export default function RapportsVentes() {
       doc.text(k, x, y);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text(v, x + 50, y);
+      doc.text(v, x + 55, y);
     });
     y += 14;
 
