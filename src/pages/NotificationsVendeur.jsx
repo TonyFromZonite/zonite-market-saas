@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Bell, ChevronLeft, CheckCheck, Star } from "lucide-react";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 
 const COULEURS = {
   info: "bg-blue-50 border-blue-100 text-blue-800",
@@ -169,7 +169,7 @@ export default function NotificationsVendeur() {
         )}
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }

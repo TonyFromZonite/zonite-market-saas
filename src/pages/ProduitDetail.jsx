@@ -5,7 +5,7 @@ import { ChevronLeft, Package, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
@@ -194,13 +194,6 @@ export default function ProduitDetail() {
         )}
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur" },
-        { label: "Catalogue", page: "CatalogueVendeur" },
-        { label: "Profil", page: "ProfilVendeur" },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }

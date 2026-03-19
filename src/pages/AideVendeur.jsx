@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 
 const STATUTS = {
   ouvert: { label: "Ouvert", color: "bg-blue-100 text-blue-700" },
@@ -308,7 +308,7 @@ export default function AideVendeur() {
         )}
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }

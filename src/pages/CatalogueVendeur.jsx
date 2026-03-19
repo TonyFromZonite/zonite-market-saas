@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import BlocageKycPending from "@/components/BlocageKycPending";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -205,13 +205,6 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
         )}
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur" },
-        { label: "Catalogue", page: "CatalogueVendeur" },
-        { label: "Profil", page: "ProfilVendeur" },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }
@@ -324,13 +317,6 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
         )}
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur" },
-        { label: "Catalogue", page: "CatalogueVendeur" },
-        { label: "Profil", page: "ProfilVendeur" },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }

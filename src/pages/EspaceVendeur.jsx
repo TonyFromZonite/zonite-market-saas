@@ -17,7 +17,7 @@ import {
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import NotificationCenterVendeur from "@/components/NotificationCenterVendeur";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/components/SellerStatusEngine";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
@@ -802,13 +802,6 @@ export default function EspaceVendeur() {
         </CollapsibleSection>
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) },
-        { label: "Catalogue", page: "CatalogueVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) },
-        { label: "Profil", page: "ProfilVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "profile", compteVendeur.training_completed) },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }
