@@ -63,22 +63,46 @@ export default function RetoursAdmin() {
     setEnCours(true);
     const montant = parseFloat(montantAjustement) || 0;
 
-    // 1. Réintégrer le stock si demandé
-    if (stockReintegre) {
-      const [produit] = await filterTable("produits", { id: retourSelectionne.produit_id });
-      if (produit) {
-        await updateRecord("produits", produit.id, {
-          stock_global: (produit.stock_global || 0) + retourSelectionne.quantite_retournee,
-        });
-        await createRecord("mouvements_stock", {
-          produit_id: produit.id,
-          produit_nom: produit.nom,
-          type_mouvement: "entree",
-          quantite: retourSelectionne.quantite_retournee,
-          stock_avant: produit.stock_global || 0,
-          stock_apres: (produit.stock_global || 0) + retourSelectionne.quantite_retournee,
-          raison: `Retour produit — ${RAISONS[retourSelectionne.raison]}`,
-        });
+    // 1. Réintégrer le stock via stockManager if requested
+    if (stockReintegre && retourSelectionne.produit_id) {
+      // Get the original commande to find coursier and variation
+      let coursierId = null;
+      let variationKey = null;
+      if (retourSelectionne.commande_id) {
+        const { data: commande } = await supabase
+          .from("commandes_vendeur")
+          .select("coursier_id, variation")
+          .eq("id", retourSelectionne.commande_id)
+          .maybeSingle();
+        if (commande) {
+          coursierId = commande.coursier_id;
+          variationKey = commande.variation;
+        }
+      }
+
+      if (coursierId) {
+        // Use stockManager for exact variation + coursier restoration
+        await stockManager.restoreStock(
+          retourSelectionne.produit_id,
+          coursierId,
+          variationKey,
+          retourSelectionne.quantite || retourSelectionne.quantite_retournee || 1,
+          retourSelectionne.commande_id,
+          "retour"
+        );
+      } else {
+        // Fallback: just increment global stock
+        const { data: produit } = await supabase
+          .from("produits")
+          .select("stock_global")
+          .eq("id", retourSelectionne.produit_id)
+          .single();
+        if (produit) {
+          const qty = retourSelectionne.quantite || retourSelectionne.quantite_retournee || 1;
+          await supabase.from("produits").update({
+            stock_global: (produit.stock_global || 0) + qty,
+          }).eq("id", retourSelectionne.produit_id);
+        }
       }
     }
 
