@@ -299,30 +299,30 @@ export default function Connexion() {
       </div>
 
       {hasSocialLinks && (
-        <div className="relative z-10 flex flex-col items-center gap-2 mt-1 px-3">
-          <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
-          <div className="flex items-center gap-2.5">
+        <div className="relative z-10 flex items-center justify-center gap-2 mt-0 px-3">
+          <span className="text-slate-400 text-[10px] md:text-xs">Suivez-nous</span>
+          <div className="flex items-center gap-1.5">
             {lienFacebook && (
               <a href={lienFacebook} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
-                <Facebook className="w-3.5 h-3.5 text-[#1877F2]" /> Facebook
+              className="flex items-center gap-1 bg-white/10 hover:bg-[#1877F2]/30 border border-white/20 rounded-lg px-2 py-1 text-white text-[10px] font-medium transition-all active:scale-95">
+                <Facebook className="w-3 h-3 text-[#1877F2]" /> Facebook
               </a>
             )}
             {lienTiktok && (
               <a href={lienTiktok} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
-                <TikTokIcon size={14} /> TikTok
+              className="flex items-center gap-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-1 text-white text-[10px] font-medium transition-all active:scale-95">
+                <TikTokIcon size={12} /> TikTok
               </a>
             )}
             {lienInstagram && (
               <a href={lienInstagram} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-pink-500/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
-                📸 Instagram
+              className="flex items-center gap-1 bg-white/10 hover:bg-pink-500/30 border border-white/20 rounded-lg px-2 py-1 text-white text-[10px] font-medium transition-all active:scale-95">
+                📸 Insta
               </a>
             )}
           </div>
         </div>
       )}
-      <p className="relative z-10 text-slate-500 text-[10px] md:text-xs mt-1 mb-0">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
+      <p className="relative z-10 text-slate-500 text-[9px] md:text-xs mt-0">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
     </div>);
 }
