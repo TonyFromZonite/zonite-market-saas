@@ -5,13 +5,17 @@ import VendeurBottomNav from "@/components/VendeurBottomNav";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { getVendeurSession } from "@/components/useSessionGuard";
 
-const PAGES_SANS_LAYOUT_ADMIN = new Set([
-  "Connexion",
+const PAGES_VENDEUR = new Set([
   "EspaceVendeur", "InscriptionVendeur", "VideoFormation", "CatalogueVendeur",
   "NouvelleCommandeVendeur", "MesCommandesVendeur", "ProfilVendeur",
   "DemandePaiement", "NotificationsVendeur", "AideVendeur",
-  "EnAttenteValidation", "ResoumissionKYC",
+  "EnAttenteValidation", "ResoumissionKYC", "FormationCours", "ProduitDetail",
+]);
+
+const PAGES_SANS_LAYOUT_ADMIN = new Set([
+  "Connexion",
   "EspaceSousAdmin",
+  ...PAGES_VENDEUR,
 ]);
 
 const DESKTOP_BP = 1024;
