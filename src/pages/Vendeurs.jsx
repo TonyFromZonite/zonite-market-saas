@@ -780,6 +780,26 @@ function PaiementsTab() {
 // ─── Page principale ─────────────────────────────────────────────────────────
 export default function Vendeurs() {
   const [ongletActif, setOngletActif] = useState("liste");
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refreshAdminData = () => {
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["sellers_badge"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
+    };
+
+    const unsubscribeSellers = subscribeToTable("sellers", refreshAdminData);
+    const unsubscribeCommandes = subscribeToTable("commandes_vendeur", refreshAdminData);
+
+    return () => {
+      unsubscribeSellers?.();
+      unsubscribeCommandes?.();
+    };
+  }, [queryClient]);
 
   const { data: kycs = [] } = useQuery({ 
     queryKey: ["sellers_badge"], 
