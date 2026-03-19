@@ -19,6 +19,8 @@ const PERIODES = [
 ];
 
 const fmt = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
+// PDF-safe formatter: uses regular space instead of narrow no-break space
+const fmtPdf = (n) => `${Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} FCFA`;
 
 function getGroupeKey(date, periodeJours) {
   if (periodeJours <= 30) return format(date, "dd/MM");
