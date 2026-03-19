@@ -14,7 +14,7 @@ const CONFIGS = [
   { cle: "lien_youtube_formation", label: "URL Vidéo de formation YouTube (obligatoire)", placeholder: "https://www.youtube.com/watch?v=...", icone: Youtube, couleur: "text-red-600" },
   { cle: "lien_facebook", label: "Lien Facebook", placeholder: "https://facebook.com/votrepage", icone: Facebook, couleur: "text-blue-600" },
   { cle: "lien_tiktok", label: "Lien TikTok", placeholder: "https://tiktok.com/@votrecompte", icone: Globe, couleur: "text-slate-700" },
-  { cle: "lien_instagram", label: "Lien Instagram", placeholder: "https://instagram.com/votrecompte", icone: Globe, couleur: "text-pink-600" },
+  { cle: "lien_telegram", label: "Lien Telegram", placeholder: "https://t.me/votregroupe", icone: Send, couleur: "text-[#0088cc]" },
 ];
 
 export default function ConfigurationApp() {
