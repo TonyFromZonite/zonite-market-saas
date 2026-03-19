@@ -92,11 +92,11 @@ export default function PaiementsVendeurs() {
         traite_at: new Date().toISOString(),
       }).eq("id", demande.id);
 
-      // 2. Reset solde_en_attente, keep solde_commission (already deducted in step 1)
-      await supabase.from("sellers").update({
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-        total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
-      }).eq("id", seller.id);
+      // 2. Atomically clear pending and credit paid
+      await supabase.rpc("approve_seller_payment", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
 
       // 3. Create payment record
       await supabase.from("paiements_commission").insert({
@@ -160,19 +160,19 @@ export default function PaiementsVendeurs() {
       }).eq("id", rejectingDemande.id);
       if (demandeError) throw new Error("Erreur mise à jour demande: " + demandeError.message);
 
-      // 2. RESTORE vendor balance
-      const { error: sellerError } = await supabase.from("sellers").update({
-        solde_commission: Number(seller.solde_commission || 0) + montant,
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-      }).eq("id", seller.id);
-      if (sellerError) throw new Error("Erreur restauration solde: " + sellerError.message);
+      // 2. RESTORE vendor balance atomically
+      const { data: newSolde } = await supabase.rpc("restore_seller_balance", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
+      const restoredSolde = newSolde || (Number(seller.solde_commission || 0) + montant);
 
       // 3. Notify vendor with exact reason
       await supabase.from("notifications_vendeur").insert({
         vendeur_id: seller.id,
         vendeur_email: seller.email,
         titre: "❌ Demande de paiement rejetée",
-        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${(Number(seller.solde_commission || 0) + montant).toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
+        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${restoredSolde.toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
         type: "alerte",
       });
 

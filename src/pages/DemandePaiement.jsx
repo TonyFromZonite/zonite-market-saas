@@ -128,11 +128,11 @@ export default function DemandePaiement() {
 
       if (error) throw error;
 
-      // TEMPORARILY deduct from balance
-      await supabase.from("sellers").update({
-        solde_commission: soldeDisponible - montant,
-        solde_en_attente: Number(freshSeller?.solde_en_attente || 0) + montant,
-      }).eq("id", compteVendeur.id);
+      // ATOMICALLY deduct from balance and move to pending
+      await supabase.rpc("reserve_seller_balance", {
+        _seller_id: compteVendeur.id,
+        _amount: montant,
+      });
 
       // Notify vendor (non-blocking)
       try {

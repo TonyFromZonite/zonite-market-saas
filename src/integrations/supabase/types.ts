@@ -1431,8 +1431,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_seller_commission: {
+        Args: { _delta: number; _seller_id: string }
+        Returns: number
+      }
+      approve_seller_payment: {
+        Args: { _amount: number; _seller_id: string }
+        Returns: undefined
+      }
       credit_seller_commission: {
         Args: { _commission: number; _seller_id: string }
+        Returns: number
+      }
+      debit_seller_commission: {
+        Args: { _amount: number; _seller_id: string }
         Returns: number
       }
       delete_email: {
@@ -1464,9 +1476,17 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reserve_seller_balance: {
+        Args: { _amount: number; _seller_id: string }
+        Returns: number
+      }
       resolve_username_to_email: {
         Args: { _username: string }
         Returns: string
+      }
+      restore_seller_balance: {
+        Args: { _amount: number; _seller_id: string }
+        Returns: number
       }
     }
     Enums: {
