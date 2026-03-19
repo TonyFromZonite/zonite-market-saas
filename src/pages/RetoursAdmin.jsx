@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search, RotateCcw, PackageCheck, XCircle, Loader2 } from "lucide-react";
 import { createRecord, filterTable, listTable, updateRecord } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
+import { stockManager } from "@/lib/stockManager";
 
 const RAISONS = {
   defaut_produit:     "Défaut produit",
