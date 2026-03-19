@@ -193,7 +193,9 @@ export default function EspaceVendeur() {
       };
     },
     enabled: !!compteVendeur?.id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 10 * 1000,
+    refetchInterval: 15 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   // SECTION B — Top vendeurs (lazy-loaded)

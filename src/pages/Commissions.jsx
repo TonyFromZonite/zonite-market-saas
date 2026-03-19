@@ -20,6 +20,8 @@ export default function Commissions() {
       const { data } = await supabase.from("sellers").select("*").order("created_at", { ascending: false });
       return data || [];
     },
+    refetchInterval: 15 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: paiements = [], isLoading: chargementPaiements } = useQuery({
