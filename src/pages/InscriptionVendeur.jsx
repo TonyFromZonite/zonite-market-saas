@@ -369,14 +369,10 @@ export default function InscriptionVendeur() {
   };
 
   const soumettre = async () => {
-    if (!form.photo_identite_url) {
-      setErreur("Veuillez uploader votre pièce d'identité."); return;
-    }
-    if (typeDocument === "cni" && !form.photo_identite_verso_url) {
-      setErreur("Veuillez uploader le verso de votre CNI."); return;
-    }
-    if (!form.selfie_url) {
-      setErreur("Veuillez uploader votre selfie."); return;
+    if (!allKycDocsUploaded()) {
+      const missing = getRequiredKycDocs().filter(k => !kycDocs[k]).map(k => getLabelForKey(k));
+      setErreur(`Documents manquants : ${missing.join(', ')}`);
+      return;
     }
     setEnCours(true);
     setErreur("");
@@ -385,18 +381,20 @@ export default function InscriptionVendeur() {
       const { error } = await supabase
         .from('sellers')
         .update({
-          kyc_document_recto_url: form.photo_identite_url,
-          kyc_document_verso_url: form.photo_identite_verso_url || null,
-          kyc_selfie_url: form.selfie_url,
+          kyc_document_recto_url: kycDocs.recto || null,
+          kyc_document_verso_url: kycDocs.verso || null,
+          kyc_selfie_url: kycDocs.selfie || null,
+          kyc_passeport_url: kycDocs.passeport || null,
           kyc_type_document: typeDocument,
+          kyc_document_type: typeDocument,
           statut_kyc: 'en_attente',
           seller_status: 'kyc_pending',
+          kyc_submitted_at: new Date().toISOString(),
         })
         .eq('email', vendeurEmail);
 
       if (error) throw error;
 
-      // Notify admin
       const { data: sellerData } = await supabase
         .from('sellers')
         .select('id, full_name')
@@ -405,8 +403,8 @@ export default function InscriptionVendeur() {
 
       if (sellerData) {
         await supabase.from('notifications_admin').insert({
-          titre: 'Nouveau KYC à valider',
-          message: `${sellerData.full_name} (${vendeurEmail}) a soumis son KYC`,
+          titre: '🪪 Nouveau KYC à valider',
+          message: `${sellerData.full_name} (${vendeurEmail}) a soumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredKycDocs().length} documents fournis.`,
           type: 'kyc',
           vendeur_email: vendeurEmail,
           reference_id: sellerData.id,
