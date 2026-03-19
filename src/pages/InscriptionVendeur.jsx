@@ -147,31 +147,6 @@ export default function InscriptionVendeur() {
     } catch { setEmailVerifie(null); }
   };
 
-  // Upload file to Supabase Storage
-  const uploadFichier = async (fichier, champ) => {
-    const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
-    setUploadEnCours(p => ({ ...p, [key]: true }));
-    try {
-      const ext = fichier.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const path = `kyc/${vendeurEmail || form.email}/${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('kyc-documents')
-        .upload(path, fichier, { upsert: true });
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: urlData } = supabase.storage
-        .from('kyc-documents')
-        .getPublicUrl(uploadData.path);
-      
-      modifier(champ, urlData.publicUrl);
-    } catch (e) {
-      setErreur("Erreur lors de l'upload du fichier: " + e.message);
-    }
-    setUploadEnCours(p => ({ ...p, [key]: false }));
-  };
 
   const validerEtape1 = async () => {
     // Username validation
