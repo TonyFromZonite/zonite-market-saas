@@ -166,7 +166,7 @@ export default function Connexion() {
           }));
         }
 
-        sessionStorage.setItem("admin_session", JSON.stringify({
+        localStorage.setItem("admin_session", JSON.stringify({
           id: seller?.id || user.id,
           user_id: user.id,
           email: user.email,
