@@ -50,13 +50,17 @@ function DashboardSousAdmin({ sousAdmin }) {
   const cmdEnLivraison = cmds.filter(c => c.statut === "en_livraison").length;
   const cmdLivrees = cmds.filter(c => c.statut === "livree").length;
 
-  const modules = [
+  const allModules = [
+    { page: "NouvelleVente", label: "Nouvelle Vente", emoji: "🛒" },
+    { page: "Commandes", label: "Commandes Admin", emoji: "📋" },
+    { page: "GestionCommandes", label: "Gestion Livraisons", emoji: "🚚" },
     { page: "CommandesVendeurs", label: "Commandes Vendeurs", emoji: "📋" },
     { page: "Produits", label: "Produits", emoji: "📦" },
-    { page: "Livraisons", label: "Livraisons", emoji: "🚚" },
-    { page: "SupportAdmin", label: "Support Vendeurs", emoji: "💬" },
     { page: "Vendeurs", label: "Vendeurs", emoji: "👥" },
-    { page: "JournalAudit", label: "Journal d'Audit", emoji: "🛡️" },
+    { page: "GestionKYC", label: "Validation KYC", emoji: "✅" },
+    { page: "GestionZones", label: "Zones Livraison", emoji: "📍" },
+    { page: "GestionCoursiers", label: "Coursiers", emoji: "🚴" },
+    { page: "SupportAdmin", label: "Support Vendeurs", emoji: "💬" },
   ].filter((m) => (sousAdmin.permissions || []).includes(m.page));
 
   return (
