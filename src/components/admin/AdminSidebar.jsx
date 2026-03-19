@@ -3,16 +3,16 @@ import { Link, useLocation } from "react-router-dom";
 import { ChevronRight, X, LogOut } from "lucide-react";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { getMenuVisible } from "./adminMenuConfig";
-import { getAdminSession, getSousAdminSession, clearAllSessions } from "@/components/useSessionGuard";
+import { getAdminSession, clearAllSessions } from "@/components/useSessionGuard";
+import useSousAdminPermissions from "@/components/useSousAdminPermissions";
 import { createPageUrl } from "@/utils";
 
 export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop = false }) {
   const location = useLocation();
-  const sousAdmin = getSousAdminSession();
+  const { sousAdmin, permissions } = useSousAdminPermissions();
   const adminSession = getAdminSession();
 
   const role = sousAdmin ? "sous_admin" : "admin";
-  const permissions = sousAdmin?.permissions || [];
   const menuItems = getMenuVisible(role, permissions);
   const currentPage = location.pathname.replace("/", "");
 
@@ -23,11 +23,9 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
 
   const identityLabel = sousAdmin?.nom_complet || sousAdmin?.full_name || sousAdmin?.email || "Administrateur Principal";
 
-  // Prevent scroll-through on mobile overlay
   useEffect(() => {
     if (!isDesktop && isOpen) {
       const handleTouchMove = (e) => {
-        // Allow scrolling inside sidebar nav
         if (e.target.closest("nav")) return;
         e.preventDefault();
       };
@@ -38,7 +36,6 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
 
   return (
     <>
-      {/* Mobile overlay backdrop */}
       {!isDesktop && isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -56,7 +53,6 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
               }`
         }
       >
-        {/* Header */}
         <div className="flex h-14 items-center gap-3 border-b border-white/10 px-4 shrink-0">
           <img
             src={LOGO}
@@ -80,7 +76,6 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
           )}
         </div>
 
-        {/* Identity */}
         {(adminSession || sousAdmin) && (
           <div className="border-b border-white/10 bg-white/5 px-4 py-2.5 shrink-0">
             <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#F5C518]">Connecté</div>
@@ -88,7 +83,6 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
           </div>
         )}
 
-        {/* Navigation — scrollable */}
         <nav className="flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {menuItems.map((item) => {
             const estActif = currentPage === item.page || location.pathname === `/${item.page}`;
@@ -121,7 +115,6 @@ export default function AdminSidebar({ isOpen, onClose, badges = {}, isDesktop =
           })}
         </nav>
 
-        {/* Logout — always at bottom */}
         <div className="border-t border-white/10 p-2 shrink-0">
           <button
             onClick={deconnexion}

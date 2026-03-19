@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCachedQuery } from "@/components/CacheManager";
 import { supabase } from "@/integrations/supabase/client";
 
-// Composant helper pour 2 colonnes sur desktop, 1 sur mobile
 function ResponsiveRow({ children }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -13,9 +12,8 @@ function ResponsiveRow({ children }) {
 }
 import {
   DollarSign, TrendingUp, Wallet, AlertTriangle,
-  ShoppingCart, Package, Users, ShieldCheck, Lock
+  ShoppingCart, Package, ShieldCheck, Lock
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import CarteStatistique from "@/components/dashboard/CarteStatistique";
@@ -23,49 +21,58 @@ import GraphiqueVentes from "@/components/dashboard/GraphiqueVentes";
 import TopProduits from "@/components/dashboard/TopProduits";
 import TopVendeurs from "@/components/dashboard/TopVendeurs";
 import StockCritique from "@/components/dashboard/StockCritique";
-import { getAdminSession, getSousAdminSession } from "@/components/useSessionGuard";
+import { getAdminSession } from "@/components/useSessionGuard";
+import { getMenuVisible } from "@/components/admin/adminMenuConfig";
+import useSousAdminPermissions from "@/components/useSousAdminPermissions";
 import { filterTable, listTable } from "@/lib/supabaseHelpers";
 
 const formaterMontant = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
+const MODULE_EMOJIS = {
+  NouvelleVente: "🛒",
+  Commandes: "📋",
+  GestionCommandes: "🚚",
+  CommandesVendeurs: "📋",
+  Produits: "📦",
+  Vendeurs: "👥",
+  GestionKYC: "✅",
+  GestionZones: "📍",
+  GestionCoursiers: "🚴",
+  SupportAdmin: "💬",
+};
 
-// Dashboard simplifié pour sous-admins
-function DashboardSousAdmin({ sousAdmin }) {
-  const { data: commandesVendeurs = [], isLoading: chargCmd } = useCachedQuery(
+function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
+  const activePermissions = Array.isArray(sousAdmin?.permissions) ? sousAdmin.permissions : [];
+
+  const { data: commandesVendeurs = [] } = useCachedQuery(
     'COMMANDES',
     () => listTable("commandes_vendeur", "-created_date", 100),
     { ttl: 5 * 60 * 1000, enabled: true }
   );
 
-  const { data: produits = [] } = useCachedQuery(
+  useCachedQuery(
     'PRODUITS',
     () => listTable("produits"),
-    { ttl: 30 * 60 * 1000, enabled: (sousAdmin.permissions || []).includes("Produits") }
+    { ttl: 30 * 60 * 1000, enabled: activePermissions.includes("Produits") }
   );
 
   const aujourd = new Date().toISOString().split("T")[0];
-  const cmds = commandesVendeurs || [];
+  const cmds = Array.isArray(commandesVendeurs) ? commandesVendeurs : [];
 
-  const cmdAujourdhui = cmds.filter(c => c.created_date?.split("T")[0] === aujourd).length;
+  const cmdAujourdhui = cmds.filter(c => (c.created_at || c.created_date)?.split("T")[0] === aujourd).length;
   const cmdAttente = cmds.filter(c => c.statut === "en_attente_validation_admin").length;
   const cmdEnLivraison = cmds.filter(c => c.statut === "en_livraison").length;
   const cmdLivrees = cmds.filter(c => c.statut === "livree").length;
 
-  const allModules = [
-    { page: "NouvelleVente", label: "Nouvelle Vente", emoji: "🛒" },
-    { page: "Commandes", label: "Commandes Admin", emoji: "📋" },
-    { page: "GestionCommandes", label: "Gestion Livraisons", emoji: "🚚" },
-    { page: "CommandesVendeurs", label: "Commandes Vendeurs", emoji: "📋" },
-    { page: "Produits", label: "Produits", emoji: "📦" },
-    { page: "Vendeurs", label: "Vendeurs", emoji: "👥" },
-    { page: "GestionKYC", label: "Validation KYC", emoji: "✅" },
-    { page: "GestionZones", label: "Zones Livraison", emoji: "📍" },
-    { page: "GestionCoursiers", label: "Coursiers", emoji: "🚴" },
-    { page: "SupportAdmin", label: "Support Vendeurs", emoji: "💬" },
-  ].filter((m) => (sousAdmin.permissions || []).includes(m.page));
+  const allModules = getMenuVisible("sous_admin", activePermissions)
+    .filter((module) => module.page !== "TableauDeBord")
+    .map((module) => ({
+      page: module.page,
+      label: module.label,
+      emoji: MODULE_EMOJIS[module.page] || "📌",
+    }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Bandeau identité */}
       <div style={{
         background: "linear-gradient(to right, #1a1f5e, #2d34a5)",
         borderRadius: 12, padding: 20, color: "white",
@@ -78,16 +85,15 @@ function DashboardSousAdmin({ sousAdmin }) {
           <ShieldCheck size={24} color="#1a1f5e" />
         </div>
         <div>
-          <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>{sousAdmin.nom_complet}</p>
-          <p style={{ color: "#FDE68A", fontSize: 13, marginTop: 2 }}>{sousAdmin.nom_role}</p>
+          <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>{sousAdmin?.nom_complet}</p>
+          <p style={{ color: "#FDE68A", fontSize: 13, marginTop: 2 }}>{sousAdmin?.nom_role || "Sous-admin"}</p>
           <p style={{ color: "#CBD5E1", fontSize: 11, marginTop: 2 }}>
-            Accès limité à {(sousAdmin.permissions || []).length} module(s)
+            Accès limité à {activePermissions.length} module(s)
           </p>
         </div>
       </div>
 
-      {/* Stats commandes */}
-      {(sousAdmin.permissions || []).includes("CommandesVendeurs") && (
+      {activePermissions.includes("CommandesVendeurs") && (
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Aperçu Commandes</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -99,7 +105,6 @@ function DashboardSousAdmin({ sousAdmin }) {
         </div>
       )}
 
-      {/* Modules */}
       {allModules.length > 0 && (
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Mes Modules</p>
@@ -119,7 +124,16 @@ function DashboardSousAdmin({ sousAdmin }) {
         </div>
       )}
 
-      {allModules.length === 0 && (
+      {allModules.length === 0 && isLoadingPermissions && (
+        <div style={{
+          background: "white", borderRadius: 12, border: "1px solid #E2E8F0",
+          padding: 40, textAlign: "center",
+        }}>
+          <p style={{ color: "#64748B", fontSize: 13 }}>Chargement des permissions…</p>
+        </div>
+      )}
+
+      {allModules.length === 0 && !isLoadingPermissions && (
         <div style={{
           background: "white", borderRadius: 12, border: "1px solid #E2E8F0",
           padding: 40, textAlign: "center",
@@ -132,9 +146,8 @@ function DashboardSousAdmin({ sousAdmin }) {
   );
 }
 
-// Dashboard complet pour admin principal
 function DashboardAdmin() {
-  const REFRESH = 15 * 1000; // 15s auto-refresh
+  const REFRESH = 15 * 1000;
 
   const { data: ventes = [], isLoading: chargementVentes } = useQuery({
     queryKey: ["dashboard_ventes"],
@@ -164,7 +177,6 @@ function DashboardAdmin() {
     refetchOnWindowFocus: true,
   });
 
-  // Filtrer les produits supprimés
   const produitsActifs = (Array.isArray(produits) ? produits : []).filter(p => p.statut !== 'supprime');
 
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
@@ -180,7 +192,6 @@ function DashboardAdmin() {
     refetchOnWindowFocus: true,
   });
 
-  // Filtrer les vendeurs actifs
   const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.seller_status === 'active_seller');
 
   const { data: commandesVendeurs = [] } = useQuery({
@@ -231,20 +242,14 @@ function DashboardAdmin() {
   const kycArray = Array.isArray(kycEnAttente) && kycEnAttente !== null ? kycEnAttente : [];
   const paiementsArray = Array.isArray(paiementsEnAttente) && paiementsEnAttente !== null ? paiementsEnAttente : [];
 
-  // CA ZONITE = sum all montant_total from ventes
   const chiffreAffaires = ventesArray.reduce((s, v) => s + (v.montant_total || 0), 0);
-
-  // Total commissions paid to vendors
   const totalCommissionsVendeurs = ventesArray.reduce((s, v) => s + (v.commission_vendeur || 0), 0);
-
-  // Marge ZONITE = sum all marge_zonite (or profit_zonite for backward compat)
   const margeZonite = ventesArray.reduce((s, v) => s + (v.marge_zonite || v.profit_zonite || 0), 0);
 
   const commissionsAPayer = vendeursArray.reduce((s, v) => s + (v.solde_commission || 0), 0);
   const stockCritique = produitsArray.filter(p => (p.stock_global || 0) <= (p.seuil_alerte_stock || 5)).length;
 
   const aujourdhui = new Date().toISOString().split("T")[0];
-  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
   const ventesAujourdhui = ventesArray.filter(v => {
@@ -280,7 +285,6 @@ function DashboardAdmin() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Alertes */}
       {(candidaturesArray.length > 0 || kycArray.length > 0 || paiementsArray.length > 0) && (
         <div style={{ background: "#FEFCE8", border: "1px solid #FDE68A", borderRadius: 12, padding: 16 }}>
           <p style={{ fontWeight: 600, color: "#92400E", fontSize: 13, marginBottom: 8 }}>⚠️ Actions requises</p>
@@ -304,7 +308,6 @@ function DashboardAdmin() {
         </div>
       )}
 
-      {/* CA ZONITE */}
       <div>
         <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>📊 Chiffre d'Affaires</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -313,7 +316,6 @@ function DashboardAdmin() {
         </div>
       </div>
 
-      {/* Commissions vendeurs */}
       <div>
         <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>💸 Commissions Vendeurs</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -322,7 +324,6 @@ function DashboardAdmin() {
         </div>
       </div>
 
-      {/* Marge ZONITE */}
       <div>
         <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>🏦 Marge ZONITE Market</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -331,7 +332,6 @@ function DashboardAdmin() {
         </div>
       </div>
 
-      {/* Opérationnel */}
       <div>
         <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Opérationnel</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -342,7 +342,6 @@ function DashboardAdmin() {
         </div>
       </div>
 
-      {/* Graphiques côte à côte sur desktop */}
       <ResponsiveRow>
         <GraphiqueVentes ventes={ventesArray} />
         <StockCritique produits={produitsArray} />
@@ -357,11 +356,11 @@ function DashboardAdmin() {
 }
 
 export default function TableauDeBord() {
-  const sousAdmin = getSousAdminSession();
+  const { sousAdmin, isLoadingPermissions } = useSousAdminPermissions();
   const adminSession = getAdminSession();
 
   if (sousAdmin) {
-    return <DashboardSousAdmin sousAdmin={sousAdmin} />;
+    return <DashboardSousAdmin sousAdmin={sousAdmin} isLoadingPermissions={isLoadingPermissions} />;
   }
 
   if (adminSession) {
