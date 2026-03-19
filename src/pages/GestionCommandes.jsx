@@ -154,14 +154,12 @@ export default function GestionCommandes() {
   const handleLivree = async (commande) => {
     const quantite = commande.quantite || 1;
 
-    // Fetch product for prix_achat & prix_gros
     const { data: produit } = await supabase
       .from("produits")
       .select("prix_achat, prix_gros, prix_vente, stock_global")
       .eq("id", commande.produit_id)
       .single();
 
-    // Fetch seller balance
     const { data: seller } = await supabase
       .from("sellers")
       .select("solde_commission, total_commissions_gagnees")
@@ -169,7 +167,7 @@ export default function GestionCommandes() {
       .single();
 
     if (!produit || !seller) {
-      console.warn("handleLivree: produit ou vendeur introuvable, commission non calculée");
+      console.warn("handleLivree: produit ou vendeur introuvable");
       return;
     }
 
@@ -177,13 +175,8 @@ export default function GestionCommandes() {
     const prixGros = Number(produit.prix_gros) || 0;
     const prixAchat = Number(produit.prix_achat) || 0;
 
-    // Commission vendeur = (prix_vente - prix_gros) × quantite
     const commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
-
-    // Marge ZONITE = (prix_gros - prix_achat) × quantite
     const margeZonite = (prixGros - prixAchat) * quantite;
-
-    // CA total of this sale
     const caVente = prixFinalClient * quantite;
 
     const now = new Date();
@@ -192,7 +185,16 @@ export default function GestionCommandes() {
       return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
     };
 
-    // 1. Insert vente
+    // 1. CONFIRM stock removal (already reserved on order creation)
+    await stockManager.confirmDelivery(
+      commande.produit_id,
+      commande.coursier_id,
+      commande.variation || null,
+      quantite,
+      commande.id
+    );
+
+    // 2. Insert vente
     await supabase.from("ventes").insert({
       vendeur_id: commande.vendeur_id,
       vendeur_email: commande.vendeur_email,
@@ -212,7 +214,7 @@ export default function GestionCommandes() {
       annee: now.getFullYear(),
     });
 
-    // 2. Credit seller balance
+    // 3. Credit seller balance
     const nouveauSolde = (Number(seller.solde_commission) || 0) + commissionVendeur;
     const nouveauTotal = (Number(seller.total_commissions_gagnees) || 0) + commissionVendeur;
     await supabase.from("sellers").update({
@@ -220,24 +222,12 @@ export default function GestionCommandes() {
       total_commissions_gagnees: nouveauTotal,
     }).eq("id", commande.vendeur_id);
 
-    // 3. Record stock movement (sortie confirmée)
-    await supabase.from("mouvements_stock").insert({
-      produit_id: commande.produit_id,
-      quantite,
-      type: "sortie",
-      notes: `Livraison confirmée - Commande ${commande.reference_commande || commande.id}`,
-      reference_id: commande.id,
-      localisation: commande.coursier_nom || "Coursier",
-      stock_avant: produit.stock_global,
-      stock_apres: produit.stock_global,
-    });
-
-    // 4. Notify vendor with correct commission breakdown
+    // 4. Notify vendor
     await supabase.from("notifications_vendeur").insert({
       vendeur_id: commande.vendeur_id,
       vendeur_email: commande.vendeur_email,
       titre: "🎉 Livraison confirmée !",
-      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${prixFinalClient.toLocaleString("fr-FR")} - ${prixGros.toLocaleString("fr-FR")} = ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n\n💳 Nouveau solde disponible : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
       type: "succes",
     });
   };
@@ -247,52 +237,21 @@ export default function GestionCommandes() {
     if (!commande.produit_id) return;
     const quantite = commande.quantite || 1;
 
-    const { data: produit } = await supabase
-      .from("produits")
-      .select("stocks_par_coursier, stock_global")
-      .eq("id", commande.produit_id)
-      .single();
+    // Only restore if stock was reserved and not yet definitively removed
+    const stockReserve = commande.stock_reserve !== false;
+    const stockRetire = commande.stock_retire_definitif === true;
 
-    if (!produit) return;
+    if (!stockReserve || stockRetire) return;
 
-    const stockGlobal = (Number(produit.stock_global) || 0) + quantite;
-    const stocksParCoursier = Array.isArray(produit.stocks_par_coursier) ? [...produit.stocks_par_coursier] : [];
-
-    // Restore stock to coursier
-    if (commande.coursier_id) {
-      const idx = stocksParCoursier.findIndex(s => s.coursier_id === commande.coursier_id);
-      if (idx >= 0) {
-        stocksParCoursier[idx] = { ...stocksParCoursier[idx] };
-        stocksParCoursier[idx].stock_total = (stocksParCoursier[idx].stock_total || 0) + quantite;
-
-        // Restore variation stock if applicable
-        if (commande.variation && Array.isArray(stocksParCoursier[idx].stock_par_variation)) {
-          stocksParCoursier[idx].stock_par_variation = stocksParCoursier[idx].stock_par_variation.map(v =>
-            v.variation_key === commande.variation
-              ? { ...v, quantite: (v.quantite || 0) + quantite }
-              : v
-          );
-        }
-      }
-    }
-
-    // Update product stock
-    await supabase.from("produits").update({
-      stock_global: stockGlobal,
-      stocks_par_coursier: stocksParCoursier,
-    }).eq("id", commande.produit_id);
-
-    // Record stock movement (entree)
-    await supabase.from("mouvements_stock").insert({
-      produit_id: commande.produit_id,
+    // RESTORE stock to exact variation + exact coursier via stockManager
+    await stockManager.restoreStock(
+      commande.produit_id,
+      commande.coursier_id,
+      commande.variation || null,
       quantite,
-      type: "entree",
-      notes: `Stock restauré - ${nouveauStatut === "annulee" ? "Annulation" : "Échec livraison"} - Commande ${commande.reference_commande || commande.id}`,
-      reference_id: commande.id,
-      localisation: commande.coursier_nom || "Entrepôt",
-      stock_avant: produit.stock_global,
-      stock_apres: stockGlobal,
-    });
+      commande.id,
+      nouveauStatut === "annulee" ? "annulation" : "echec"
+    );
   };
 
   const sauvegarder = async () => {
