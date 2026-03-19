@@ -78,45 +78,31 @@ export default function ConfigurationAdminPassword() {
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Sécurité Admin</h1>
         <p className="text-slate-500 text-sm mb-6">Gérez votre mot de passe pour l'accès mobile et web.</p>
 
-        {!adminMdpHash && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-amber-800 text-sm font-medium">⚠️ Mot de passe non sécurisé</p>
-              <p className="text-amber-700 text-xs mt-1">Le mot de passe actuel n'est pas un hash bcrypt valide. Créez un nouveau mot de passe sécurisé ci-dessous.</p>
+        <form onSubmit={changerMotDePasse} className="space-y-5">
+          {/* Mot de passe actuel */}
+          <div>
+            <label className="text-slate-700 font-medium text-sm block mb-2">Mot de passe actuel</label>
+            <div className="relative">
+              <Input
+                type={mdpVisible.actuel ? "text" : "password"}
+                value={mdpActuel}
+                onChange={(e) => setMdpActuel(e.target.value)}
+                placeholder="••••••••"
+                className="bg-slate-50 border border-slate-300 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setMdpVisible({ ...mdpVisible, actuel: !mdpVisible.actuel })}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {mdpVisible.actuel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
-        )}
-
-        <form onSubmit={changerMotDePasse} className="space-y-5">
-          {/* Mot de passe actuel - visible uniquement si un mot de passe existe */}
-          {adminMdpHash && (
-            <div>
-              <label className="text-slate-700 font-medium text-sm block mb-2">Mot de passe actuel</label>
-              <div className="relative">
-                <Input
-                  type={mdpVisible.actuel ? "text" : "password"}
-                  value={mdpActuel}
-                  onChange={(e) => setMdpActuel(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-slate-50 border border-slate-300 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setMdpVisible({ ...mdpVisible, actuel: !mdpVisible.actuel })}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {mdpVisible.actuel ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Nouveau mot de passe */}
           <div>
-            <label className="text-slate-700 font-medium text-sm block mb-2">
-              {adminMdpHash ? "Nouveau mot de passe" : "Créer un mot de passe"}
-            </label>
+            <label className="text-slate-700 font-medium text-sm block mb-2">Nouveau mot de passe</label>
             <div className="relative">
               <Input
                 type={mdpVisible.nouveau ? "text" : "password"}
@@ -133,22 +119,7 @@ export default function ConfigurationAdminPassword() {
                 {mdpVisible.nouveau ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-slate-400 text-xs">Minimum 6 caractères</p>
-              {!adminMdpHash && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const generated = genererMotDePasse();
-                    setMdpNouveau(generated);
-                    setMdpConfirm(generated);
-                  }}
-                  className="text-[#1a1f5e] text-xs font-semibold hover:underline"
-                >
-                  Générer →
-                </button>
-              )}
-            </div>
+            <p className="text-slate-400 text-xs mt-2">Minimum 6 caractères</p>
           </div>
 
           {/* Confirmer mot de passe */}
@@ -172,7 +143,6 @@ export default function ConfigurationAdminPassword() {
             </div>
           </div>
 
-          {/* Messages */}
           {erreur && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-3">
               <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -187,21 +157,13 @@ export default function ConfigurationAdminPassword() {
             </div>
           )}
 
-          <div className="flex gap-3">
-            <Button
-              type="submit"
-              disabled={entraitement}
-              className="bg-[#1a1f5e] hover:bg-[#141952] text-white font-bold"
-            >
-              {entraitement ? "Mise à jour..." : (adminMdpHash ? "Changer le mot de passe" : "Créer le mot de passe")}
-            </Button>
-          </div>
-
-          {adminMdpHash && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-              <p className="text-blue-700 text-xs">✓ Mot de passe configuré — Vous pouvez vous connecter depuis l'app mobile avec username "admin".</p>
-            </div>
-          )}
+          <Button
+            type="submit"
+            disabled={entraitement}
+            className="bg-[#1a1f5e] hover:bg-[#141952] text-white font-bold"
+          >
+            {entraitement ? "Mise à jour..." : "Changer le mot de passe"}
+          </Button>
         </form>
       </div>
     </div>
