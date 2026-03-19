@@ -19,6 +19,8 @@ const PERIODES = [
 ];
 
 const fmt = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
+// PDF-safe formatter: uses regular space instead of narrow no-break space
+const fmtPdf = (n) => `${Math.round(n || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} FCFA`;
 
 function getGroupeKey(date, periodeJours) {
   if (periodeJours <= 30) return format(date, "dd/MM");
@@ -94,11 +96,11 @@ export default function RapportsVentes() {
     y += 6;
 
     const kpis = [
-      ["CA Total ZONITE", fmt(caTotal)],
-      ["Total Commissions Vendeurs", fmt(totalCommissions)],
-      ["Marge ZONITE", fmt(margeTotal)],
+      ["CA Total ZONITE", fmtPdf(caTotal)],
+      ["Total Commissions Vendeurs", fmtPdf(totalCommissions)],
+      ["Marge ZONITE", fmtPdf(margeTotal)],
       ["Nb Transactions", `${nbTransactions}`],
-      ["Panier Moyen", fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
+      ["Panier Moyen", fmtPdf(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
     ];
     doc.setFontSize(10);
     kpis.forEach(([k, v], i) => {
@@ -139,9 +141,9 @@ export default function RapportsVentes() {
       doc.text(`${i + 1}`, 14, y);
       doc.text(l.nom.substring(0, 40), 22, y);
       doc.text(`${l.qte}`, 120, y);
-      doc.text(fmt(l.ca), 130, y);
+      doc.text(fmtPdf(l.ca), 130, y);
       doc.setTextColor(l.marge >= 0 ? 16 : 220, l.marge >= 0 ? 185 : 53, l.marge >= 0 ? 129 : 69);
-      doc.text(fmt(l.marge), 163, y);
+      doc.text(fmtPdf(l.marge), 163, y);
       doc.setTextColor(0, 0, 0);
       y += 7;
     });
@@ -172,8 +174,8 @@ export default function RapportsVentes() {
       doc.text(`${i + 1}`, 14, y);
       doc.text(l.nom.substring(0, 40), 22, y);
       doc.text(`${l.nb}`, 110, y);
-      doc.text(fmt(l.ca), 125, y);
-      doc.text(fmt(l.commissions), 163, y);
+      doc.text(fmtPdf(l.ca), 125, y);
+      doc.text(fmtPdf(l.commissions), 163, y);
       y += 7;
     });
     y += 6;
@@ -202,7 +204,7 @@ export default function RapportsVentes() {
       const pct = totalCAVilles > 0 ? ((l.ca / totalCAVilles) * 100).toFixed(1) : 0;
       doc.text(l.ville.substring(0, 35), 14, y);
       doc.text(`${l.nb}`, 90, y);
-      doc.text(fmt(l.ca), 125, y);
+      doc.text(fmtPdf(l.ca), 125, y);
       doc.text(`${pct}%`, 175, y);
       y += 7;
     });
