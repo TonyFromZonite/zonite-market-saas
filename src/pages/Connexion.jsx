@@ -156,7 +156,7 @@ export default function Connexion() {
             permissions = permsData?.modules_autorises || [];
           }
 
-          sessionStorage.setItem("sous_admin", JSON.stringify({
+          localStorage.setItem("sous_admin", JSON.stringify({
             id: saRecord?.id || seller?.id || user.id,
             user_id: user.id,
             email: user.email,
