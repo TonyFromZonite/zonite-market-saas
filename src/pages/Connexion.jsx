@@ -299,7 +299,7 @@ export default function Connexion() {
       </div>
 
       {hasSocialLinks && (
-        <div className="relative z-10 flex flex-col items-center gap-3 md:gap-4 mt-5 md:mt-8 px-3">
+        <div className="relative z-10 flex flex-col items-center gap-2 mt-1 px-3">
           <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
           <div className="flex items-center gap-2.5">
             {lienFacebook && (
