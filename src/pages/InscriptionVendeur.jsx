@@ -147,6 +147,40 @@ export default function InscriptionVendeur() {
     } catch { setEmailVerifie(null); }
   };
 
+// Reusable KYC document upload component with camera support
+function KycDocUpload({ docKey, label, hint, preview, isUploading, doc, onSelect, onClear, isSelfie }) {
+  const inputRef = useRef(null);
+  return (
+    <div>
+      <Label className="text-slate-200 text-xs mb-1.5 block">
+        {label} <span className="text-red-400">*</span>
+      </Label>
+      <input ref={inputRef} type="file" accept="image/*" capture={isSelfie ? "user" : "environment"} onChange={(e) => onSelect(docKey, e)} className="hidden" />
+      {preview ? (
+        <div className="relative">
+          <img src={preview} alt={label} className="w-full h-36 object-cover rounded-2xl border-2 border-emerald-400" />
+          <div className="absolute top-2 right-2 flex gap-1.5">
+            <span className="bg-emerald-500 text-white px-2 py-1 rounded-full text-[10px] font-semibold">✅ OK</span>
+            <button onClick={onClear} className="bg-red-500/80 text-white px-2 py-1 rounded-full text-[10px] font-semibold hover:bg-red-600">Changer</button>
+          </div>
+        </div>
+      ) : (
+        <div onClick={() => inputRef.current?.click()} className={`flex flex-col items-center justify-center w-full h-28 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isUploading ? 'border-[#f5a623]/50 bg-[#f5a623]/5' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}>
+          {isUploading ? (
+            <Loader2 className="w-6 h-6 text-[#f5a623] animate-spin" />
+          ) : (
+            <>
+              <div className="text-3xl mb-2">📷</div>
+              <p className="text-white/70 text-xs font-medium">Appuyer pour ouvrir</p>
+              <p className="text-white/40 text-[10px]">📷 Caméra ou 🖼️ Galerie</p>
+              {hint && <p className="text-[#f5a623]/60 text-[10px] italic mt-1">{hint}</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
   const validerEtape1 = async () => {
     // Username validation
