@@ -151,11 +151,11 @@ export default function VideoFormation() {
       if (updateError) throw new Error(updateError.message);
 
       // Update session storage too
-      const session = JSON.parse(sessionStorage.getItem('vendeur_session') || '{}');
+      const session = JSON.parse(localStorage.getItem('vendeur_session') || '{}');
       session.training_completed = true;
       session.catalogue_debloque = true;
       session.conditions_acceptees = true;
-      sessionStorage.setItem('vendeur_session', JSON.stringify(session));
+      localStorage.setItem('vendeur_session', JSON.stringify(session));
 
       toast({
         title: '🎉 Catalogue débloqué !',

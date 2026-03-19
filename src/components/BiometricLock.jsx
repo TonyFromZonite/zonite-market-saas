@@ -184,7 +184,7 @@ export default function BiometricLock() {
   };
 
   const dismissEnroll = () => {
-    sessionStorage.setItem("zonite_bio_prompt_dismissed", "1");
+    localStorage.setItem("zonite_bio_prompt_dismissed", "1");
     setShowEnroll(false);
   };
 

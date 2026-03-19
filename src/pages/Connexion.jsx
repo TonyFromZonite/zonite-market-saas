@@ -184,7 +184,7 @@ export default function Connexion() {
           window.location.href = createPageUrl("EnAttenteValidation");
           return;
         }
-        sessionStorage.setItem("vendeur_session", JSON.stringify({
+        localStorage.setItem("vendeur_session", JSON.stringify({
           id: seller.id,
           user_id: user.id,
           email: seller.email,
