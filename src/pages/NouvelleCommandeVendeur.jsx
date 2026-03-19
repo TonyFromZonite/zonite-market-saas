@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
 import { supabase } from "@/integrations/supabase/client";
+import { stockManager } from "@/lib/stockManager";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -175,7 +176,18 @@ export default function NouvelleCommandeVendeur() {
     setErreur("");
 
     try {
+      // 1. Validate stock BEFORE creating order
+      const availableStock = await stockManager.getVariationStock(
+        form.produit_id, selectedCoursierId, variationKey || null
+      );
+      if (availableStock < qte) {
+        setErreur(`Stock insuffisant. Disponible: ${availableStock} unité(s) pour cette variation dans cette zone.`);
+        setEnCours(false);
+        return;
+      }
+
       const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
+      // 2. Create order record
       const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
         vendeur_id: compteVendeur.id,
         vendeur_email: compteVendeur.email,
@@ -189,6 +201,7 @@ export default function NouvelleCommandeVendeur() {
         montant_total: prixFinal * qte,
         frais_livraison: fraisLivraison,
         livraison_incluse: false,
+        coursier_id: selectedCoursierId,
         client_nom: form.client_nom,
         client_telephone: form.client_telephone,
         client_ville: villeName,
@@ -197,45 +210,33 @@ export default function NouvelleCommandeVendeur() {
         notes: form.notes,
         reference_commande: ref,
         statut: "en_attente_validation_admin",
+        stock_reserve: false,
+        stock_retire_definitif: false,
       }).select().single();
 
       if (orderError) throw orderError;
 
-      // Deduct stock
-      const updatedSPC = (produitSelectionne.stocks_par_coursier || []).map((sc) => {
-        if (sc.coursier_id !== selectedCoursierId) return sc;
-        const newVarStock = (sc.stock_par_variation || []).map((sv) => {
-          if (sv.variation_key !== variationKey) return sv;
-          return { ...sv, quantite: Math.max(0, sv.quantite - qte) };
-        });
-        const newTotal = newVarStock.reduce((t, v) => t + (v.quantite || 0), 0);
-        return { ...sc, stock_par_variation: newVarStock, stock_total: newTotal };
-      });
-      const newStockGlobal = updatedSPC.reduce((t, s) => t + (s.stock_total || 0), 0);
+      // 3. RESERVE stock immediately via stockManager
+      await stockManager.reserveStock(
+        form.produit_id,
+        selectedCoursierId,
+        variationKey || null,
+        qte,
+        newOrder.id
+      );
 
-      await supabase.from("produits").update({
-        stocks_par_coursier: updatedSPC,
-        stock_global: newStockGlobal,
-      }).eq("id", form.produit_id);
+      // 4. Mark order stock as reserved
+      await supabase.from("commandes_vendeur")
+        .update({ stock_reserve: true })
+        .eq("id", newOrder.id);
 
-      // Mouvement stock
-      await supabase.from("mouvements_stock").insert({
-        produit_id: form.produit_id,
-        type: "sortie",
-        quantite: qte,
-        stock_avant: produitSelectionne.stock_global,
-        stock_apres: newStockGlobal,
-        notes: `Commande ${ref} - ${variationKey} via ${selectedCoursier?.nom}`,
-        reference_id: newOrder?.id || null,
-      });
-
-      // Admin notification
+      // 5. Admin notification
       await supabase.from("notifications_admin").insert({
         titre: "🛒 Nouvelle commande",
-        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey})`,
+        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey || "standard"}) pour ${form.client_nom} à ${villeName}`,
         type: "commande",
         vendeur_email: compteVendeur.email,
-        reference_id: newOrder?.id || null,
+        reference_id: newOrder.id,
       });
 
       queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
