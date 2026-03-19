@@ -174,8 +174,8 @@ export default function RapportsVentes() {
       doc.text(`${i + 1}`, 14, y);
       doc.text(l.nom.substring(0, 40), 22, y);
       doc.text(`${l.nb}`, 110, y);
-      doc.text(fmt(l.ca), 125, y);
-      doc.text(fmt(l.commissions), 163, y);
+      doc.text(fmtPdf(l.ca), 125, y);
+      doc.text(fmtPdf(l.commissions), 163, y);
       y += 7;
     });
     y += 6;
