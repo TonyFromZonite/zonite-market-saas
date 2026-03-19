@@ -10,7 +10,19 @@ export default function NotificationManager() {
 
   useEffect(() => {
     initNotifications();
-    return () => notifSystem.unsubscribeAll();
+
+    // iOS background notification fix: check missed notifications on visibility change
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible") {
+        await checkMissedNotifications();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      notifSystem.unsubscribeAll();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const initNotifications = async () => {
@@ -37,6 +49,9 @@ export default function NotificationManager() {
         showInAppToast(notif);
       });
     }
+
+    // Save initial check time
+    localStorage.setItem("last_notif_check", new Date().toISOString());
   };
 
   const loadUnreadCount = async (active) => {
@@ -48,6 +63,45 @@ export default function NotificationManager() {
       const { count } = await query;
       return count || 0;
     } catch { return 0; }
+  };
+
+  const checkMissedNotifications = async () => {
+    try {
+      // Determine session from localStorage (admin first)
+      const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
+      const vendorSession = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
+
+      const isAdmin = !!(adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin"));
+      const session = isAdmin ? adminSession : vendorSession;
+      if (!session?.email) return;
+
+      const lastCheck = localStorage.getItem("last_notif_check") || new Date(Date.now() - 3600000).toISOString();
+      const table = isAdmin ? "notifications_admin" : "notifications_vendeur";
+
+      const query = supabase
+        .from(table)
+        .select("*")
+        .eq("lu", false)
+        .gte("created_at", lastCheck)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (!isAdmin && session.id) {
+        query.eq("vendeur_id", session.id);
+      }
+
+      const { data: missed } = await query;
+
+      if (missed?.length > 0) {
+        notifSystem.updateBadge(missed.length);
+        // Invalidate queries so UI updates
+        queryClient.invalidateQueries({ queryKey: [isAdmin ? "notifications_admin" : "notifications_vendeur"] });
+        // Show latest missed notification as toast
+        showInAppToast(missed[0]);
+      }
+
+      localStorage.setItem("last_notif_check", new Date().toISOString());
+    } catch {}
   };
 
   const showInAppToast = (notif) => {

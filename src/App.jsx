@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -104,32 +104,54 @@ const AuthenticatedApp = () => {
   );
 };
 
-function App() {
+const AppWithRouter = () => {
+  const navigate = useNavigate();
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    const hasSession = localStorage.getItem("vendeur_session") || localStorage.getItem("admin_session");
+    const adminSession = localStorage.getItem("admin_session");
+    const vendorSession = localStorage.getItem("vendeur_session");
     const bioEnabled = localStorage.getItem("bio_enabled") === "true" || localStorage.getItem("zonite_bio_enrolled") === "1";
-    if (hasSession && bioEnabled) {
+    if ((adminSession || vendorSession) && bioEnabled) {
       setLocked(true);
     }
   }, []);
 
+  const handleUnlock = (targetPath) => {
+    setLocked(false);
+    // Navigate to the correct page based on role
+    if (targetPath) {
+      navigate(targetPath);
+    } else {
+      // Fallback: determine from session
+      const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
+      const isAdmin = adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin");
+      navigate(isAdmin ? "/TableauDeBord" : "/EspaceVendeur");
+    }
+  };
+
+  if (locked) {
+    return <AppLockScreen onUnlock={handleUnlock} />;
+  }
+
+  return (
+    <>
+      <AuthenticatedApp />
+      <Toaster />
+      <InstallPrompt />
+      <BiometricLock />
+      <NotificationManager />
+    </>
+  );
+};
+
+function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        {locked && <AppLockScreen onUnlock={() => setLocked(false)} />}
-        {!locked && (
-          <>
-            <Router>
-              <AuthenticatedApp />
-            </Router>
-            <Toaster />
-            <InstallPrompt />
-            <BiometricLock />
-            <NotificationManager />
-          </>
-        )}
+        <Router>
+          <AppWithRouter />
+        </Router>
       </QueryClientProvider>
     </AuthProvider>
   );
