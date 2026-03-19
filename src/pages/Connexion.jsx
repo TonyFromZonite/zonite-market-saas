@@ -195,7 +195,7 @@ export default function Connexion() {
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="w-full flex flex-col items-center relative z-10 px-2">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
+        <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-1 md:mb-3 overflow-hidden border-3 md:border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
         <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
