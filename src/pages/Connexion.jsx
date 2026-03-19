@@ -208,7 +208,7 @@ export default function Connexion() {
         </p>
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md relative z-10 mb-3 sm:mb-5 px-1">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 mb-1 sm:mb-2 px-1">
         <div className="bg-white/10 backdrop-blur rounded-2xl p-1 flex border border-white/15">
           <button onClick={() => changerMode(MODE_VENDEUR)}
           className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_VENDEUR ? "bg-[#F5C518] text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
