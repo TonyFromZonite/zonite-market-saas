@@ -96,7 +96,7 @@ export default function BiometricLock() {
       bioAvailable &&
       session &&
       !localStorage.getItem(BIO_ENROLLED_KEY) &&
-      !sessionStorage.getItem("zonite_bio_prompt_dismissed")
+      !localStorage.getItem("zonite_bio_prompt_dismissed")
     ) {
       const t = setTimeout(() => setShowEnroll(true), 3000);
       return () => clearTimeout(t);
