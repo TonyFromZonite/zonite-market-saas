@@ -95,6 +95,28 @@ export default function Layout({ children, currentPageName }) {
   // Route-level protection for sous_admins
   const sousAdmin = getSousAdminSession();
   const adminSession = getAdminSession();
+  const [unauthorizedLogged, setUnauthorizedLogged] = useState(false);
+
+  useEffect(() => {
+    if (sousAdmin && !adminSession && !unauthorizedLogged) {
+      const allowedPages = getMenuVisible("sous_admin", sousAdmin.permissions || []).map(m => m.page);
+      if (!allowedPages.includes(currentPageName)) {
+        setUnauthorizedLogged(true);
+        supabase.from("journal_audit").insert({
+          action: "tentative_acces_non_autorise",
+          module: currentPageName,
+          utilisateur: sousAdmin.email || sousAdmin.nom_complet || "sous-admin",
+          utilisateur_id: sousAdmin.user_id || null,
+          details: {
+            sous_admin_id: sousAdmin.id,
+            page_tentee: currentPageName,
+            permissions_actuelles: sousAdmin.permissions || [],
+          },
+        }).then(() => {});
+      }
+    }
+  }, [currentPageName, sousAdmin, adminSession, unauthorizedLogged]);
+
   if (sousAdmin && !adminSession) {
     const allowedPages = getMenuVisible("sous_admin", sousAdmin.permissions || []).map(m => m.page);
     if (!allowedPages.includes(currentPageName)) {
