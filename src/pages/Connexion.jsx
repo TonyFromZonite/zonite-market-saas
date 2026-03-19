@@ -126,12 +126,48 @@ export default function Connexion() {
           setErreur("Ce compte n'a pas les droits administrateur.");
           return;
         }
+
+        // For sous_admin, load permissions and store in session
+        let permissions = [];
+        if (role === "sous_admin") {
+          // Get sous_admin record
+          const { data: saRecord } = await supabase
+            .from("sous_admins")
+            .select("id, actif, nom_role")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (saRecord && !saRecord.actif) {
+            setErreur("Votre compte administrateur est suspendu.");
+            return;
+          }
+
+          if (saRecord) {
+            const { data: permsData } = await supabase
+              .from("admin_permissions")
+              .select("modules_autorises")
+              .eq("sous_admin_id", saRecord.id)
+              .maybeSingle();
+            permissions = permsData?.modules_autorises || [];
+          }
+
+          sessionStorage.setItem("sous_admin", JSON.stringify({
+            id: saRecord?.id || seller?.id || user.id,
+            user_id: user.id,
+            email: user.email,
+            role: "sous_admin",
+            nom_complet: user.user_metadata?.full_name || seller?.full_name || "",
+            permissions,
+          }));
+        }
+
         sessionStorage.setItem("admin_session", JSON.stringify({
           id: seller?.id || user.id,
           user_id: user.id,
           email: user.email,
           role: role,
-          nom_complet: user.user_metadata?.full_name || seller?.full_name || ""
+          nom_complet: user.user_metadata?.full_name || seller?.full_name || "",
+          permissions,
         }));
         window.location.href = "/TableauDeBord";
       } else {
