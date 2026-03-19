@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { adminApi } from "@/components/adminApi";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
-import { filterTable, listTable } from "@/lib/supabaseHelpers";
+import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
 
 const ONGLETS = [
   { key: "liste", label: "Vendeurs" },
@@ -528,12 +528,11 @@ function PaiementsTab() {
         .eq("id", demandeId);
       if (demandeError) throw demandeError;
 
-      // Confirm: solde stays reduced (already deducted), reset solde_en_attente, increment total_payees
-      const { error: sellerError } = await supabase.from("sellers").update({
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-        total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
-      }).eq("id", seller.id);
-      if (sellerError) throw sellerError;
+      // Confirm atomically: clear pending and increment total paid
+      await supabase.rpc("approve_seller_payment", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
 
       // Create payment record
       await supabase.from("paiements_commission").insert({
@@ -597,18 +596,17 @@ function PaiementsTab() {
       }).eq("id", rejectingId);
       if (demandeError) throw new Error("Erreur mise à jour demande: " + demandeError.message);
 
-      // RESTORE vendor balance
-      const { error: sellerError } = await supabase.from("sellers").update({
-        solde_commission: Number(seller.solde_commission || 0) + montant,
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-      }).eq("id", seller.id);
-      if (sellerError) throw new Error("Erreur restauration solde: " + sellerError.message);
+      // RESTORE vendor balance atomically
+      const { data: restoredSolde } = await supabase.rpc("restore_seller_balance", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
 
       // Notify vendor with exact reason
       await supabase.from("notifications_vendeur").insert({
         vendeur_id: seller.id, vendeur_email: seller.email,
         titre: "❌ Demande de paiement rejetée",
-        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${(Number(seller.solde_commission || 0) + montant).toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
+        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${Number(restoredSolde || 0).toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
         type: "alerte",
       });
 
@@ -782,6 +780,26 @@ function PaiementsTab() {
 // ─── Page principale ─────────────────────────────────────────────────────────
 export default function Vendeurs() {
   const [ongletActif, setOngletActif] = useState("liste");
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refreshAdminData = () => {
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["sellers_badge"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_badge"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["demandes_paiement_admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sellers_for_payments"] });
+    };
+
+    const unsubscribeSellers = subscribeToTable("sellers", refreshAdminData);
+    const unsubscribeCommandes = subscribeToTable("commandes_vendeur", refreshAdminData);
+
+    return () => {
+      unsubscribeSellers?.();
+      unsubscribeCommandes?.();
+    };
+  }, [queryClient]);
 
   const { data: kycs = [] } = useQuery({ 
     queryKey: ["sellers_badge"], 

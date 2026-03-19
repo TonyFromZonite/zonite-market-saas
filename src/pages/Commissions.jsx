@@ -1,5 +1,5 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -12,8 +12,26 @@ import {
 import { Wallet, DollarSign } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeToTable } from "@/lib/supabaseHelpers";
 
 export default function Commissions() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const refreshCommissions = () => {
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+    };
+
+    const unsubscribeSellers = subscribeToTable("sellers", refreshCommissions);
+    const unsubscribeCommandes = subscribeToTable("commandes_vendeur", refreshCommissions);
+
+    return () => {
+      unsubscribeSellers?.();
+      unsubscribeCommandes?.();
+    };
+  }, [queryClient]);
+
   const { data: vendeurs = [], isLoading: chargementVendeurs } = useQuery({
     queryKey: ["vendeurs"],
     queryFn: async () => {

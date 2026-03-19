@@ -198,6 +198,29 @@ export default function EspaceVendeur() {
     refetchOnWindowFocus: true,
   });
 
+  useEffect(() => {
+    if (!compteVendeur?.id) return;
+
+    const refreshVendeurData = () => {
+      queryClient.invalidateQueries({ queryKey: ['COMPTE_VENDEUR_FRESH', compteVendeur.id] });
+      queryClient.invalidateQueries({ queryKey: ['vendeur_stats', compteVendeur.id] });
+      queryClient.invalidateQueries({ queryKey: ['vendeur_historique', compteVendeur.id] });
+    };
+
+    const unsubscribeSellers = subscribeToTable('sellers', ({ id }) => {
+      if (id === compteVendeur.id) refreshVendeurData();
+    });
+
+    const unsubscribeCommandes = subscribeToTable('commandes_vendeur', ({ data }) => {
+      if (data?.vendeur_id === compteVendeur.id) refreshVendeurData();
+    });
+
+    return () => {
+      unsubscribeSellers?.();
+      unsubscribeCommandes?.();
+    };
+  }, [compteVendeur?.id, queryClient]);
+
   // SECTION B — Top vendeurs (lazy-loaded)
   const [loadTopVendeurs, setLoadTopVendeurs] = useState(false);
   const { data: topVendeurs } = useQuery({
