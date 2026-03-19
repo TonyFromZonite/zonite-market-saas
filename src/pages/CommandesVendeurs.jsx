@@ -158,17 +158,10 @@ export default function CommandesVendeurs() {
         .eq("id", cmd.produit_id)
         .single();
 
-      // Fetch seller balance
-      const { data: seller } = await supabase
-        .from("sellers")
-        .select("solde_commission, total_commissions_gagnees")
-        .eq("id", cmd.vendeur_id)
-        .single();
-
       let commissionVendeur = 0;
       let nouveauSolde = 0;
 
-      if (produit && seller) {
+      if (produit) {
         const prixFinalClient = Number(cmd.prix_final_client) || Number(cmd.prix_unitaire) || Number(produit.prix_vente) || 0;
         const prixGros = Number(produit.prix_gros) || 0;
         const prixAchat = Number(produit.prix_achat) || 0;
@@ -205,12 +198,12 @@ export default function CommandesVendeurs() {
           annee: now.getFullYear(),
         });
 
-        // 2. Credit seller balance
-        nouveauSolde = (Number(seller.solde_commission) || 0) + commissionVendeur;
-        await supabase.from("sellers").update({
-          solde_commission: nouveauSolde,
-          total_commissions_gagnees: (Number(seller.total_commissions_gagnees) || 0) + commissionVendeur,
-        }).eq("id", cmd.vendeur_id);
+        // 2. Credit seller balance ATOMICALLY via DB function
+        const { data: newSolde } = await supabase.rpc("credit_seller_commission", {
+          _seller_id: cmd.vendeur_id,
+          _commission: commissionVendeur,
+        });
+        nouveauSolde = newSolde || 0;
 
         // 3. Record stock movement
         await supabase.from("mouvements_stock").insert({
