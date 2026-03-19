@@ -172,7 +172,7 @@ export default function PaiementsVendeurs() {
         vendeur_id: seller.id,
         vendeur_email: seller.email,
         titre: "❌ Demande de paiement rejetée",
-        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${(Number(seller.solde_commission || 0) + montant).toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
+        message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été rejetée.\n\n📋 Motif du rejet :\n"${rejectReason.trim()}"\n\n✅ Votre solde a été restauré automatiquement.\nNouveau solde disponible : ${restoredSolde.toLocaleString("fr-FR")} FCFA\n\nVous pouvez faire une nouvelle demande en corrigeant le problème mentionné.`,
         type: "alerte",
       });
 
