@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import { createPageUrl } from "@/utils";
 import { filterTable, getCurrentUser } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_URL } from "@/components/constants";
+import { useToast } from "@/hooks/use-toast";
 
 const getYoutubeEmbedUrl = (url) => {
   if (!url || typeof url !== "string") return null;
@@ -37,35 +38,44 @@ const getYoutubeEmbedUrl = (url) => {
 };
 
 export default function VideoFormation() {
+  const { toast } = useToast();
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [erreur, setErreur] = useState("");
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [videoWatched, setVideoWatched] = useState(false);
   const [confirmWatched, setConfirmWatched] = useState(false);
   const [acceptConditions, setAcceptConditions] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const [timerStarted, setTimerStarted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Timer state
+  const [secondsLeft, setSecondsLeft] = useState(30);
+  const [timerDone, setTimerDone] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const timerRef = useRef(null);
+
+  // Cleanup timer on unmount
   useEffect(() => {
-    if (!timerStarted || videoWatched) return;
-    if (timeLeft <= 0) {
-      setVideoWatched(true);
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const startTimer = () => {
+    if (timerStarted) return;
+    setTimerStarted(true);
+    timerRef.current = setInterval(() => {
+      setSecondsLeft(prev => {
         if (prev <= 1) {
-          setVideoWatched(true);
-          clearInterval(timer);
+          clearInterval(timerRef.current);
+          setTimerDone(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timer);
-  }, [timerStarted, videoWatched, timeLeft]);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -77,16 +87,21 @@ export default function VideoFormation() {
           return;
         }
 
+        // Get fresh seller data from DB
         const sellers = await filterTable("sellers", { email: u.email });
         if (!isMounted) return;
         if (sellers.length > 0) {
-          setCompteVendeur(sellers[0]);
-          if (sellers[0].catalogue_debloque) {
+          const seller = sellers[0];
+          setCompteVendeur(seller);
+
+          // If already completed → redirect immediately, NEVER show formation again
+          if (seller.catalogue_debloque && seller.training_completed) {
             navigate(createPageUrl("CatalogueVendeur"), { replace: true });
             return;
           }
         }
 
+        // Load video URL
         const { data: configs } = await supabase
           .from("config_app")
           .select("cle, valeur")
@@ -110,6 +125,8 @@ export default function VideoFormation() {
           console.error("Chargement vidéo:", err);
           setErreur("Erreur réseau.");
         }
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
     charger();
@@ -127,16 +144,23 @@ export default function VideoFormation() {
           training_completed: true,
           catalogue_debloque: true,
           conditions_acceptees: true,
+          training_completed_at: new Date().toISOString(),
         })
         .eq('id', compteVendeur.id);
 
       if (updateError) throw new Error(updateError.message);
 
+      // Update session storage too
       const session = JSON.parse(sessionStorage.getItem('vendeur_session') || '{}');
       session.training_completed = true;
       session.catalogue_debloque = true;
       session.conditions_acceptees = true;
       sessionStorage.setItem('vendeur_session', JSON.stringify(session));
+
+      toast({
+        title: '🎉 Catalogue débloqué !',
+        description: 'Vous avez accès à tous les produits.'
+      });
 
       navigate(createPageUrl("CatalogueVendeur"), { replace: true });
     } catch (err) {
@@ -147,11 +171,19 @@ export default function VideoFormation() {
     }
   };
 
-  const canTerminer = confirmWatched && acceptConditions;
+  const canTerminer = confirmWatched && acceptConditions && timerDone;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1a1f5e] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#1a1f5e]">
-      {/* Header with back arrow */}
+      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
         <button
           onClick={() => navigate(createPageUrl("EspaceVendeur"))}
@@ -175,7 +207,7 @@ export default function VideoFormation() {
 
         {/* Video player */}
         <div className="rounded-2xl overflow-hidden mb-4 bg-black">
-          {erreur ? (
+          {erreur && !videoUrl ? (
             <div className="aspect-video flex items-center justify-center flex-col gap-3 p-4">
               <AlertCircle className="w-10 h-10 text-yellow-400" />
               <p className="text-white text-center text-sm">{erreur}</p>
@@ -189,7 +221,10 @@ export default function VideoFormation() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen={true}
                 referrerPolicy="strict-origin-when-cross-origin"
-                onLoad={() => { setTimerStarted(true); setTimeLeft(30); }}
+                onLoad={() => {
+                  setVideoLoaded(true);
+                  startTimer();
+                }}
                 style={{
                   position: 'absolute',
                   top: 0, left: 0,
@@ -205,20 +240,50 @@ export default function VideoFormation() {
           )}
         </div>
 
-        {/* Timer indicator */}
-        {videoUrl && !videoWatched && (
-          <div className="text-center p-3 bg-white/5 rounded-lg mb-4 text-sm text-white/60">
-            ⏱️ Encore {timeLeft} secondes avant de pouvoir valider...
+        {/* Visible countdown timer */}
+        {videoLoaded && !timerDone && (
+          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl mb-4">
+            <div
+              className="relative flex-shrink-0"
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: `conic-gradient(#f5a623 ${(1 - secondsLeft / 30) * 360}deg, rgba(255,255,255,0.1) 0deg)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div className="w-9 h-9 rounded-full bg-[#1a1f5e] flex items-center justify-center text-sm font-bold text-[#f5a623]">
+                {secondsLeft}
+              </div>
+            </div>
+            <div>
+              <p className="text-white text-sm font-semibold">Visionnez la formation</p>
+              <p className="text-white/50 text-xs">
+                Les cases à cocher se débloqueront dans {secondsLeft} seconde{secondsLeft > 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {timerDone && (
+          <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl mb-4">
+            <span className="text-xl">✅</span>
+            <p className="text-emerald-400 text-sm font-semibold">
+              Vidéo visionnée ! Cochez les cases ci-dessous pour continuer.
+            </p>
           </div>
         )}
 
         {/* Checkboxes */}
         <div className="bg-white/5 rounded-xl p-5 mb-6 space-y-4">
-          <label className={`flex items-start gap-3 ${videoWatched ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+          <label className={`flex items-start gap-3 ${timerDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
             <input
               type="checkbox"
               checked={confirmWatched}
-              disabled={!videoWatched}
+              disabled={!timerDone}
               onChange={(e) => setConfirmWatched(e.target.checked)}
               className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
             />
@@ -227,11 +292,11 @@ export default function VideoFormation() {
             </span>
           </label>
 
-          <label className={`flex items-start gap-3 ${videoWatched ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+          <label className={`flex items-start gap-3 ${timerDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
             <input
               type="checkbox"
               checked={acceptConditions}
-              disabled={!videoWatched}
+              disabled={!timerDone}
               onChange={(e) => setAcceptConditions(e.target.checked)}
               className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
             />
@@ -267,8 +332,8 @@ export default function VideoFormation() {
             ? '⏳ Traitement en cours...'
             : canTerminer
               ? '🚀 Terminer et accéder au catalogue'
-              : !videoWatched
-                ? `⏳ Patientez ${timeLeft}s...`
+              : !timerDone
+                ? `⏳ Patientez ${secondsLeft}s...`
                 : '☑️ Cochez les cases pour continuer'
           }
         </button>

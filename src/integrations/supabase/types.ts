@@ -971,9 +971,12 @@ export type Database = {
           full_name: string
           id: string
           kyc_document_recto_url: string | null
+          kyc_document_type: string | null
           kyc_document_verso_url: string | null
+          kyc_passeport_url: string | null
           kyc_raison_rejet: string | null
           kyc_selfie_url: string | null
+          kyc_submitted_at: string | null
           kyc_type_document: string | null
           motivation: string | null
           numero_mobile_money: string | null
@@ -989,6 +992,7 @@ export type Database = {
           total_commissions_gagnees: number | null
           total_commissions_payees: number | null
           training_completed: boolean | null
+          training_completed_at: string | null
           updated_at: string
           user_id: string | null
           username: string | null
@@ -1008,9 +1012,12 @@ export type Database = {
           full_name: string
           id?: string
           kyc_document_recto_url?: string | null
+          kyc_document_type?: string | null
           kyc_document_verso_url?: string | null
+          kyc_passeport_url?: string | null
           kyc_raison_rejet?: string | null
           kyc_selfie_url?: string | null
+          kyc_submitted_at?: string | null
           kyc_type_document?: string | null
           motivation?: string | null
           numero_mobile_money?: string | null
@@ -1026,6 +1033,7 @@ export type Database = {
           total_commissions_gagnees?: number | null
           total_commissions_payees?: number | null
           training_completed?: boolean | null
+          training_completed_at?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null
@@ -1045,9 +1053,12 @@ export type Database = {
           full_name?: string
           id?: string
           kyc_document_recto_url?: string | null
+          kyc_document_type?: string | null
           kyc_document_verso_url?: string | null
+          kyc_passeport_url?: string | null
           kyc_raison_rejet?: string | null
           kyc_selfie_url?: string | null
+          kyc_submitted_at?: string | null
           kyc_type_document?: string | null
           motivation?: string | null
           numero_mobile_money?: string | null
@@ -1063,6 +1074,7 @@ export type Database = {
           total_commissions_gagnees?: number | null
           total_commissions_payees?: number | null
           training_completed?: boolean | null
+          training_completed_at?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null

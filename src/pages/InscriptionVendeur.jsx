@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,44 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Loader2, Upload, Eye, EyeOff, ChevronLeft, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
+
+// Reusable KYC document upload component with camera support
+function KycDocUpload({ docKey, label, hint, preview, isUploading, doc, onSelect, onClear, isSelfie }) {
+  const inputRef = useRef(null);
+  return (
+    <div>
+      <Label className="text-slate-200 text-xs mb-1.5 block">
+        {label} <span className="text-red-400">*</span>
+      </Label>
+      <input ref={inputRef} type="file" accept="image/*" capture={isSelfie ? "user" : "environment"} onChange={(e) => onSelect(docKey, e)} className="hidden" />
+      {preview ? (
+        <div className="relative">
+          <img src={preview} alt={label} className="w-full h-36 object-cover rounded-2xl border-2 border-emerald-400" />
+          <div className="absolute top-2 right-2 flex gap-1.5">
+            <span className="bg-emerald-500 text-white px-2 py-1 rounded-full text-[10px] font-semibold">✅ OK</span>
+            <button onClick={onClear} className="bg-red-500/80 text-white px-2 py-1 rounded-full text-[10px] font-semibold hover:bg-red-600">Changer</button>
+          </div>
+        </div>
+      ) : (
+        <div onClick={() => inputRef.current?.click()} className={`flex flex-col items-center justify-center w-full h-28 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${isUploading ? 'border-[#f5a623]/50 bg-[#f5a623]/5' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}>
+          {isUploading ? (
+            <Loader2 className="w-6 h-6 text-[#f5a623] animate-spin" />
+          ) : (
+            <>
+              <div className="text-3xl mb-2">📷</div>
+              <p className="text-white/70 text-xs font-medium">Appuyer pour ouvrir</p>
+              <p className="text-white/40 text-[10px]">📷 Caméra ou 🖼️ Galerie</p>
+              {hint && <p className="text-[#f5a623]/60 text-[10px] italic mt-1">{hint}</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ETAPES = [
   { num: 1, label: "Mon compte" },
@@ -33,6 +69,7 @@ const validateUsernameFormat = (username) => {
 };
 
 export default function InscriptionVendeur() {
+  const { toast } = useToast();
   const [etape, setEtape] = useState(1);
   const [typeDocument, setTypeDocument] = useState("cni");
   const [form, setForm] = useState({
@@ -48,21 +85,56 @@ export default function InscriptionVendeur() {
     numero_mobile_money: "",
     operateur_mobile_money: "orange_money",
     experience_vente: "",
-    photo_identite_url: "",
-    photo_identite_verso_url: "",
-    selfie_url: "",
   });
+  // KYC docs state with previews
+  const [kycDocs, setKycDocs] = useState({ recto: null, verso: null, selfie: null, passeport: null });
+  const [kycPreviews, setKycPreviews] = useState({ recto: null, verso: null, selfie: null, passeport: null });
+  const [kycUploading, setKycUploading] = useState({});
+
   const [mdpVisible, setMdpVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const [uploadEnCours, setUploadEnCours] = useState({ id: false, idVerso: false, selfie: false });
   const [erreur, setErreur] = useState("");
   const [erreurMdp, setErreurMdp] = useState("");
   const [succes, setSucces] = useState(false);
   const [emailVerifie, setEmailVerifie] = useState(null);
-  const [usernameStatus, setUsernameStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
+  const [usernameStatus, setUsernameStatus] = useState(null);
   const [vendeurEmail, setVendeurEmail] = useState("");
   const [reenvoyerDisable, setReenvoyerDisable] = useState(false);
   const [sellerId, setSellerId] = useState(null);
+
+  const getRequiredKycDocs = () => {
+    if (typeDocument === 'cni') return ['recto', 'verso', 'selfie'];
+    if (typeDocument === 'passeport') return ['passeport', 'selfie'];
+    return [];
+  };
+  const allKycDocsUploaded = () => {
+    const required = getRequiredKycDocs();
+    return required.length > 0 && required.every(k => kycDocs[k] !== null);
+  };
+  const getLabelForKey = (key) => ({ recto: 'CNI Recto', verso: 'CNI Verso', selfie: 'Selfie avec document', passeport: 'Page photo passeport' }[key] || key);
+
+  const handleKycFileSelect = async (docKey, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setKycUploading(prev => ({ ...prev, [docKey]: true }));
+    try {
+      if (file.size > 5 * 1024 * 1024) { toast({ title: '❌ Fichier trop volumineux', description: 'Maximum 5MB', variant: 'destructive' }); return; }
+      if (!file.type.startsWith('image/')) { toast({ title: '❌ Format invalide', description: 'Seules les images sont acceptées', variant: 'destructive' }); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => setKycPreviews(p => ({ ...p, [docKey]: ev.target.result }));
+      reader.readAsDataURL(file);
+      const fileName = `kyc/${sellerId || vendeurEmail}/${docKey}_${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage.from('kyc-documents').upload(fileName, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('kyc-documents').getPublicUrl(fileName);
+      setKycDocs(p => ({ ...p, [docKey]: urlData.publicUrl }));
+      toast({ title: '✅ Document ajouté', description: `${getLabelForKey(docKey)} uploadé` });
+    } catch (error) {
+      toast({ title: '❌ Erreur upload', description: error.message, variant: 'destructive' });
+    } finally {
+      setKycUploading(p => ({ ...p, [docKey]: false }));
+    }
+  };
 
   const modifier = (champ, val) => setForm(p => ({ ...p, [champ]: val }));
 
@@ -110,31 +182,6 @@ export default function InscriptionVendeur() {
     } catch { setEmailVerifie(null); }
   };
 
-  // Upload file to Supabase Storage
-  const uploadFichier = async (fichier, champ) => {
-    const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
-    setUploadEnCours(p => ({ ...p, [key]: true }));
-    try {
-      const ext = fichier.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const path = `kyc/${vendeurEmail || form.email}/${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('kyc-documents')
-        .upload(path, fichier, { upsert: true });
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: urlData } = supabase.storage
-        .from('kyc-documents')
-        .getPublicUrl(uploadData.path);
-      
-      modifier(champ, urlData.publicUrl);
-    } catch (e) {
-      setErreur("Erreur lors de l'upload du fichier: " + e.message);
-    }
-    setUploadEnCours(p => ({ ...p, [key]: false }));
-  };
 
   const validerEtape1 = async () => {
     // Username validation
@@ -357,14 +404,10 @@ export default function InscriptionVendeur() {
   };
 
   const soumettre = async () => {
-    if (!form.photo_identite_url) {
-      setErreur("Veuillez uploader votre pièce d'identité."); return;
-    }
-    if (typeDocument === "cni" && !form.photo_identite_verso_url) {
-      setErreur("Veuillez uploader le verso de votre CNI."); return;
-    }
-    if (!form.selfie_url) {
-      setErreur("Veuillez uploader votre selfie."); return;
+    if (!allKycDocsUploaded()) {
+      const missing = getRequiredKycDocs().filter(k => !kycDocs[k]).map(k => getLabelForKey(k));
+      setErreur(`Documents manquants : ${missing.join(', ')}`);
+      return;
     }
     setEnCours(true);
     setErreur("");
@@ -373,18 +416,20 @@ export default function InscriptionVendeur() {
       const { error } = await supabase
         .from('sellers')
         .update({
-          kyc_document_recto_url: form.photo_identite_url,
-          kyc_document_verso_url: form.photo_identite_verso_url || null,
-          kyc_selfie_url: form.selfie_url,
+          kyc_document_recto_url: kycDocs.recto || null,
+          kyc_document_verso_url: kycDocs.verso || null,
+          kyc_selfie_url: kycDocs.selfie || null,
+          kyc_passeport_url: kycDocs.passeport || null,
           kyc_type_document: typeDocument,
+          kyc_document_type: typeDocument,
           statut_kyc: 'en_attente',
           seller_status: 'kyc_pending',
+          kyc_submitted_at: new Date().toISOString(),
         })
         .eq('email', vendeurEmail);
 
       if (error) throw error;
 
-      // Notify admin
       const { data: sellerData } = await supabase
         .from('sellers')
         .select('id, full_name')
@@ -393,8 +438,8 @@ export default function InscriptionVendeur() {
 
       if (sellerData) {
         await supabase.from('notifications_admin').insert({
-          titre: 'Nouveau KYC à valider',
-          message: `${sellerData.full_name} (${vendeurEmail}) a soumis son KYC`,
+          titre: '🪪 Nouveau KYC à valider',
+          message: `${sellerData.full_name} (${vendeurEmail}) a soumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredKycDocs().length} documents fournis.`,
           type: 'kyc',
           vendeur_email: vendeurEmail,
           reference_id: sellerData.id,
@@ -655,7 +700,7 @@ export default function InscriptionVendeur() {
           </div>
         )}
 
-        {/* ÉTAPE 4 : KYC */}
+        {/* ÉTAPE 4 : KYC with camera support */}
         {etape === 4 && (
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 space-y-4">
             <div>
@@ -665,123 +710,67 @@ export default function InscriptionVendeur() {
 
             <div>
               <Label className="text-slate-200 text-xs mb-2 block">Type de document *</Label>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setTypeDocument("cni"); modifier("photo_identite_verso_url", ""); }}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
-                  🪪 CNI
-                </button>
-                <button type="button" onClick={() => { setTypeDocument("passeport"); modifier("photo_identite_verso_url", ""); }}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-[#F5C518] text-[#1a1f5e] border-[#F5C518]" : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"}`}>
-                  📘 Passeport
-                </button>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'cni', label: "🪪 Carte Nationale\nd'Identité (CNI)" },
+                  { id: 'passeport', label: '📘 Passeport' }
+                ].map(type => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => {
+                      setTypeDocument(type.id);
+                      setKycDocs({ recto: null, verso: null, selfie: null, passeport: null });
+                      setKycPreviews({ recto: null, verso: null, selfie: null, passeport: null });
+                    }}
+                    className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all whitespace-pre-line text-center ${
+                      typeDocument === type.id
+                        ? "bg-[#F5C518]/20 text-[#F5C518] border-[#F5C518]"
+                        : "bg-white/5 text-slate-300 border-white/20 hover:bg-white/10"
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div>
-              <Label className="text-slate-200 text-xs mb-1.5 block">
-                {typeDocument === "cni" ? "CNI — Recto *" : "Passeport — Page principale *"}
-              </Label>
-              <label htmlFor="id-photo" className={`flex flex-col items-center justify-center w-full h-24 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${form.photo_identite_url ? "border-emerald-400 bg-emerald-500/10" : "border-white/20 bg-white/5 hover:bg-white/10"}`}>
-                {uploadEnCours.id ? (
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-                ) : form.photo_identite_url ? (
-                  <div className="text-center">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
-                    <p className="text-emerald-300 text-xs font-medium">Photo uploadée ✓</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                    <p className="text-slate-300 text-xs">Appuyez pour uploader</p>
-                  </div>
-                )}
-                <input type="file" accept="image/*" id="id-photo" className="hidden"
-                  onChange={e => e.target.files[0] && uploadFichier(e.target.files[0], "photo_identite_url")} />
-              </label>
-            </div>
-
-            {typeDocument === "cni" && (
-              <div>
-                <Label className="text-slate-200 text-xs mb-1.5 block">CNI — Verso *</Label>
-                <label htmlFor="id-verso" className={`flex flex-col items-center justify-center w-full h-24 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${form.photo_identite_verso_url ? "border-emerald-400 bg-emerald-500/10" : "border-white/20 bg-white/5 hover:bg-white/10"}`}>
-                  {uploadEnCours.idVerso ? (
-                    <Loader2 className="w-6 h-6 text-white animate-spin" />
-                  ) : form.photo_identite_verso_url ? (
-                    <div className="text-center">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
-                      <p className="text-emerald-300 text-xs font-medium">Verso uploadé ✓</p>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                      <p className="text-slate-300 text-xs">Appuyez pour uploader</p>
-                    </div>
-                  )}
-                  <input type="file" accept="image/*" id="id-verso" className="hidden"
-                    onChange={e => e.target.files[0] && uploadFichier(e.target.files[0], "photo_identite_verso_url")} />
-                </label>
-              </div>
+            {typeDocument === 'cni' && (
+              <>
+                <KycDocUpload docKey="recto" label="CNI Recto (face avant)" hint="Photo claire, bien éclairée" preview={kycPreviews.recto} isUploading={kycUploading.recto} doc={kycDocs.recto} onSelect={handleKycFileSelect} onClear={() => { setKycDocs(p=>({...p,recto:null})); setKycPreviews(p=>({...p,recto:null})); }} />
+                <KycDocUpload docKey="verso" label="CNI Verso (face arrière)" hint="Assurez-vous que le texte est lisible" preview={kycPreviews.verso} isUploading={kycUploading.verso} doc={kycDocs.verso} onSelect={handleKycFileSelect} onClear={() => { setKycDocs(p=>({...p,verso:null})); setKycPreviews(p=>({...p,verso:null})); }} />
+                <KycDocUpload docKey="selfie" label="Selfie avec votre CNI" hint="Tenez la CNI à côté de votre visage" preview={kycPreviews.selfie} isUploading={kycUploading.selfie} doc={kycDocs.selfie} onSelect={handleKycFileSelect} onClear={() => { setKycDocs(p=>({...p,selfie:null})); setKycPreviews(p=>({...p,selfie:null})); }} isSelfie />
+              </>
             )}
 
-            <div>
-              <Label className="text-slate-200 text-xs mb-1.5 block">Selfie avec votre pièce d'identité *</Label>
-              <div className="mb-2 bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center gap-3">
-                <div className="relative flex-shrink-0 w-20 h-20">
-                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/20 flex flex-col items-center justify-center overflow-hidden relative">
-                    <div className="w-10 h-10 rounded-full bg-amber-300 flex items-center justify-center mb-1 relative">
-                      <div className="w-5 h-2 bg-amber-400 rounded-full absolute bottom-2" />
-                      <div className="w-1.5 h-1.5 bg-slate-700 rounded-full absolute" style={{top:'10px',left:'9px'}} />
-                      <div className="w-1.5 h-1.5 bg-slate-700 rounded-full absolute" style={{top:'10px',right:'9px'}} />
-                    </div>
-                    <div className="w-14 h-8 rounded bg-blue-400 border border-blue-300 flex items-center justify-center shadow-md">
-                      <div className="w-4 h-4 rounded-full bg-blue-200 mr-1" />
-                      <div className="flex flex-col gap-0.5">
-                        <div className="w-5 h-1 bg-white/80 rounded" />
-                        <div className="w-4 h-1 bg-white/60 rounded" />
-                      </div>
-                    </div>
-                    <div className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-[8px] font-bold">✓</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-white text-xs font-semibold mb-1">Comment prendre votre selfie :</p>
-                  <ul className="space-y-0.5 text-slate-300 text-[10px]">
-                    <li>📸 Votre visage bien visible</li>
-                    <li>🪪 Tenez votre CNI/passeport devant vous</li>
-                    <li>💡 Bonne luminosité, fond neutre</li>
-                    <li>❌ Pas de lunettes de soleil</li>
-                  </ul>
-                </div>
-              </div>
-
-              <label htmlFor="selfie" className={`flex flex-col items-center justify-center w-full h-24 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${form.selfie_url ? "border-emerald-400 bg-emerald-500/10" : "border-white/20 bg-white/5 hover:bg-white/10"}`}>
-                {uploadEnCours.selfie ? (
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-                ) : form.selfie_url ? (
-                  <div className="text-center">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
-                    <p className="text-emerald-300 text-xs font-medium">Selfie uploadé ✓</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                    <p className="text-slate-300 text-xs">Tenez votre pièce d'identité visible</p>
-                  </div>
-                )}
-                <input type="file" accept="image/*" id="selfie" className="hidden"
-                  onChange={e => e.target.files[0] && uploadFichier(e.target.files[0], "selfie_url")} />
-              </label>
-            </div>
+            {typeDocument === 'passeport' && (
+              <>
+                <KycDocUpload docKey="passeport" label="Page photo du passeport" hint="Page avec votre photo et informations" preview={kycPreviews.passeport} isUploading={kycUploading.passeport} doc={kycDocs.passeport} onSelect={handleKycFileSelect} onClear={() => { setKycDocs(p=>({...p,passeport:null})); setKycPreviews(p=>({...p,passeport:null})); }} />
+                <KycDocUpload docKey="selfie" label="Selfie avec votre passeport" hint="Tenez le passeport à côté de votre visage" preview={kycPreviews.selfie} isUploading={kycUploading.selfie} doc={kycDocs.selfie} onSelect={handleKycFileSelect} onClear={() => { setKycDocs(p=>({...p,selfie:null})); setKycPreviews(p=>({...p,selfie:null})); }} isSelfie />
+              </>
+            )}
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setEtape(3); setErreur(""); }} className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-11">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
-              <Button onClick={soumettre} disabled={enCours || uploadEnCours.id || uploadEnCours.selfie} className="flex-1 h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
-                {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Soumettre mon dossier"}
-              </Button>
+              <button
+                onClick={soumettre}
+                disabled={!allKycDocsUploaded() || enCours || Object.values(kycUploading).some(v => v)}
+                className="flex-1 h-11 rounded-xl text-sm font-black transition-all"
+                style={{
+                  background: allKycDocsUploaded() ? 'linear-gradient(135deg, #f5a623, #e8940f)' : 'rgba(255,255,255,0.1)',
+                  color: allKycDocsUploaded() ? 'white' : 'rgba(255,255,255,0.3)',
+                  cursor: allKycDocsUploaded() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {enCours
+                  ? '⏳ Envoi...'
+                  : !allKycDocsUploaded()
+                    ? `📎 ${getRequiredKycDocs().filter(k => !kycDocs[k]).length} doc(s) manquant(s)`
+                    : '✅ Soumettre mon dossier'
+                }
+              </button>
             </div>
           </div>
         )}
