@@ -2,7 +2,7 @@
  * Module centralisé de gestion des sessions.
  * SOURCE DE VÉRITÉ pour toutes les vérifications de session dans l'app.
  * 
- * Sessions stockées dans sessionStorage :
+ * Sessions stockées dans localStorage (persistent) :
  *   - "admin_session"   → admin principal
  *   - "sous_admin"      → sous-administrateur
  *   - "vendeur_session" → vendeur
@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function getAdminSession() {
   try {
-    const data = sessionStorage.getItem("admin_session");
+    const data = localStorage.getItem("admin_session");
     if (!data) return null;
     const parsed = JSON.parse(data);
     return parsed?.role === 'admin' ? parsed : null;
@@ -24,7 +24,7 @@ export function getAdminSession() {
 
 export function getSousAdminSession() {
   try {
-    const data = sessionStorage.getItem("sous_admin");
+    const data = localStorage.getItem("sous_admin");
     if (!data) return null;
     const parsed = JSON.parse(data);
     return parsed?.role === 'sous_admin' ? parsed : null;
@@ -33,30 +33,24 @@ export function getSousAdminSession() {
 
 export function getVendeurSession() {
   try {
-    const data = sessionStorage.getItem("vendeur_session");
+    const data = localStorage.getItem("vendeur_session");
     if (!data) return null;
     const parsed = JSON.parse(data);
-    // Accept any role stored in vendeur_session (user, vendeur, sous_admin)
-    // as long as it has an id or email
     return (parsed?.id || parsed?.email) ? parsed : null;
   } catch (_) { return null; }
 }
 
 /**
- * Async version: tries sessionStorage first, then falls back to Supabase auth + sellers table.
- * Use this in pages that load vendor data to handle session edge cases.
+ * Async version: tries localStorage first, then falls back to Supabase auth + sellers table.
  */
 export async function getVendeurSessionAsync() {
-  // Try sessionStorage first
   const stored = getVendeurSession();
   if (stored?.id) return stored;
 
-  // Fallback: get from Supabase auth
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Try by user_id
     let seller = null;
     const { data: sellerByUserId } = await supabase
       .from("sellers")
@@ -66,7 +60,6 @@ export async function getVendeurSessionAsync() {
     
     seller = sellerByUserId;
 
-    // Fallback by email
     if (!seller) {
       const { data: sellerByEmail } = await supabase
         .from("sellers")
@@ -75,7 +68,6 @@ export async function getVendeurSessionAsync() {
         .maybeSingle();
 
       if (sellerByEmail) {
-        // Fix missing user_id
         await supabase
           .from("sellers")
           .update({ user_id: user.id })
@@ -86,7 +78,6 @@ export async function getVendeurSessionAsync() {
 
     if (!seller) return null;
 
-    // Rebuild and save session
     const session = {
       id: seller.id,
       user_id: user.id,
@@ -101,7 +92,7 @@ export async function getVendeurSessionAsync() {
       solde_commission: seller.solde_commission,
     };
 
-    sessionStorage.setItem("vendeur_session", JSON.stringify(session));
+    localStorage.setItem("vendeur_session", JSON.stringify(session));
     return session;
   } catch (_) {
     return null;
@@ -124,13 +115,8 @@ export function getActiveSession() {
   return null;
 }
 
-// ─── Guards (à utiliser dans useEffect) ─────────────────────────────────────
+// ─── Guards ─────────────────────────────────────
 
-/**
- * Protège une page admin/sous-admin.
- * Redirige vers /Connexion si aucun admin ou sous-admin connecté.
- * Retourne true si l'accès est autorisé.
- */
 export function requireAdminOrSousAdmin() {
   const admin = getAdminSession();
   const sousAdmin = getSousAdminSession();
@@ -141,10 +127,6 @@ export function requireAdminOrSousAdmin() {
   return true;
 }
 
-/**
- * Protège une page sous-admin seulement (pas l'admin principal).
- * Redirige si pas de session sous_admin.
- */
 export function requireSousAdminSession() {
   const sousAdmin = getSousAdminSession();
   if (!sousAdmin) {
@@ -154,10 +136,6 @@ export function requireSousAdminSession() {
   return true;
 }
 
-/**
- * Protège une page vendeur.
- * Redirige vers /Connexion si pas de session vendeur.
- */
 export function requireVendeurSession() {
   const vendeur = getVendeurSession();
   if (!vendeur) {
@@ -167,15 +145,9 @@ export function requireVendeurSession() {
   return true;
 }
 
-/**
- * Vérifie qu'un sous-admin a la permission pour une page donnée.
- * L'admin principal a toujours accès.
- */
 export function hasPermission(sousAdminData, page) {
   if (!page) return false;
-  // Admin principal : accès total
   if (getAdminSession()) return true;
-  // Sous-admin : vérifier les permissions
   if (!sousAdminData) return false;
   return (sousAdminData.permissions || []).includes(page);
 }
@@ -184,7 +156,7 @@ export function hasPermission(sousAdminData, page) {
  * Déconnexion complète (toutes sessions)
  */
 export function clearAllSessions() {
-  sessionStorage.removeItem("admin_session");
-  sessionStorage.removeItem("sous_admin");
-  sessionStorage.removeItem("vendeur_session");
+  localStorage.removeItem("admin_session");
+  localStorage.removeItem("sous_admin");
+  localStorage.removeItem("vendeur_session");
 }
