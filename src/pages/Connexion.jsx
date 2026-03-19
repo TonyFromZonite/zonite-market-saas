@@ -245,10 +245,10 @@ export default function Connexion() {
 
   const lienFacebook = safeUrl(configs["lien_facebook"]);
   const lienTiktok = safeUrl(configs["lien_tiktok"]);
-  const lienInstagram = safeUrl(configs["lien_instagram"]);
+  const lienTelegram = safeUrl(configs["lien_telegram"]);
   const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
   const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
-  const hasSocialLinks = lienFacebook || lienTiktok || lienInstagram;
+  const hasSocialLinks = lienFacebook || lienTiktok || lienTelegram;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
