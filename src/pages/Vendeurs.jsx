@@ -528,12 +528,11 @@ function PaiementsTab() {
         .eq("id", demandeId);
       if (demandeError) throw demandeError;
 
-      // Confirm: solde stays reduced (already deducted), reset solde_en_attente, increment total_payees
-      const { error: sellerError } = await supabase.from("sellers").update({
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-        total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
-      }).eq("id", seller.id);
-      if (sellerError) throw sellerError;
+      // Confirm atomically: clear pending and increment total paid
+      await supabase.rpc("approve_seller_payment", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
 
       // Create payment record
       await supabase.from("paiements_commission").insert({
