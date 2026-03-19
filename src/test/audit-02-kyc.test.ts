@@ -18,9 +18,9 @@ describe("Audit 2 — KYC Flow", () => {
     expect(canAccessFeature(SELLER_STATUSES.KYC_PENDING, "dashboard")).toBe(true);
   });
 
-  it("2.4 active_seller débloque ventes et dashboard", () => {
+  it("2.4 active_seller avec training complété débloque ventes et dashboard", () => {
     expect(canAccessFeature(SELLER_STATUSES.ACTIVE_SELLER, "dashboard")).toBe(true);
-    expect(canAccessFeature(SELLER_STATUSES.ACTIVE_SELLER, "sales")).toBe(true);
+    expect(canAccessFeature(SELLER_STATUSES.ACTIVE_SELLER, "sales", true)).toBe(true);
   });
 
   it("2.5 kyc_rejected donne accès au dashboard mais bloque ventes", () => {

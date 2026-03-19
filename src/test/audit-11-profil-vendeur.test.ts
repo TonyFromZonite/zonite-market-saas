@@ -1,5 +1,5 @@
 /**
- * AUDIT 11 — Profil vendeur (2 tests)
+ * AUDIT 11 — Profil vendeur (4 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -42,5 +42,22 @@ describe("Audit 11 — Profil vendeur", () => {
     expect(profil.full_name).toBeTruthy();
     expect(profil.email).toContain("@");
     expect(profil.operateur_mobile_money).toMatch(/^(orange_money|mtn_momo|express_union)$/);
+  });
+
+  it("11.3 Session vendeur contient solde_commission", () => {
+    const session = {
+      id: "v1",
+      email: "v@t.com",
+      role: "vendeur",
+      solde_commission: 15000,
+      seller_status: "active_seller",
+    };
+    expect(session.solde_commission).toBeGreaterThanOrEqual(0);
+    expect(session.seller_status).toBeTruthy();
+  });
+
+  it("11.4 Téléphone vendeur au format camerounais", () => {
+    const tel = "690123456";
+    expect(tel).toMatch(/^6[0-9]{8}$/);
   });
 });

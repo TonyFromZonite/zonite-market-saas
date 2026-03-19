@@ -1,5 +1,5 @@
 /**
- * AUDIT 10 — Notifications (3 tests)
+ * AUDIT 10 — Notifications (5 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -13,6 +13,11 @@ vi.mock("@/integrations/supabase/client", () => ({
       chain.update = vi.fn().mockReturnValue(chain);
       return chain;
     }),
+    channel: vi.fn(() => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn(),
+    })),
+    removeChannel: vi.fn(),
   },
 }));
 
@@ -38,5 +43,21 @@ describe("Audit 10 — Notifications", () => {
 
   it("10.3 toutMarquerLu traite un tableau d'IDs", async () => {
     await expect(vendeurApi.toutMarquerLu(["n1", "n2", "n3"])).resolves.not.toThrow();
+  });
+
+  it("10.4 NotificationSystem existe et exporte les bonnes fonctions", async () => {
+    const { notifSystem } = await import("@/lib/notificationSystem");
+    expect(notifSystem).toBeDefined();
+    expect(typeof notifSystem.playSound).toBe("function");
+    expect(typeof notifSystem.updateBadge).toBe("function");
+    expect(typeof notifSystem.unsubscribeAll).toBe("function");
+  });
+
+  it("10.5 updateBadge met à jour le titre du document", async () => {
+    const { notifSystem } = await import("@/lib/notificationSystem");
+    await notifSystem.updateBadge(5);
+    expect(document.title).toBe("(5) Zonite Market");
+    await notifSystem.updateBadge(0);
+    expect(document.title).toBe("Zonite Market");
   });
 });

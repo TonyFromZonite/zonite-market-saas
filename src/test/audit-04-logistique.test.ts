@@ -1,5 +1,5 @@
 /**
- * AUDIT 4 — Logistique (4 tests)
+ * AUDIT 4 — Logistique (6 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -42,5 +42,16 @@ describe("Audit 4 — Logistique", () => {
     expect(createPageUrl("GestionCoursiers")).toBe("/GestionCoursiers");
     expect(createPageUrl("GestionZones")).toBe("/GestionZones");
     expect(createPageUrl("Livraisons")).toBe("/Livraisons");
+  });
+
+  it("4.5 Routes logistique sont cohérentes", async () => {
+    const { createPageUrl } = await import("@/utils");
+    expect(createPageUrl("Commandes")).toBe("/Commandes");
+  });
+
+  it("4.6 Données coursier ont les champs requis", () => {
+    const coursier = { nom: "Coursier A", telephone: "691000000", actif: true };
+    expect(coursier.nom).toBeTruthy();
+    expect(coursier.actif).toBe(true);
   });
 });

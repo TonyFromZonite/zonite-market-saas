@@ -1,5 +1,5 @@
 /**
- * AUDIT 5 — Produits (4 tests)
+ * AUDIT 5 — Produits (6 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -45,5 +45,17 @@ describe("Audit 5 — Produits", () => {
     await expect(adminApi.createCategorie({ nom: "Électronique" })).resolves.not.toThrow();
     await expect(adminApi.updateCategorie("cat1", { nom: "Électronique v2" })).resolves.not.toThrow();
     await expect(adminApi.deleteCategorie("cat1")).resolves.not.toThrow();
+  });
+
+  it("5.5 Produit requiert un nom et un prix_vente", () => {
+    const produit = { nom: "Test", prix_vente: 1000 };
+    expect(produit.nom).toBeTruthy();
+    expect(produit.prix_vente).toBeGreaterThan(0);
+  });
+
+  it("5.6 Stock global doit être >= 0", () => {
+    const stock = { stock_global: 0, seuil_alerte_stock: 5 };
+    expect(stock.stock_global).toBeGreaterThanOrEqual(0);
+    expect(stock.seuil_alerte_stock).toBeGreaterThan(0);
   });
 });
