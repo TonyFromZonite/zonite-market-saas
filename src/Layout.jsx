@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
 import VendeurBottomNav from "@/components/VendeurBottomNav";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { getVendeurSession } from "@/components/useSessionGuard";
+import { getVendeurSession, getSousAdminSession, getAdminSession } from "@/components/useSessionGuard";
+import { getMenuVisible } from "@/components/admin/adminMenuConfig";
 
 const PAGES_VENDEUR = new Set([
   "EspaceVendeur", "InscriptionVendeur", "VideoFormation", "CatalogueVendeur",
