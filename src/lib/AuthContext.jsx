@@ -55,6 +55,9 @@ export const AuthProvider = ({ children }) => {
   const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem("vendeur_session");
+    localStorage.removeItem("admin_session");
+    localStorage.removeItem("sous_admin");
     await supabase.auth.signOut();
     if (shouldRedirect) window.location.href = '/Connexion';
   };

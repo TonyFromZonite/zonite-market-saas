@@ -72,11 +72,11 @@ export default function useSousAdminPermissions() {
 
         setSousAdmin(nextSousAdmin);
         setPermissions(nextPermissions);
-        sessionStorage.setItem("sous_admin", JSON.stringify(nextSousAdmin));
+        localStorage.setItem("sous_admin", JSON.stringify(nextSousAdmin));
 
         const adminSession = getAdminSession();
         if (adminSession?.role === "sous_admin") {
-          sessionStorage.setItem(
+          localStorage.setItem(
             "admin_session",
             JSON.stringify({
               ...adminSession,

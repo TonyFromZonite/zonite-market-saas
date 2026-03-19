@@ -160,8 +160,8 @@ export default function SupportAdmin() {
     if (!reponse.trim()) return;
     setEnCours(true);
     try {
-      const sousAdminSession = JSON.parse(sessionStorage.getItem('sousAdminSession') || 'null');
-      const adminSession = JSON.parse(sessionStorage.getItem('adminSession') || 'null');
+      const sousAdminSession = JSON.parse(localStorage.getItem('sous_admin') || 'null');
+      const adminSession = JSON.parse(localStorage.getItem('admin_session') || 'null');
       const adminEmail = sousAdminSession?.email || adminSession?.email || '';
       await adminApi.updateTicketSupport(ticketSelectionne.id, {
         reponse_admin: reponse,

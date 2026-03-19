@@ -52,7 +52,7 @@ export default function NotificationCenter() {
   const isAdmin = !!(adminSession || sousAdmin);
 
   // Vendor session
-  const vendeurSession = !isAdmin ? JSON.parse(sessionStorage.getItem("vendeur_session") || "{}") : {};
+  const vendeurSession = !isAdmin ? JSON.parse(localStorage.getItem("vendeur_session") || "{}") : {};
   const vendeurId = vendeurSession.id;
 
   const tableName = isAdmin ? "notifications_admin" : "notifications_vendeur";

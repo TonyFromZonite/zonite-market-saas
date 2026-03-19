@@ -122,9 +122,9 @@ export default function Connexion() {
       }
 
       // Clear all previous sessions before setting new one
-      sessionStorage.removeItem("admin_session");
-      sessionStorage.removeItem("sous_admin");
-      sessionStorage.removeItem("vendeur_session");
+      localStorage.removeItem("admin_session");
+      localStorage.removeItem("sous_admin");
+      localStorage.removeItem("vendeur_session");
 
       if (mode === MODE_ADMIN) {
         if (role !== "admin" && role !== "sous_admin") {
@@ -156,7 +156,7 @@ export default function Connexion() {
             permissions = permsData?.modules_autorises || [];
           }
 
-          sessionStorage.setItem("sous_admin", JSON.stringify({
+          localStorage.setItem("sous_admin", JSON.stringify({
             id: saRecord?.id || seller?.id || user.id,
             user_id: user.id,
             email: user.email,
@@ -166,7 +166,7 @@ export default function Connexion() {
           }));
         }
 
-        sessionStorage.setItem("admin_session", JSON.stringify({
+        localStorage.setItem("admin_session", JSON.stringify({
           id: seller?.id || user.id,
           user_id: user.id,
           email: user.email,
@@ -184,7 +184,7 @@ export default function Connexion() {
           window.location.href = createPageUrl("EnAttenteValidation");
           return;
         }
-        sessionStorage.setItem("vendeur_session", JSON.stringify({
+        localStorage.setItem("vendeur_session", JSON.stringify({
           id: seller.id,
           user_id: user.id,
           email: seller.email,
