@@ -189,8 +189,8 @@ export default function Connexion() {
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-center gap-2 sm:gap-4 px-4 sm:px-6 relative overflow-x-hidden"
-    style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))" }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-end sm:justify-center gap-2 sm:gap-4 px-4 sm:px-6 relative overflow-x-hidden py-6 sm:py-8"
+    style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))" }}>
       <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
