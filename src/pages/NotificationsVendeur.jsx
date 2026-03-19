@@ -169,7 +169,7 @@ export default function NotificationsVendeur() {
         )}
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }

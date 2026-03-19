@@ -75,7 +75,12 @@ export default function Layout({ children, currentPageName }) {
 
   // Skip admin layout for vendor pages or login
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
-    return <>{children}</>;
+    return (
+      <>
+        <div style={{ paddingBottom: 64 }}>{children}</div>
+        <VendeurBottomNav />
+      </>
+    );
   }
 
   const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);

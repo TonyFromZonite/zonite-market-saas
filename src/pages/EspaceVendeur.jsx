@@ -802,13 +802,6 @@ export default function EspaceVendeur() {
         </CollapsibleSection>
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "sales", compteVendeur.training_completed) },
-        { label: "Catalogue", page: "CatalogueVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) },
-        { label: "Profil", page: "ProfilVendeur", disabled: !canAccessFeature(compteVendeur.seller_status, "profile", compteVendeur.training_completed) },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }

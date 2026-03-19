@@ -135,7 +135,7 @@ export default function MesCommandesVendeur() {
         )}
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }

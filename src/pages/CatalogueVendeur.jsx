@@ -317,13 +317,6 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
         )}
       </div>
 
-      <VendeurBottomNav items={[
-        { label: "Accueil", page: "EspaceVendeur" },
-        { label: "Commandes", page: "MesCommandesVendeur" },
-        { label: "Catalogue", page: "CatalogueVendeur" },
-        { label: "Profil", page: "ProfilVendeur" },
-        { label: "Aide", page: "AideVendeur" },
-      ]} />
     </div>
   );
 }

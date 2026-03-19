@@ -308,7 +308,7 @@ export default function AideVendeur() {
         )}
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }

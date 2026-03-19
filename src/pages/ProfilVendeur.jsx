@@ -255,7 +255,7 @@ export default function ProfilVendeur() {
         </Button>
       </div>
 
-      <VendeurBottomNav />
+      
     </div>
   );
 }
