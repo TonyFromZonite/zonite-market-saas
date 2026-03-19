@@ -43,11 +43,12 @@ function DashboardSousAdmin({ sousAdmin }) {
   );
 
   const aujourd = new Date().toISOString().split("T")[0];
+  const cmds = commandesVendeurs || [];
 
-  const cmdAujourdhui = commandesVendeurs.filter(c => c.created_date?.split("T")[0] === aujourd).length;
-  const cmdAttente = commandesVendeurs.filter(c => c.statut === "en_attente_validation_admin").length;
-  const cmdEnLivraison = commandesVendeurs.filter(c => c.statut === "en_livraison").length;
-  const cmdLivrees = commandesVendeurs.filter(c => c.statut === "livree").length;
+  const cmdAujourdhui = cmds.filter(c => c.created_date?.split("T")[0] === aujourd).length;
+  const cmdAttente = cmds.filter(c => c.statut === "en_attente_validation_admin").length;
+  const cmdEnLivraison = cmds.filter(c => c.statut === "en_livraison").length;
+  const cmdLivrees = cmds.filter(c => c.statut === "livree").length;
 
   const modules = [
     { page: "CommandesVendeurs", label: "Commandes Vendeurs", emoji: "📋" },
