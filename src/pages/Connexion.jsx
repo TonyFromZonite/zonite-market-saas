@@ -122,9 +122,9 @@ export default function Connexion() {
       }
 
       // Clear all previous sessions before setting new one
-      sessionStorage.removeItem("admin_session");
-      sessionStorage.removeItem("sous_admin");
-      sessionStorage.removeItem("vendeur_session");
+      localStorage.removeItem("admin_session");
+      localStorage.removeItem("sous_admin");
+      localStorage.removeItem("vendeur_session");
 
       if (mode === MODE_ADMIN) {
         if (role !== "admin" && role !== "sous_admin") {
