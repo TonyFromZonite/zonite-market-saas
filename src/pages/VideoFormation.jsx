@@ -277,34 +277,34 @@ export default function VideoFormation() {
           </div>
         )}
 
-        {/* Checkboxes */}
-        <div className="bg-white/5 rounded-xl p-5 mb-6 space-y-4">
-          <label className={`flex items-start gap-3 ${timerDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-            <input
-              type="checkbox"
-              checked={confirmWatched}
-              disabled={!timerDone}
-              onChange={(e) => setConfirmWatched(e.target.checked)}
-              className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
-            />
-            <span className="text-sm text-white/90 leading-relaxed">
-              ✅ Je confirme avoir visionné la vidéo de formation Zonite Market dans son intégralité.
-            </span>
-          </label>
+        {/* Checkboxes - only appear after 30s */}
+        {timerDone && (
+          <div className="bg-white/5 rounded-xl p-5 mb-6 space-y-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmWatched}
+                onChange={(e) => setConfirmWatched(e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
+              />
+              <span className="text-sm text-white/90 leading-relaxed">
+                ✅ Je confirme avoir visionné la vidéo de formation Zonite Market dans son intégralité.
+              </span>
+            </label>
 
-          <label className={`flex items-start gap-3 ${timerDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-            <input
-              type="checkbox"
-              checked={acceptConditions}
-              disabled={!timerDone}
-              onChange={(e) => setAcceptConditions(e.target.checked)}
-              className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
-            />
-            <span className="text-sm text-white/90 leading-relaxed">
-              📋 J'accepte les conditions générales d'utilisation de Zonite Market et je m'engage à respecter les règles de la plateforme.
-            </span>
-          </label>
-        </div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptConditions}
+                onChange={(e) => setAcceptConditions(e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-yellow-500 flex-shrink-0"
+              />
+              <span className="text-sm text-white/90 leading-relaxed">
+                📋 J'accepte les conditions générales d'utilisation de Zonite Market et je m'engage à respecter les règles de la plateforme.
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Error */}
         {erreur && (
