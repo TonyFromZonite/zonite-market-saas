@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
+import VendeurBottomNav from "@/components/VendeurBottomNav";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { getVendeurSession } from "@/components/useSessionGuard";
 
