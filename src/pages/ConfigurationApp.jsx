@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Facebook, Globe, MessageCircle, Lock, Youtube, GraduationCap } from "lucide-react";
+import { Save, Facebook, Globe, MessageCircle, Lock, Youtube, GraduationCap, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,7 +14,7 @@ const CONFIGS = [
   { cle: "lien_youtube_formation", label: "URL Vidéo de formation YouTube (obligatoire)", placeholder: "https://www.youtube.com/watch?v=...", icone: Youtube, couleur: "text-red-600" },
   { cle: "lien_facebook", label: "Lien Facebook", placeholder: "https://facebook.com/votrepage", icone: Facebook, couleur: "text-blue-600" },
   { cle: "lien_tiktok", label: "Lien TikTok", placeholder: "https://tiktok.com/@votrecompte", icone: Globe, couleur: "text-slate-700" },
-  { cle: "lien_instagram", label: "Lien Instagram", placeholder: "https://instagram.com/votrecompte", icone: Globe, couleur: "text-pink-600" },
+  { cle: "lien_telegram", label: "Lien Telegram", placeholder: "https://t.me/votregroupe", icone: Send, couleur: "text-[#0088cc]" },
 ];
 
 export default function ConfigurationApp() {
@@ -176,10 +176,10 @@ export default function ConfigurationApp() {
               TikTok
             </a>
           )}
-          {valeurs["lien_instagram"] && (
-            <a href={valeurs["lien_instagram"]} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-pink-50 border border-pink-200 rounded-xl px-3 py-1.5 text-pink-700 text-sm font-medium">
-              Instagram
+          {valeurs["lien_telegram"] && (
+            <a href={valeurs["lien_telegram"]} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 text-sky-700 text-sm font-medium">
+              <Send className="w-3.5 h-3.5" /> Telegram
             </a>
           )}
         </div>

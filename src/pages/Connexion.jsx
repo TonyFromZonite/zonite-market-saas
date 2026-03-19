@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, Facebook } from "lucide-react";
+import { Eye, EyeOff, Facebook, Send } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
 
@@ -245,10 +245,10 @@ export default function Connexion() {
 
   const lienFacebook = safeUrl(configs["lien_facebook"]);
   const lienTiktok = safeUrl(configs["lien_tiktok"]);
-  const lienInstagram = safeUrl(configs["lien_instagram"]);
+  const lienTelegram = safeUrl(configs["lien_telegram"]);
   const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
   const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
-  const hasSocialLinks = lienFacebook || lienTiktok || lienInstagram;
+  const hasSocialLinks = lienFacebook || lienTiktok || lienTelegram;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
@@ -381,10 +381,10 @@ export default function Connexion() {
                 <TikTokIcon size={14} /> TikTok
               </a>
             )}
-            {lienInstagram && (
-              <a href={lienInstagram} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-pink-500/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
-                📸 Instagram
+            {lienTelegram && (
+              <a href={lienTelegram} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-[#0088cc]/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
+                <Send className="w-3.5 h-3.5 text-[#0088cc]" /> Telegram
               </a>
             )}
           </div>
