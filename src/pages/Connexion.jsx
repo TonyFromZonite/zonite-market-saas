@@ -203,7 +203,7 @@ export default function Connexion() {
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
-        <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3 line-clamp-3 overflow-hidden">
+        <p className="text-slate-300 text-[11px] md:text-sm mt-0.5 md:mt-1.5 text-center max-w-xs leading-snug px-3 line-clamp-2 overflow-hidden">
           {messageAccueil}
         </p>
       </div>
