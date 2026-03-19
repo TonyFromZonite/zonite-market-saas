@@ -151,6 +151,8 @@ export type Database = {
           quantite: number | null
           reference_commande: string | null
           statut: string | null
+          stock_reserve: boolean | null
+          stock_retire_definitif: boolean | null
           updated_at: string
           variation: string | null
           vendeur_email: string
@@ -183,6 +185,8 @@ export type Database = {
           quantite?: number | null
           reference_commande?: string | null
           statut?: string | null
+          stock_reserve?: boolean | null
+          stock_retire_definitif?: boolean | null
           updated_at?: string
           variation?: string | null
           vendeur_email: string
@@ -215,6 +219,8 @@ export type Database = {
           quantite?: number | null
           reference_commande?: string | null
           statut?: string | null
+          stock_reserve?: boolean | null
+          stock_retire_definitif?: boolean | null
           updated_at?: string
           variation?: string | null
           vendeur_email?: string
@@ -611,6 +617,8 @@ export type Database = {
       }
       mouvements_stock: {
         Row: {
+          commande_id: string | null
+          coursier_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -622,8 +630,11 @@ export type Database = {
           stock_apres: number | null
           stock_avant: number | null
           type: string
+          variation_key: string | null
         }
         Insert: {
+          commande_id?: string | null
+          coursier_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -635,8 +646,11 @@ export type Database = {
           stock_apres?: number | null
           stock_avant?: number | null
           type: string
+          variation_key?: string | null
         }
         Update: {
+          commande_id?: string | null
+          coursier_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -648,6 +662,7 @@ export type Database = {
           stock_apres?: number | null
           stock_avant?: number | null
           type?: string
+          variation_key?: string | null
         }
         Relationships: [
           {
