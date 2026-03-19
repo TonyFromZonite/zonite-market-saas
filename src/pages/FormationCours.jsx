@@ -114,7 +114,6 @@ export default function FormationCours() {
             </div>
           )}
         </div>
-        <VendeurBottomNav />
       </div>
     );
   }
