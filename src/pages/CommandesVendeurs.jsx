@@ -63,8 +63,12 @@ export default function CommandesVendeurs() {
   const { data: livreurs = [] } = useQuery({
     queryKey: ["livreurs_actifs"],
     queryFn: async () => {
-      const { data } = await supabase.from("livraisons").select("*").eq("actif", true);
-      return data || [];
+      const { data: coursiers } = await supabase.from("coursiers").select("*").eq("actif", true);
+      if (!coursiers?.length) return [];
+      const { data: villes } = await supabase.from("villes_cameroun").select("id, nom");
+      const villesMap = {};
+      (villes || []).forEach(v => { villesMap[v.id] = v.nom; });
+      return coursiers.map(c => ({ ...c, ville_nom: villesMap[c.ville_id] || "" }));
     },
   });
 
