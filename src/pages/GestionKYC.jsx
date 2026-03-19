@@ -209,45 +209,43 @@ export default function GestionKYC() {
                 <div><p className="text-slate-400">Opérateur</p><p className="font-medium">{compteSelectionne.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"}</p></div>
               </div>
 
-              {/* KYC Documents - using correct column names */}
+              {/* KYC Documents */}
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-700">Documents KYC</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-700">Documents KYC</h4>
+                  {compteSelectionne.kyc_document_type && (
+                    <Badge variant="outline" className="text-xs">
+                      {compteSelectionne.kyc_document_type === 'cni' ? '🪪 CNI' : '📘 Passeport'}
+                    </Badge>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {compteSelectionne.kyc_document_recto_url && (
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Pièce d'identité (Recto)</p>
-                      <img 
-                        src={compteSelectionne.kyc_document_recto_url} 
-                        alt="Document recto" 
-                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
-                        onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} 
-                      />
+                      <p className="text-xs text-slate-400 mb-1">CNI Recto</p>
+                      <img src={compteSelectionne.kyc_document_recto_url} alt="Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} />
                     </div>
                   )}
                   {compteSelectionne.kyc_document_verso_url && (
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Pièce d'identité (Verso)</p>
-                      <img 
-                        src={compteSelectionne.kyc_document_verso_url} 
-                        alt="Document verso" 
-                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
-                        onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} 
-                      />
+                      <p className="text-xs text-slate-400 mb-1">CNI Verso</p>
+                      <img src={compteSelectionne.kyc_document_verso_url} alt="Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} />
+                    </div>
+                  )}
+                  {compteSelectionne.kyc_passeport_url && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Page photo passeport</p>
+                      <img src={compteSelectionne.kyc_passeport_url} alt="Passeport" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_passeport_url)} />
                     </div>
                   )}
                   {compteSelectionne.kyc_selfie_url && (
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Selfie</p>
-                      <img 
-                        src={compteSelectionne.kyc_selfie_url} 
-                        alt="Selfie" 
-                        className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" 
-                        onClick={() => window.open(compteSelectionne.kyc_selfie_url)} 
-                      />
+                      <p className="text-xs text-slate-400 mb-1">Selfie avec document</p>
+                      <img src={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_selfie_url)} />
                     </div>
                   )}
                 </div>
-                {!compteSelectionne.kyc_document_recto_url && !compteSelectionne.kyc_selfie_url && (
+                {!compteSelectionne.kyc_document_recto_url && !compteSelectionne.kyc_selfie_url && !compteSelectionne.kyc_passeport_url && (
                   <p className="text-sm text-slate-400 italic">Aucun document KYC soumis</p>
                 )}
               </div>
