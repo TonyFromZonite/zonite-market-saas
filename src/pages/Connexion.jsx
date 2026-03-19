@@ -209,15 +209,26 @@ export default function Connexion() {
 
   const mdpOublie = async (e) => {
     e.preventDefault();
-    if (!emailOublie) {setErreur("Entrez votre email.");return;}
+    if (!emailOublie?.trim()) {setErreur("Entrez votre email.");return;}
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailOublie.trim())) {
+      setErreur("Veuillez entrer un email valide.");return;
+    }
     setChargementOublie(true);
     setErreur("");
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(emailOublie.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/ResetPassword`
       });
-      if (error) setErreur("Erreur lors de l'envoi. Réessayez.");else
-      setMdpOublieSucces(true);
+      if (error) {
+        if (error.message?.includes('rate limit')) {
+          setErreur("Trop de tentatives. Attendez quelques minutes.");
+        } else {
+          setErreur("Erreur lors de l'envoi. Réessayez.");
+        }
+      } else {
+        setMdpOublieSucces(true);
+      }
     } catch {setErreur("Erreur lors de l'envoi. Réessayez.");}
     setChargementOublie(false);
   };
