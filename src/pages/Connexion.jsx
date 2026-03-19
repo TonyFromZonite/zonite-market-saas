@@ -381,10 +381,10 @@ export default function Connexion() {
                 <TikTokIcon size={14} /> TikTok
               </a>
             )}
-            {lienInstagram && (
-              <a href={lienInstagram} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-pink-500/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
-                📸 Instagram
+            {lienTelegram && (
+              <a href={lienTelegram} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-[#0088cc]/30 border border-white/20 rounded-xl px-3 py-1.5 text-white text-xs font-medium transition-all active:scale-95">
+                <Send className="w-3.5 h-3.5 text-[#0088cc]" /> Telegram
               </a>
             )}
           </div>
