@@ -189,12 +189,12 @@ export default function Connexion() {
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-between px-4 sm:px-6 relative overflow-x-hidden"
-    style={{ paddingTop: "max(2.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))" }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-center gap-3 sm:gap-5 px-4 sm:px-6 relative overflow-x-hidden"
+    style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))" }}>
       <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-      <div className="w-full flex flex-col items-center mt-2 mb-4 sm:mt-4 sm:mb-6 relative z-10 px-2">
+      <div className="w-full flex flex-col items-center relative z-10 px-2">
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
@@ -208,7 +208,7 @@ export default function Connexion() {
         </p>
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md relative z-10 mb-3 sm:mb-5 px-1">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 mb-1 sm:mb-2 px-1">
         <div className="bg-white/10 backdrop-blur rounded-2xl p-1 flex border border-white/15">
           <button onClick={() => changerMode(MODE_VENDEUR)}
           className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_VENDEUR ? "bg-[#F5C518] text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
@@ -221,7 +221,7 @@ export default function Connexion() {
         </div>
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md relative z-10 flex-1 flex flex-col justify-center px-1">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 px-1">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl">
           {!modeMdpOublie &&
           <div>
@@ -299,7 +299,7 @@ export default function Connexion() {
       </div>
 
       {hasSocialLinks && (
-        <div className="relative z-10 flex flex-col items-center gap-3 md:gap-4 mt-5 md:mt-8 px-3">
+        <div className="relative z-10 flex flex-col items-center gap-2 mt-1 px-3">
           <p className="text-slate-400 text-xs md:text-sm">Suivez-nous sur</p>
           <div className="flex items-center gap-2.5">
             {lienFacebook && (
