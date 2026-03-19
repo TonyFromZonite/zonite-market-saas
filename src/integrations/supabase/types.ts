@@ -1431,6 +1431,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      credit_seller_commission: {
+        Args: { _commission: number; _seller_id: string }
+        Returns: number
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
