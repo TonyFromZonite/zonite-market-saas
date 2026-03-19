@@ -189,26 +189,26 @@ export default function Connexion() {
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-center gap-3 sm:gap-5 px-4 sm:px-6 relative overflow-x-hidden"
-    style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))", paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))" }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#0d1240] via-[#1a1f5e] to-[#2d34a5] flex flex-col items-center justify-center gap-1.5 sm:gap-4 px-4 sm:px-6 relative overflow-x-hidden py-4 sm:py-8"
+    style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))" }}>
       <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="w-full flex flex-col items-center relative z-10 px-2">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
+        <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-1 md:mb-3 overflow-hidden border-3 md:border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
-        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
+        <h1 className="text-lg md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
           {String(nomApp).split(" ").map((w, i) =>
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
-        <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3 line-clamp-3 overflow-hidden">
+        <p className="text-slate-300 text-[11px] md:text-sm mt-0.5 md:mt-1.5 text-center max-w-xs leading-snug px-3 line-clamp-2 overflow-hidden">
           {messageAccueil}
         </p>
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md relative z-10 mb-1 sm:mb-2 px-1">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 px-1">
         <div className="bg-white/10 backdrop-blur rounded-2xl p-1 flex border border-white/15">
           <button onClick={() => changerMode(MODE_VENDEUR)}
           className={`flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${mode === MODE_VENDEUR ? "bg-[#F5C518] text-[#1a1f5e] shadow" : "text-slate-300 hover:text-white"}`}>
@@ -222,7 +222,7 @@ export default function Connexion() {
       </div>
 
       <div className="w-full max-w-sm sm:max-w-md relative z-10 px-1">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 sm:p-6 border border-white/20 shadow-2xl">
           {!modeMdpOublie &&
           <div>
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">
