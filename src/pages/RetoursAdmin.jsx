@@ -80,15 +80,13 @@ export default function RetoursAdmin() {
       }
     }
 
-    // 2. Ajuster le solde du vendeur
+    // 2. Ajuster le solde du vendeur atomiquement
     if (actionVendeur !== "aucune" && montant > 0) {
-      const [compte] = await filterTable("sellers", { id: retourSelectionne.vendeur_id });
-      if (compte) {
-        const delta = actionVendeur === "deduire_commission" ? -montant : montant;
-        await updateRecord("sellers", compte.id, {
-          solde_commission: Math.max(0, (compte.solde_commission || 0) + delta),
-        });
-      }
+      const delta = actionVendeur === "deduire_commission" ? -montant : montant;
+      await supabase.rpc("adjust_seller_commission", {
+        _seller_id: retourSelectionne.vendeur_id,
+        _delta: delta,
+      });
     }
 
     // 3. Mettre à jour le retour

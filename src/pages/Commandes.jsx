@@ -93,16 +93,11 @@ export default function Commandes() {
           reference_vente: vente.id,
         });
       }
-      // Réduire commission vendeur
-      const { data: allSellers } = await supabase.from("sellers").select("*");
-      const allSellersArr = allSellers || [];
-      const vendeur = allSellersArr.find(v => v.id === vente.vendeur_id);
-      if (vendeur) {
-        await adminApi.updateVendeur(vendeur.id, {
-          solde_commission: Math.max(0, (vendeur.solde_commission || 0) - (vente.commission_vendeur || 0)),
-          total_commissions_gagnees: Math.max(0, (vendeur.total_commissions_gagnees || 0) - (vente.commission_vendeur || 0)),
-          nombre_ventes: Math.max(0, (vendeur.nombre_ventes || 0) - 1),
-          chiffre_affaires_genere: Math.max(0, (vendeur.chiffre_affaires_genere || 0) - (vente.montant_total || 0)),
+      // Réduire commission vendeur atomiquement
+      if (vente.vendeur_id && (vente.commission_vendeur || 0) > 0) {
+        await supabase.rpc("debit_seller_commission", {
+          _seller_id: vente.vendeur_id,
+          _amount: vente.commission_vendeur || 0,
         });
       }
     }

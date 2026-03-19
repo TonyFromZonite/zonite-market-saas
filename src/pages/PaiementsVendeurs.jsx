@@ -160,12 +160,12 @@ export default function PaiementsVendeurs() {
       }).eq("id", rejectingDemande.id);
       if (demandeError) throw new Error("Erreur mise à jour demande: " + demandeError.message);
 
-      // 2. RESTORE vendor balance
-      const { error: sellerError } = await supabase.from("sellers").update({
-        solde_commission: Number(seller.solde_commission || 0) + montant,
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-      }).eq("id", seller.id);
-      if (sellerError) throw new Error("Erreur restauration solde: " + sellerError.message);
+      // 2. RESTORE vendor balance atomically
+      const { data: newSolde } = await supabase.rpc("restore_seller_balance", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
+      const restoredSolde = newSolde || (Number(seller.solde_commission || 0) + montant);
 
       // 3. Notify vendor with exact reason
       await supabase.from("notifications_vendeur").insert({
