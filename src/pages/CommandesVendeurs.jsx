@@ -521,7 +521,7 @@ export default function CommandesVendeurs() {
                     {(() => {
                       const villeClient = (commandeSelectionnee.client_ville || "").toLowerCase().trim();
                       const livreursVille = livreurs.filter(l =>
-                        l.zones_couvertes?.some(z => z.ville?.toLowerCase().trim() === villeClient)
+                        (l.ville_nom || "").toLowerCase().trim() === villeClient
                       );
                       return livreursVille.length > 0 ? (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
