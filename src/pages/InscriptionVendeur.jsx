@@ -34,6 +34,7 @@ const validateUsernameFormat = (username) => {
 };
 
 export default function InscriptionVendeur() {
+  const { toast } = useToast();
   const [etape, setEtape] = useState(1);
   const [typeDocument, setTypeDocument] = useState("cni");
   const [form, setForm] = useState({
@@ -49,21 +50,56 @@ export default function InscriptionVendeur() {
     numero_mobile_money: "",
     operateur_mobile_money: "orange_money",
     experience_vente: "",
-    photo_identite_url: "",
-    photo_identite_verso_url: "",
-    selfie_url: "",
   });
+  // KYC docs state with previews
+  const [kycDocs, setKycDocs] = useState({ recto: null, verso: null, selfie: null, passeport: null });
+  const [kycPreviews, setKycPreviews] = useState({ recto: null, verso: null, selfie: null, passeport: null });
+  const [kycUploading, setKycUploading] = useState({});
+
   const [mdpVisible, setMdpVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
-  const [uploadEnCours, setUploadEnCours] = useState({ id: false, idVerso: false, selfie: false });
   const [erreur, setErreur] = useState("");
   const [erreurMdp, setErreurMdp] = useState("");
   const [succes, setSucces] = useState(false);
   const [emailVerifie, setEmailVerifie] = useState(null);
-  const [usernameStatus, setUsernameStatus] = useState(null); // null | 'checking' | 'available' | 'taken' | 'invalid'
+  const [usernameStatus, setUsernameStatus] = useState(null);
   const [vendeurEmail, setVendeurEmail] = useState("");
   const [reenvoyerDisable, setReenvoyerDisable] = useState(false);
   const [sellerId, setSellerId] = useState(null);
+
+  const getRequiredKycDocs = () => {
+    if (typeDocument === 'cni') return ['recto', 'verso', 'selfie'];
+    if (typeDocument === 'passeport') return ['passeport', 'selfie'];
+    return [];
+  };
+  const allKycDocsUploaded = () => {
+    const required = getRequiredKycDocs();
+    return required.length > 0 && required.every(k => kycDocs[k] !== null);
+  };
+  const getLabelForKey = (key) => ({ recto: 'CNI Recto', verso: 'CNI Verso', selfie: 'Selfie avec document', passeport: 'Page photo passeport' }[key] || key);
+
+  const handleKycFileSelect = async (docKey, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setKycUploading(prev => ({ ...prev, [docKey]: true }));
+    try {
+      if (file.size > 5 * 1024 * 1024) { toast({ title: '❌ Fichier trop volumineux', description: 'Maximum 5MB', variant: 'destructive' }); return; }
+      if (!file.type.startsWith('image/')) { toast({ title: '❌ Format invalide', description: 'Seules les images sont acceptées', variant: 'destructive' }); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => setKycPreviews(p => ({ ...p, [docKey]: ev.target.result }));
+      reader.readAsDataURL(file);
+      const fileName = `kyc/${sellerId || vendeurEmail}/${docKey}_${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage.from('kyc-documents').upload(fileName, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('kyc-documents').getPublicUrl(fileName);
+      setKycDocs(p => ({ ...p, [docKey]: urlData.publicUrl }));
+      toast({ title: '✅ Document ajouté', description: `${getLabelForKey(docKey)} uploadé` });
+    } catch (error) {
+      toast({ title: '❌ Erreur upload', description: error.message, variant: 'destructive' });
+    } finally {
+      setKycUploading(p => ({ ...p, [docKey]: false }));
+    }
+  };
 
   const modifier = (champ, val) => setForm(p => ({ ...p, [champ]: val }));
 
