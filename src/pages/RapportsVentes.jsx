@@ -141,9 +141,9 @@ export default function RapportsVentes() {
       doc.text(`${i + 1}`, 14, y);
       doc.text(l.nom.substring(0, 40), 22, y);
       doc.text(`${l.qte}`, 120, y);
-      doc.text(fmt(l.ca), 130, y);
+      doc.text(fmtPdf(l.ca), 130, y);
       doc.setTextColor(l.marge >= 0 ? 16 : 220, l.marge >= 0 ? 185 : 53, l.marge >= 0 ? 129 : 69);
-      doc.text(fmt(l.marge), 163, y);
+      doc.text(fmtPdf(l.marge), 163, y);
       doc.setTextColor(0, 0, 0);
       y += 7;
     });
