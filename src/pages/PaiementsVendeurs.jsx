@@ -92,11 +92,11 @@ export default function PaiementsVendeurs() {
         traite_at: new Date().toISOString(),
       }).eq("id", demande.id);
 
-      // 2. Reset solde_en_attente, keep solde_commission (already deducted in step 1)
-      await supabase.from("sellers").update({
-        solde_en_attente: Math.max(0, Number(seller.solde_en_attente || 0) - montant),
-        total_commissions_payees: Number(seller.total_commissions_payees || 0) + montant,
-      }).eq("id", seller.id);
+      // 2. Atomically clear pending and credit paid
+      await supabase.rpc("approve_seller_payment", {
+        _seller_id: seller.id,
+        _amount: montant,
+      });
 
       // 3. Create payment record
       await supabase.from("paiements_commission").insert({
