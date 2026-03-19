@@ -221,7 +221,7 @@ export default function Connexion() {
         </div>
       </div>
 
-      <div className="w-full max-w-sm sm:max-w-md relative z-10 flex-1 flex flex-col justify-center px-1">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 px-1">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl">
           {!modeMdpOublie &&
           <div>
