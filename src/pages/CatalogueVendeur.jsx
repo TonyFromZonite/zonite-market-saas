@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getVendeurSession } from "@/components/useSessionGuard";
 import BlocageKycPending from "@/components/BlocageKycPending";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 

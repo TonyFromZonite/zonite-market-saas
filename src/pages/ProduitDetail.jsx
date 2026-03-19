@@ -5,7 +5,7 @@ import { ChevronLeft, Package, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import VendeurBottomNav from "@/components/VendeurBottomNav";
+
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
