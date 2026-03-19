@@ -1,14 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, Check, X, ShieldAlert } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { filterTable } from "@/lib/supabaseHelpers";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 
 export default function ConfigurationAdminPassword() {
-  const [chargement, setChargement] = useState(true);
   const [mdpActuel, setMdpActuel] = useState("");
   const [mdpNouveau, setMdpNouveau] = useState("");
   const [mdpConfirm, setMdpConfirm] = useState("");
@@ -16,106 +13,64 @@ export default function ConfigurationAdminPassword() {
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
   const [entraitement, setEntraitement] = useState(false);
-  const [adminMdpHash, setAdminMdpHash] = useState("");
-
-  useEffect(() => {
-    const charger = async () => {
-      try {
-        const { data: configs } = await supabase.from("config_app").select("*");
-        const configMap = {};
-        configs.forEach(c => { configMap[c.cle] = c.valeur; });
-        setAdminMdpHash(configMap["admin_password_hash"] || "");
-      } catch (_) {
-        setErreur("Erreur lors du chargement des configurations.");
-      }
-      setChargement(false);
-    };
-    charger();
-  }, []);
-
-  const genererMotDePasse = () => {
-    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  };
 
   const changerMotDePasse = async (e) => {
     e.preventDefault();
     setErreur("");
     setSucces("");
 
-    // Si pas de mot de passe existant, on n'a besoin que du nouveau
-    const necessiteAncien = !!adminMdpHash;
-
-    if (necessiteAncien && !mdpActuel) {
+    if (!mdpActuel) {
       setErreur("Veuillez entrer le mot de passe actuel.");
       return;
     }
-
     if (!mdpNouveau || !mdpConfirm) {
       setErreur("Tous les champs sont obligatoires.");
       return;
     }
-
     if (mdpNouveau !== mdpConfirm) {
       setErreur("Les deux nouveaux mots de passe ne correspondent pas.");
       return;
     }
-
     if (mdpNouveau.length < 6) {
       setErreur("Le mot de passe doit contenir au moins 6 caractères.");
       return;
     }
 
     setEntraitement(true);
-
     try {
-      if (necessiteAncien) {
-        // Vérifier ancien mot de passe via la fonction backend
-        const response = await supabase.functions.invoke('changePassword', {
-          oldPassword: mdpActuel,
-          newPassword: mdpNouveau,
-          userType: 'admin'
-        });
-        if (response.data.success) {
-          setSucces("Mot de passe mis à jour avec succès !");
-          setMdpActuel("");
-          setMdpNouveau("");
-          setMdpConfirm("");
-          setAdminMdpHash("set");
-        } else {
-          setErreur(response.data.error || "Mot de passe actuel incorrect.");
-        }
-      } else {
-        // Création initiale — hash via fonction backend
-        const response = await supabase.functions.invoke('setAdminPassword', {
-          password: mdpNouveau
-        });
-        if (response.data.success) {
-          setSucces("Mot de passe créé avec succès ! Vous pouvez maintenant vous connecter.");
-          setMdpNouveau("");
-          setMdpConfirm("");
-          setAdminMdpHash("set");
-        } else {
-          setErreur(response.data.error || "Erreur lors de la création du mot de passe.");
-        }
-      }
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || "Erreur lors de la mise à jour du mot de passe.";
-      setErreur(errorMsg);
-    }
+      // Verify current password by re-signing in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("Utilisateur non connecté.");
 
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: mdpActuel,
+      });
+      if (signInError) {
+        setErreur("Mot de passe actuel incorrect.");
+        setEntraitement(false);
+        return;
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: mdpNouveau,
+      });
+      if (updateError) {
+        setErreur(updateError.message || "Erreur lors de la mise à jour.");
+        setEntraitement(false);
+        return;
+      }
+
+      setSucces("Mot de passe mis à jour avec succès !");
+      setMdpActuel("");
+      setMdpNouveau("");
+      setMdpConfirm("");
+    } catch (err) {
+      setErreur(err.message || "Erreur lors de la mise à jour du mot de passe.");
+    }
     setEntraitement(false);
   };
-
-  if (chargement) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="space-y-4">
-          {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
