@@ -323,6 +323,6 @@ export default function Connexion() {
           </div>
         </div>
       )}
-      <p className="relative z-10 text-slate-500 text-[10px] md:text-xs mt-1 mb-0">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
+      <p className="relative z-10 text-slate-500 text-[10px] md:text-xs mt-3 mb-2">© {new Date().getFullYear()} ZONITE — Tous droits réservés</p>
     </div>);
 }
