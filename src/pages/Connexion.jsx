@@ -78,7 +78,19 @@ export default function Connexion() {
       }
 
       const user = authData.user;
-      const role = user.user_metadata?.role || "user";
+      let role = user.user_metadata?.role || "user";
+
+      // Check actual role from user_roles table (promotion updates this, not metadata)
+      if (mode === MODE_ADMIN && role !== "admin" && role !== "sous_admin") {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (roleData?.role === "admin" || roleData?.role === "sous_admin") {
+          role = roleData.role;
+        }
+      }
 
       let seller = null;
 
