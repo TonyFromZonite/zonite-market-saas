@@ -338,11 +338,14 @@ export default function Connexion() {
               <button onClick={() => {setModeMdpOublie(false);setErreur("");setMdpOublieSucces(false);}} className="text-slate-400 text-xs hover:text-white mb-3 flex items-center gap-1">← Retour</button>
               <h2 className="text-white font-bold text-lg md:text-xl mb-0.5">Mot de passe oublié</h2>
               <p className="text-slate-300 text-xs mb-4">Un lien de réinitialisation vous sera envoyé par email.</p>
-              {mdpOublieSucces ?
+            {mdpOublieSucces ?
             <div className="bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-4 py-4 text-center">
-                  <p className="text-emerald-300 text-sm font-semibold">✓ Email envoyé !</p>
-                  <p className="text-emerald-200 text-xs mt-1">Vérifiez votre boîte mail.</p>
-                  <button onClick={() => {setModeMdpOublie(false);setMdpOublieSucces(false);}} className="mt-3 text-[#F5C518] text-xs underline">Retour à la connexion</button>
+                  <div className="text-3xl mb-2">📬</div>
+                  <p className="text-emerald-300 text-sm font-semibold">Email envoyé !</p>
+                  <p className="text-emerald-200 text-xs mt-1">Vérifiez votre boîte mail :</p>
+                  <p className="text-white text-sm font-semibold mt-1">{emailOublie}</p>
+                  <p className="text-slate-400 text-[10px] mt-2">⚠️ Vérifiez aussi vos spams. Le lien expire dans 1 heure.</p>
+                  <button onClick={() => {setModeMdpOublie(false);setMdpOublieSucces(false);setEmailOublie('');}} className="mt-3 text-[#F5C518] text-xs underline">Retour à la connexion</button>
                 </div> :
 
             <form onSubmit={mdpOublie} className="space-y-4">
