@@ -269,9 +269,14 @@ export default function GestionCommandes() {
         }
       }
 
-      // Add delivery date if livree
+      // Add delivery date and stock flags based on status
       if (nouveauStatut === "livree") {
         updateData.date_livraison_effective = new Date().toISOString();
+        updateData.stock_retire_definitif = true;
+      }
+      if (nouveauStatut === "echec_livraison" || nouveauStatut === "annulee") {
+        updateData.stock_reserve = false;
+        updateData.stock_retire_definitif = false;
       }
 
       await adminApi.updateCommandeVendeur(commandeSelectionnee.id, updateData);
