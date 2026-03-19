@@ -100,11 +100,11 @@ function DashboardSousAdmin({ sousAdmin }) {
       )}
 
       {/* Modules */}
-      {modules.length > 0 && (
+      {allModules.length > 0 && (
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Mes Modules</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-            {modules.map((m) => (
+            {allModules.map((m) => (
               <Link key={m.page} to={createPageUrl(m.page)} style={{ textDecoration: "none" }}>
                 <div style={{
                   background: "white", borderRadius: 12, border: "1px solid #E2E8F0",
@@ -119,7 +119,7 @@ function DashboardSousAdmin({ sousAdmin }) {
         </div>
       )}
 
-      {modules.length === 0 && (
+      {allModules.length === 0 && (
         <div style={{
           background: "white", borderRadius: 12, border: "1px solid #E2E8F0",
           padding: 40, textAlign: "center",
