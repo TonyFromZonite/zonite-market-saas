@@ -111,6 +111,7 @@ function App() {
         </Router>
         <Toaster />
         <InstallPrompt />
+        <BiometricLock />
       </QueryClientProvider>
     </AuthProvider>
   )
