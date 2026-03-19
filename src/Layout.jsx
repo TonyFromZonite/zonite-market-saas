@@ -92,6 +92,30 @@ export default function Layout({ children, currentPageName }) {
     return <>{children}</>;
   }
 
+  // Route-level protection for sous_admins
+  const sousAdmin = getSousAdminSession();
+  const adminSession = getAdminSession();
+  if (sousAdmin && !adminSession) {
+    const allowedPages = getMenuVisible("sous_admin", sousAdmin.permissions || []).map(m => m.page);
+    if (!allowedPages.includes(currentPageName)) {
+      return (
+        <div className="min-h-dvh w-full bg-slate-50 lg:flex">
+          <AdminSidebar isOpen={isDesktop ? true : sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={isDesktop} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <AdminHeader currentPageName={currentPageName} onMenuOpen={() => setSidebarOuverte(true)} showBurger={!isDesktop} />
+            <main className="flex-1 flex items-center justify-center p-4">
+              <div className="text-center space-y-3">
+                <div className="text-5xl">🔒</div>
+                <h2 className="text-xl font-bold text-slate-800">Accès non autorisé</h2>
+                <p className="text-sm text-slate-500">Vous n'avez pas la permission d'accéder à ce module.</p>
+              </div>
+            </main>
+          </div>
+        </div>
+      );
+    }
+  }
+
   const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);
   const handleMenuClose = useCallback(() => setSidebarOuverte(false), []);
 
