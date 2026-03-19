@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
 import { supabase } from "@/integrations/supabase/client";
+import { stockManager } from "@/lib/stockManager";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
