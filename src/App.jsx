@@ -8,6 +8,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import InstallPrompt from '@/components/InstallPrompt';
+import BiometricLock from '@/components/BiometricLock';
 
 const GestionZones = lazy(() => import('./pages/GestionZones'));
 const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
