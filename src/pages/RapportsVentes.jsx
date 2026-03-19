@@ -96,11 +96,11 @@ export default function RapportsVentes() {
     y += 6;
 
     const kpis = [
-      ["CA Total ZONITE", fmt(caTotal)],
-      ["Total Commissions Vendeurs", fmt(totalCommissions)],
-      ["Marge ZONITE", fmt(margeTotal)],
+      ["CA Total ZONITE", fmtPdf(caTotal)],
+      ["Total Commissions Vendeurs", fmtPdf(totalCommissions)],
+      ["Marge ZONITE", fmtPdf(margeTotal)],
       ["Nb Transactions", `${nbTransactions}`],
-      ["Panier Moyen", fmt(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
+      ["Panier Moyen", fmtPdf(nbTransactions > 0 ? caTotal / nbTransactions : 0)],
     ];
     doc.setFontSize(10);
     kpis.forEach(([k, v], i) => {
