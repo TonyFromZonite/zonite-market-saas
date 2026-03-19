@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Facebook } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
+import ZoniteBackground from "@/components/ZoniteBackground";
 
 const TikTokIcon = ({ size = 20 }) =>
 <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
