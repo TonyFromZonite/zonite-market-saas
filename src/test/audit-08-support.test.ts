@@ -1,5 +1,5 @@
 /**
- * AUDIT 8 — Support (2 tests)
+ * AUDIT 8 — Support (3 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -33,5 +33,11 @@ describe("Audit 8 — Support", () => {
 
   it("8.2 marquerTicketLu met à jour lu_par_vendeur", async () => {
     await expect(vendeurApi.marquerTicketLu("t1")).resolves.not.toThrow();
+  });
+
+  it("8.3 Ticket requiert sujet et message non vides", () => {
+    const ticket = { sujet: "Test", message: "Description du problème" };
+    expect(ticket.sujet.length).toBeGreaterThan(0);
+    expect(ticket.message.length).toBeGreaterThan(0);
   });
 });

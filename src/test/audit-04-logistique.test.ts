@@ -1,5 +1,5 @@
 /**
- * AUDIT 4 — Logistique (4 tests)
+ * AUDIT 4 — Logistique (6 tests)
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -42,5 +42,17 @@ describe("Audit 4 — Logistique", () => {
     expect(createPageUrl("GestionCoursiers")).toBe("/GestionCoursiers");
     expect(createPageUrl("GestionZones")).toBe("/GestionZones");
     expect(createPageUrl("Livraisons")).toBe("/Livraisons");
+  });
+
+  it("4.5 createCoursier crée un coursier", async () => {
+    await expect(
+      adminApi.createCoursier({ nom: "Coursier A", telephone: "691000000" })
+    ).resolves.not.toThrow();
+  });
+
+  it("4.6 updateCoursier met à jour un coursier", async () => {
+    await expect(
+      adminApi.updateCoursier("c1", { actif: false })
+    ).resolves.not.toThrow();
   });
 });

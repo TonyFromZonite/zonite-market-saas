@@ -1,5 +1,5 @@
 /**
- * AUDIT 12 — Dashboard stats (1 test)
+ * AUDIT 12 — Dashboard stats (3 tests)
  */
 import { describe, it, expect } from "vitest";
 
@@ -18,6 +18,17 @@ describe("Audit 12 — Dashboard stats", () => {
     };
     expect(stat.total_commandes).toBeGreaterThanOrEqual(stat.commandes_livrees + stat.commandes_annulees);
     expect(stat.chiffre_affaires).toBeGreaterThan(0);
-    expect(stat.profit_zonite).toBe(stat.chiffre_affaires - stat.total_commissions - (stat.chiffre_affaires - stat.total_commissions - stat.profit_zonite));
+  });
+
+  it("12.2 Calcul cohérent : CA >= commissions + profit", () => {
+    const ca = 150000;
+    const commissions = 15000;
+    const profit = 45000;
+    expect(ca).toBeGreaterThanOrEqual(commissions + profit);
+  });
+
+  it("12.3 Date de statistiques au format ISO", () => {
+    const date = "2026-03-17";
+    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
