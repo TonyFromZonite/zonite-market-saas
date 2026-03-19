@@ -121,6 +121,11 @@ export default function Connexion() {
         }
       }
 
+      // Clear all previous sessions before setting new one
+      sessionStorage.removeItem("admin_session");
+      sessionStorage.removeItem("sous_admin");
+      sessionStorage.removeItem("vendeur_session");
+
       if (mode === MODE_ADMIN) {
         if (role !== "admin" && role !== "sous_admin") {
           setErreur("Ce compte n'a pas les droits administrateur.");
