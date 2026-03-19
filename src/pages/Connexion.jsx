@@ -198,7 +198,7 @@ export default function Connexion() {
         <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-1 md:mb-3 overflow-hidden border-3 md:border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
-        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
+        <h1 className="text-lg md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
           {String(nomApp).split(" ").map((w, i) =>
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
