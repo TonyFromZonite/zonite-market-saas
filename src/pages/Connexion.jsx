@@ -195,15 +195,15 @@ export default function Connexion() {
       <div className="absolute bottom-24 left-0 w-56 h-56 bg-[#F5C518]/10 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="w-full flex flex-col items-center relative z-10 px-2">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-2 md:mb-3 overflow-hidden border-4 border-[#F5C518]/40">
+        <div className="w-12 h-12 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white shadow-2xl flex items-center justify-center mb-1 md:mb-3 overflow-hidden border-[3px] md:border-4 border-[#F5C518]/40">
           <img alt="Logo" className="w-full h-full object-contain p-0.5" src={LOGO} />
         </div>
-        <h1 className="text-xl md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
+        <h1 className="text-lg md:text-2xl font-black text-white tracking-tight text-center leading-tight truncate max-w-full">
           {String(nomApp).split(" ").map((w, i) =>
           i > 0 ? <span key={i} className="text-[#F5C518]"> {w}</span> : w
           )}
         </h1>
-        <p className="text-slate-300 text-xs md:text-sm mt-2 md:mt-1.5 text-center max-w-xs leading-relaxed px-3 line-clamp-3 overflow-hidden">
+        <p className="text-slate-300 text-[11px] md:text-sm mt-0.5 md:mt-1.5 text-center max-w-xs leading-snug px-3 line-clamp-2 overflow-hidden">
           {messageAccueil}
         </p>
       </div>
