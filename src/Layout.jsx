@@ -78,13 +78,17 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName]);
 
   // Skip admin layout for vendor pages or login
+  const isVendorPage = PAGES_VENDEUR.has(currentPageName) || vendeurSession;
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
-    return (
-      <>
-        <div style={{ paddingBottom: 64 }}>{children}</div>
-        <VendeurBottomNav />
-      </>
-    );
+    if (isVendorPage) {
+      return (
+        <>
+          <div style={{ paddingBottom: 64 }}>{children}</div>
+          <VendeurBottomNav />
+        </>
+      );
+    }
+    return <>{children}</>;
   }
 
   const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);
