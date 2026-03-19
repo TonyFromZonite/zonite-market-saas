@@ -204,7 +204,7 @@ export default function RapportsVentes() {
       const pct = totalCAVilles > 0 ? ((l.ca / totalCAVilles) * 100).toFixed(1) : 0;
       doc.text(l.ville.substring(0, 35), 14, y);
       doc.text(`${l.nb}`, 90, y);
-      doc.text(fmt(l.ca), 125, y);
+      doc.text(fmtPdf(l.ca), 125, y);
       doc.text(`${pct}%`, 175, y);
       y += 7;
     });
