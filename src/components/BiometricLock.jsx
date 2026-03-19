@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveSession } from "@/components/useSessionGuard";
 import { Lock, Fingerprint, Eye, EyeOff } from "lucide-react";
 
-const INACTIVITY_MS = 5 * 60 * 1000; // 5 minutes
+const INACTIVITY_MS = 2 * 60 * 1000; // 2 minutes
 const CREDENTIAL_KEY = "zonite_bio_cred_id";
 const BIO_ENROLLED_KEY = "zonite_bio_enrolled";
 const EVENTS = ["pointerdown", "keydown", "scroll", "touchstart"];
