@@ -1,23 +1,63 @@
 {
   "name": "Zonite Market",
-  "short_name": "Zonite Market",
-  "description": "Plateforme de gestion vendeurs",
+  "short_name": "Zonite",
+  "description": "Plateforme de vente et livraison au Cameroun",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a1f4e",
   "theme_color": "#f5a623",
+  "lang": "fr",
   "icons": [
     {
       "src": "/favicon.ico",
-      "sizes": "16x16 32x32 48x48 64x64",
+      "sizes": "48x48",
       "type": "image/x-icon"
     },
     {
-      "src": "/logo.png",
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["business", "shopping"],
+  "shortcuts": [
+    {
+      "name": "Espace Vendeur",
+      "url": "/EspaceVendeur",
+      "icons": [
+        {
+          "src": "/logo192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
