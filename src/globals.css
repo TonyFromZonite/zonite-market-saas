@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── HIDE ALL SCROLLBARS ── */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+*::-webkit-scrollbar-track { display: none !important; }
+*::-webkit-scrollbar-thumb { display: none !important; }
+
 /* ====== PWA / Mobile optimizations ====== */
 html, body {
   -webkit-tap-highlight-color: transparent;
@@ -63,21 +76,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar personnalisée */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
+/* Scrollbars hidden globally above */
 
 /* Animations */
 @keyframes slideIn {
