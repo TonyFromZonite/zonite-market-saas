@@ -170,6 +170,25 @@ export default function InscriptionVendeur() {
     return () => clearTimeout(timer);
   }, [form.username]);
 
+  // Validate referral code from URL on mount
+  useEffect(() => {
+    if (refFromUrl) validateRefCode(refFromUrl);
+  }, []);
+
+  const validateRefCode = async (code) => {
+    if (!code?.trim() || code.length < 4) { setRefValid(undefined); return; }
+    setCheckingRef(true);
+    try {
+      const { data } = await supabase
+        .from('sellers')
+        .select('id, full_name')
+        .eq('code_parrainage', code.toUpperCase().trim())
+        .maybeSingle();
+      setRefValid(data || null);
+    } catch { setRefValid(null); }
+    finally { setCheckingRef(false); }
+  };
+
   // Real-time password validation
   useEffect(() => {
     if (!form.mot_de_passe) { setErreurMdp(""); return; }
