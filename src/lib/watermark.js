@@ -1,156 +1,182 @@
-const LOGO_PATHS = ['/zonite-logo-watermark.png', '/logo192.png', '/logo.png', '/favicon.ico'];
+const LOGO_PATHS = [
+  "/zonite-logo-watermark.png",
+  "/logo192.png",
+  "/logo.png",
+  "/favicon.ico",
+];
+
+const loadImage = (src, crossOrigin = false) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    if (crossOrigin) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+const loadBestLogo = async () => {
+  for (const path of LOGO_PATHS) {
+    try {
+      return await loadImage(path, false);
+    } catch {
+      // try next fallback
+    }
+  }
+  return null;
+};
+
+const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
+
+const drawFallbackWatermark = (ctx, canvas) => {
+  const badgeH = Math.max(52, canvas.height * 0.09);
+  const logoSize = badgeH * 0.74;
+  const margin = canvas.width * 0.025;
+  const textGap = badgeH * 0.12;
+
+  ctx.font = `900 ${badgeH * 0.36}px Arial, sans-serif`;
+  const zoniteW = ctx.measureText("ZONITE").width;
+  ctx.font = `600 ${badgeH * 0.26}px Arial, sans-serif`;
+  const marketW = ctx.measureText("MARKET").width;
+  const maxTextW = Math.max(zoniteW, marketW);
+
+  const badgeW = logoSize + textGap * 2 + maxTextW + badgeH * 0.3;
+  const bx = canvas.width - badgeW - margin;
+  const by = margin;
+  const r = badgeH * 0.28;
+
+  drawRoundedRect(ctx, bx, by, badgeW, badgeH, r);
+  ctx.fillStyle = "rgba(10,14,46,0.88)";
+  ctx.fill();
+
+  const barW = badgeH * 0.1;
+  ctx.save();
+  drawRoundedRect(ctx, bx, by, barW + r, badgeH, r);
+  ctx.clip();
+  ctx.fillStyle = "#f5a623";
+  ctx.fillRect(bx, by, barW + r, badgeH);
+  ctx.restore();
+
+  const logoPadding = badgeH * 0.13;
+  const logoX = bx + barW + logoPadding;
+  const logoY = by + (badgeH - logoSize) / 2;
+
+  ctx.beginPath();
+  ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5a623";
+  ctx.fill();
+  ctx.font = `900 ${logoSize * 0.58}px Arial, sans-serif`;
+  ctx.fillStyle = "#0a0e2e";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Z", logoX + logoSize / 2, logoY + logoSize / 2 + 1);
+
+  const tX = logoX + logoSize + textGap;
+  ctx.font = `900 ${badgeH * 0.36}px Arial, sans-serif`;
+  ctx.fillStyle = "#f5a623";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("ZONITE", tX, by + badgeH * 0.4);
+
+  ctx.font = `600 ${badgeH * 0.26}px Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText("MARKET", tX, by + badgeH * 0.74);
+};
+
+const drawUploadedLogoWatermark = (ctx, canvas, logoImg) => {
+  const margin = canvas.width * 0.025;
+  const badgeH = Math.max(60, canvas.height * 0.12);
+  const accentW = badgeH * 0.08;
+  const outerPad = badgeH * 0.12;
+  const innerPad = badgeH * 0.1;
+  const logoRatio = logoImg.naturalWidth / logoImg.naturalHeight || 2.4;
+
+  const cardH = badgeH - outerPad * 2;
+  const maxCardW = Math.min(canvas.width * 0.44, cardH * logoRatio);
+  const minCardW = Math.max(cardH * 1.8, 130);
+  const cardW = Math.max(minCardW, maxCardW);
+  const badgeW = accentW + outerPad * 3 + cardW;
+
+  const bx = canvas.width - badgeW - margin;
+  const by = margin;
+  const outerRadius = badgeH * 0.28;
+  const cardX = bx + accentW + outerPad;
+  const cardY = by + outerPad;
+  const cardRadius = cardH * 0.18;
+
+  drawRoundedRect(ctx, bx, by, badgeW, badgeH, outerRadius);
+  ctx.fillStyle = "rgba(10,14,46,0.88)";
+  ctx.fill();
+
+  ctx.save();
+  drawRoundedRect(ctx, bx, by, accentW + outerRadius, badgeH, outerRadius);
+  ctx.clip();
+  ctx.fillStyle = "#f5a623";
+  ctx.fillRect(bx, by, accentW + outerRadius, badgeH);
+  ctx.restore();
+
+  drawRoundedRect(ctx, cardX, cardY, cardW, cardH, cardRadius);
+  ctx.fillStyle = "rgba(255,255,255,0.98)";
+  ctx.fill();
+
+  const availableW = cardW - innerPad * 2;
+  const availableH = cardH - innerPad * 2;
+  const scale = Math.min(availableW / logoImg.naturalWidth, availableH / logoImg.naturalHeight);
+  const drawW = logoImg.naturalWidth * scale;
+  const drawH = logoImg.naturalHeight * scale;
+  const drawX = cardX + (cardW - drawW) / 2;
+  const drawY = cardY + (cardH - drawH) / 2;
+
+  ctx.drawImage(logoImg, drawX, drawY, drawW, drawH);
+};
 
 export const addWatermark = async (imageUrl) => {
   return new Promise(async (resolve) => {
     try {
-      const productImg = new Image();
-      productImg.crossOrigin = 'anonymous';
-
-      const logoImg = new Image();
-
-      await Promise.all([
-        new Promise((res, rej) => {
-          productImg.onload = res;
-          productImg.onerror = rej;
-          productImg.src = imageUrl;
-        }),
-        new Promise((res) => {
-          const tryLoad = (idx) => {
-            if (idx >= LOGO_PATHS.length) { res(); return; }
-            const img = new Image();
-            img.onload = () => {
-              logoImg.src = img.src;
-              logoImg.width = img.width;
-              logoImg.height = img.height;
-              // Copy natural dimensions
-              Object.defineProperty(logoImg, 'naturalWidth', { value: img.naturalWidth, writable: true });
-              Object.defineProperty(logoImg, 'naturalHeight', { value: img.naturalHeight, writable: true });
-              res();
-            };
-            img.onerror = () => tryLoad(idx + 1);
-            img.src = LOGO_PATHS[idx];
-          };
-          tryLoad(0);
-        })
+      const [productImg, logoImg] = await Promise.all([
+        loadImage(imageUrl, true),
+        loadBestLogo(),
       ]);
 
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = productImg.naturalWidth;
       canvas.height = productImg.naturalHeight;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
-      // Draw product image
-      ctx.drawImage(productImg, 0, 0);
+      ctx.drawImage(productImg, 0, 0, canvas.width, canvas.height);
 
-      // Badge dimensions
-      const badgeH = Math.max(52, canvas.height * 0.09);
-      const logoSize = badgeH * 0.74;
-      const margin = canvas.width * 0.025;
-      const textGap = badgeH * 0.12;
-
-      // Measure text
-      ctx.font = `900 ${badgeH * 0.36}px Arial, sans-serif`;
-      const zoniteW = ctx.measureText('ZONITE').width;
-      ctx.font = `600 ${badgeH * 0.26}px Arial, sans-serif`;
-      const marketW = ctx.measureText('MARKET').width;
-      const maxTextW = Math.max(zoniteW, marketW);
-
-      const badgeW = logoSize + textGap * 2 + maxTextW + badgeH * 0.3;
-      const bx = canvas.width - badgeW - margin;
-      const by = margin;
-      const r = badgeH * 0.28;
-
-      // Dark pill background
-      ctx.beginPath();
-      ctx.moveTo(bx + r, by);
-      ctx.lineTo(bx + badgeW - r, by);
-      ctx.quadraticCurveTo(bx + badgeW, by, bx + badgeW, by + r);
-      ctx.lineTo(bx + badgeW, by + badgeH - r);
-      ctx.quadraticCurveTo(bx + badgeW, by + badgeH, bx + badgeW - r, by + badgeH);
-      ctx.lineTo(bx + r, by + badgeH);
-      ctx.quadraticCurveTo(bx, by + badgeH, bx, by + badgeH - r);
-      ctx.lineTo(bx, by + r);
-      ctx.quadraticCurveTo(bx, by, bx + r, by);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(10,14,46,0.88)';
-      ctx.fill();
-
-      // Orange left accent bar
-      const barW = badgeH * 0.1;
-      ctx.fillStyle = '#f5a623';
-      ctx.beginPath();
-      ctx.moveTo(bx + r, by);
-      ctx.lineTo(bx + barW, by);
-      ctx.lineTo(bx + barW, by + badgeH);
-      ctx.lineTo(bx + r, by + badgeH);
-      ctx.quadraticCurveTo(bx, by + badgeH, bx, by + badgeH - r);
-      ctx.lineTo(bx, by + r);
-      ctx.quadraticCurveTo(bx, by, bx + r, by);
-      ctx.closePath();
-      ctx.fill();
-
-      // Logo
-      const logoPadding = badgeH * 0.13;
-      const logoX = bx + barW + logoPadding;
-      const logoY = by + (badgeH - logoSize) / 2;
-      const logoLoaded = logoImg.src && logoImg.naturalWidth > 0;
-
-      if (logoLoaded) {
-        // Draw real logo with rounded corners
-        ctx.save();
-        const lR = logoSize * 0.18;
-        ctx.beginPath();
-        ctx.moveTo(logoX + lR, logoY);
-        ctx.lineTo(logoX + logoSize - lR, logoY);
-        ctx.quadraticCurveTo(logoX + logoSize, logoY, logoX + logoSize, logoY + lR);
-        ctx.lineTo(logoX + logoSize, logoY + logoSize - lR);
-        ctx.quadraticCurveTo(logoX + logoSize, logoY + logoSize, logoX + logoSize - lR, logoY + logoSize);
-        ctx.lineTo(logoX + lR, logoY + logoSize);
-        ctx.quadraticCurveTo(logoX, logoY + logoSize, logoX, logoY + logoSize - lR);
-        ctx.lineTo(logoX, logoY + lR);
-        ctx.quadraticCurveTo(logoX, logoY, logoX + lR, logoY);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-        ctx.restore();
+      if (logoImg) {
+        drawUploadedLogoWatermark(ctx, canvas, logoImg);
       } else {
-        // Fallback: orange circle with Z
-        ctx.beginPath();
-        ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#f5a623';
-        ctx.fill();
-        ctx.font = `900 ${logoSize * 0.58}px Arial, sans-serif`;
-        ctx.fillStyle = '#0a0e2e';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('Z', logoX + logoSize / 2, logoY + logoSize / 2 + 1);
+        drawFallbackWatermark(ctx, canvas);
       }
-
-      // Text
-      const tX = logoX + logoSize + textGap;
-
-      ctx.font = `900 ${badgeH * 0.36}px Arial, sans-serif`;
-      ctx.fillStyle = '#f5a623';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('ZONITE', tX, by + badgeH * 0.40);
-
-      ctx.font = `600 ${badgeH * 0.26}px Arial, sans-serif`;
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.fillText('MARKET', tX, by + badgeH * 0.74);
 
       canvas.toBlob(
         (blob) => resolve(blob || null),
-        'image/jpeg',
-        0.93
+        "image/jpeg",
+        0.93,
       );
     } catch (err) {
-      console.error('Watermark error:', err);
+      console.error("Watermark error:", err);
       resolve(null);
     }
   });
 };
 
 export const blobToFile = (blob, name) => {
-  return new File([blob], name, { type: 'image/jpeg' });
+  return new File([blob], name, { type: "image/jpeg" });
 };
