@@ -13,6 +13,8 @@ export default function ModeDemoClient({ produit, onClose }) {
   const [currentImage, setCurrentImage] = useState(0);
   const [downloading, setDownloading] = useState({});
   const [sharing, setSharing] = useState({});
+  const [copied, setCopied] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
   const { toast } = useToast();
   const images = produit?.images || [];
 
