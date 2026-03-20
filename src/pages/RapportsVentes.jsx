@@ -7,7 +7,7 @@ import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { jsPDF } from "jspdf";
+
 import { listTable } from "@/lib/supabaseHelpers";
 
 const PERIODES = [
@@ -64,8 +64,9 @@ export default function RapportsVentes() {
   const [periodeJours, setPeriodeJours] = useState(30);
   const [exportEnCours, setExportEnCours] = useState(false);
 
-  const exporterPDF = () => {
+  const exporterPDF = async () => {
     setExportEnCours(true);
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     const periodeLabel = PERIODES.find(p => p.valeur === periodeJours)?.label || "";
     const dateStr = format(new Date(), "dd/MM/yyyy HH:mm");
