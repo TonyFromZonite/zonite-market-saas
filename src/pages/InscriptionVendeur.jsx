@@ -420,6 +420,19 @@ export default function InscriptionVendeur() {
         return;
       }
 
+      // Notify parrain if referral was used
+      if (refCode && refValid) {
+        try {
+          await supabase.from('notifications_vendeur').insert({
+            vendeur_id: refValid.id,
+            vendeur_email: '', // will be ignored if not needed
+            titre: '🎉 Nouveau filleul !',
+            message: `${form.nom_complet} vient de s'inscrire avec votre code ${refCode} !\n\nVous gagnerez 500 FCFA sur chacune de ses 10 premières livraisons réussies.`,
+            type: 'succes',
+          });
+        } catch (e) { console.warn('Notification parrain failed:', e); }
+      }
+
       // Set session with seller ID and redirect
       localStorage.setItem("vendeur_session", JSON.stringify({
         id: sellerId,
