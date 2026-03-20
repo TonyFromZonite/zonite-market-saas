@@ -397,15 +397,22 @@ export default function InscriptionVendeur() {
     setErreur("");
 
     try {
+      const updateData = {
+        ville: form.ville,
+        quartier: form.quartier,
+        numero_mobile_money: form.numero_mobile_money,
+        operateur_mobile_money: form.operateur_mobile_money,
+        experience_vente: form.experience_vente || null,
+      };
+
+      // Save referral code if valid
+      if (refCode && refValid) {
+        updateData.parraine_par = refCode.toUpperCase().trim();
+      }
+
       const { error } = await supabase
         .from('sellers')
-        .update({
-          ville: form.ville,
-          quartier: form.quartier,
-          numero_mobile_money: form.numero_mobile_money,
-          operateur_mobile_money: form.operateur_mobile_money,
-          experience_vente: form.experience_vente || null,
-        })
+        .update(updateData)
         .eq('email', vendeurEmail);
 
       if (error) {

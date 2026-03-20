@@ -723,10 +723,7 @@ export default function EspaceVendeur() {
           <BadgeProgression totalVentes={vendeurStats?.totalVentes || 0} currentBadge={compteVendeur.badge_niveau || getBadgeForVentes(vendeurStats?.totalVentes || 0)} />
         </div>
 
-        {/* Parrainage */}
-        <div className="mb-3">
-          <ParrainageSection vendeur={compteVendeur} />
-        </div>
+        {/* Classement hebdomadaire */}
 
         {/* SECTION B — Top vendeurs (collapsible) */}
         <CollapsibleSection
