@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import BadgeVendeur from "@/components/BadgeVendeur";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -124,9 +125,12 @@ export default function ProfilVendeur() {
             {compteVendeur?.username && (
               <p className="text-slate-300 text-xs">@{compteVendeur.username}</p>
             )}
-            <Badge className={`text-xs border-0 mt-1 ${compteVendeur?.seller_status === "active_seller" ? "bg-emerald-500 text-white" : "bg-yellow-500 text-white"}`}>
-              {compteVendeur?.seller_status === "active_seller" ? "✓ Compte actif" : "En attente"}
-            </Badge>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge className={`text-xs border-0 ${compteVendeur?.seller_status === "active_seller" ? "bg-emerald-500 text-white" : "bg-yellow-500 text-white"}`}>
+                {compteVendeur?.seller_status === "active_seller" ? "✓ Actif" : "En attente"}
+              </Badge>
+              <BadgeVendeur badge={compteVendeur?.badge_niveau || 'nouveau'} size="sm" />
+            </div>
           </div>
         </div>
       </div>

@@ -1,17 +1,20 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Package, ExternalLink } from "lucide-react";
+import { ChevronLeft, Package, ExternalLink, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-
+import WhatsAppShare from "@/components/WhatsAppShare";
+import ModeDemoClient from "@/components/ModeDemoClient";
+import { getVendeurSession } from "@/components/useSessionGuard";
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
-
+  const [showDemo, setShowDemo] = useState(false);
+  const session = getVendeurSession();
   const { data: produit, isLoading } = useQuery({
     queryKey: ["produit_detail", produitId],
     queryFn: async () => {
@@ -173,6 +176,18 @@ export default function ProduitDetail() {
           </a>
         )}
 
+        {/* WhatsApp Share */}
+        <WhatsAppShare produit={produit} vendeurName={session?.full_name} />
+
+        {/* Demo Mode */}
+        <button
+          onClick={() => setShowDemo(true)}
+          className="w-full py-3 rounded-xl text-sm font-bold bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+        >
+          <Eye className="w-4 h-4" />
+          Mode Démonstration Client
+        </button>
+
         {/* Commander button */}
         {stockOk && (
           <button
@@ -194,6 +209,8 @@ export default function ProduitDetail() {
         )}
       </div>
 
+      {/* Demo overlay */}
+      {showDemo && <ModeDemoClient produit={produit} onClose={() => setShowDemo(false)} />}
     </div>
   );
 }

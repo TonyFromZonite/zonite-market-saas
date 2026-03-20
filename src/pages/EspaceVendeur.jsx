@@ -22,6 +22,10 @@ import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/co
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
+import ObjectifMensuel from "@/components/ObjectifMensuel";
+import ParrainageSection from "@/components/ParrainageSection";
+import ClassementHebdo from "@/components/ClassementHebdo";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -174,11 +178,12 @@ export default function EspaceVendeur() {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-      const [ventesWeek, ventesMois, ventesAnnee, commandesEC] = await Promise.all([
+      const [ventesWeek, ventesMois, ventesAnnee, commandesEC, totalVentes] = await Promise.all([
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfWeek.toISOString()),
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfMonth.toISOString()),
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfYear.toISOString()),
         supabase.from('commandes_vendeur').select('id').eq('vendeur_id', compteVendeur.id).in('statut', ['en_attente_validation_admin', 'validee_admin', 'attribuee_livreur', 'en_livraison']),
+        supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', compteVendeur.id),
       ]);
 
       const sum = (arr, field) => (arr || []).reduce((s, v) => s + (v[field] || 0), 0);
@@ -190,6 +195,8 @@ export default function EspaceVendeur() {
         caAnnee: sum(ventesAnnee.data, 'montant_total'),
         commAnnee: sum(ventesAnnee.data, 'commission_vendeur'),
         commandesEnCours: commandesEC.data?.length || 0,
+        totalVentes: totalVentes.count || 0,
+        ventesMois: ventesMois.data?.length || 0,
       };
     },
     enabled: !!compteVendeur?.id,
@@ -239,13 +246,19 @@ export default function EspaceVendeur() {
         supabase.from('ventes').select('vendeur_id, vendeur_email, montant_total').gte('created_at', startOfYear.toISOString()),
       ]);
 
+      // Fetch seller names
+      const vendeurIds = [...new Set([...(topWeek.data || []), ...(topMonth.data || []), ...(topYear.data || [])].map(v => v.vendeur_id))];
+      const { data: sellers } = await supabase.from('sellers').select('id, full_name').in('id', vendeurIds);
+      const sellerMap = {};
+      (sellers || []).forEach(s => { sellerMap[s.id] = s.full_name; });
+
       const groupByVendeur = (ventes) => {
         const map = {};
         (ventes || []).forEach(v => {
-          if (!map[v.vendeur_id]) map[v.vendeur_id] = { vendeur_id: v.vendeur_id, email: v.vendeur_email, total: 0 };
+          if (!map[v.vendeur_id]) map[v.vendeur_id] = { vendeur_id: v.vendeur_id, email: v.vendeur_email, full_name: sellerMap[v.vendeur_id] || null, total: 0 };
           map[v.vendeur_id].total += v.montant_total;
         });
-        return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 3);
+        return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
       };
 
       return {
@@ -546,7 +559,10 @@ export default function EspaceVendeur() {
             <img src={LOGO} alt="Zonite" className="h-8 w-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <span className="text-xs font-bold tracking-tight leading-none">ZONITE <span className="text-[#F5C518]">Vendeurs</span></span>
-              <p className="text-slate-300 text-[11px] mt-0.5 truncate max-w-[160px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-slate-300 text-[11px] truncate max-w-[120px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+                <BadgeVendeur badge={compteVendeur.badge_niveau || getBadgeForVentes(vendeurStats?.totalVentes || 0)} size="sm" />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -700,9 +716,21 @@ export default function EspaceVendeur() {
             <span className="text-slate-300 text-lg">→</span>
           </div>
         </Link>
+
+        {/* Objectif mensuel + Badge progression */}
+        <div className="grid grid-cols-1 gap-3 mb-3">
+          <ObjectifMensuel ventesCount={vendeurStats?.ventesMois || 0} objectif={compteVendeur.objectif_mensuel || 10} />
+          <BadgeProgression totalVentes={vendeurStats?.totalVentes || 0} currentBadge={compteVendeur.badge_niveau || getBadgeForVentes(vendeurStats?.totalVentes || 0)} />
+        </div>
+
+        {/* Parrainage */}
+        <div className="mb-3">
+          <ParrainageSection vendeur={compteVendeur} />
+        </div>
+
         {/* SECTION B — Top vendeurs (collapsible) */}
         <CollapsibleSection
-          title="Classement des vendeurs"
+          title="Classement hebdomadaire — Top 10"
           icon={<Trophy className="w-4 h-4 text-yellow-500" />}
           onFirstOpen={() => setLoadTopVendeurs(true)}
         >
@@ -715,9 +743,9 @@ export default function EspaceVendeur() {
                 <TabsTrigger value="month" className="text-xs">Ce mois</TabsTrigger>
                 <TabsTrigger value="year" className="text-xs">Cette année</TabsTrigger>
               </TabsList>
-              <TabsContent value="week"><TopVendeursSection data={topVendeurs?.topWeek} currentVendeurId={compteVendeur.id} /></TabsContent>
-              <TabsContent value="month"><TopVendeursSection data={topVendeurs?.topMonth} currentVendeurId={compteVendeur.id} /></TabsContent>
-              <TabsContent value="year"><TopVendeursSection data={topVendeurs?.topYear} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="week"><ClassementHebdo topVendeurs={topVendeurs?.topWeek} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="month"><ClassementHebdo topVendeurs={topVendeurs?.topMonth} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="year"><ClassementHebdo topVendeurs={topVendeurs?.topYear} currentVendeurId={compteVendeur.id} /></TabsContent>
             </Tabs>
           )}
         </CollapsibleSection>
