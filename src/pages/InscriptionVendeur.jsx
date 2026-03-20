@@ -72,6 +72,14 @@ export default function InscriptionVendeur() {
   const { toast } = useToast();
   const [etape, setEtape] = useState(1);
   const [typeDocument, setTypeDocument] = useState("cni");
+
+  // Referral code from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const refFromUrl = urlParams.get('ref') || '';
+  const [refCode, setRefCode] = useState(refFromUrl);
+  const [refValid, setRefValid] = useState(refFromUrl ? null : undefined);
+  const [checkingRef, setCheckingRef] = useState(false);
+
   const [form, setForm] = useState({
     username: "",
     nom_complet: "",
