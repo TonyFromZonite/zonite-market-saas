@@ -46,6 +46,35 @@ export type Database = {
           },
         ]
       }
+      badges_vendeur: {
+        Row: {
+          badge: string
+          id: string
+          obtenu_at: string | null
+          vendeur_id: string
+        }
+        Insert: {
+          badge: string
+          id?: string
+          obtenu_at?: string | null
+          vendeur_id: string
+        }
+        Update: {
+          badge?: string
+          id?: string
+          obtenu_at?: string | null
+          vendeur_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badges_vendeur_vendeur_id_fkey"
+            columns: ["vendeur_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidatures_vendeur: {
         Row: {
           created_at: string
@@ -799,6 +828,54 @@ export type Database = {
           },
         ]
       }
+      parrainages: {
+        Row: {
+          actif: boolean | null
+          code_parrainage: string
+          commission_totale: number | null
+          created_at: string | null
+          filleul_id: string
+          id: string
+          livraisons_comptees: number | null
+          parrain_id: string
+        }
+        Insert: {
+          actif?: boolean | null
+          code_parrainage: string
+          commission_totale?: number | null
+          created_at?: string | null
+          filleul_id: string
+          id?: string
+          livraisons_comptees?: number | null
+          parrain_id: string
+        }
+        Update: {
+          actif?: boolean | null
+          code_parrainage?: string
+          commission_totale?: number | null
+          created_at?: string | null
+          filleul_id?: string
+          id?: string
+          livraisons_comptees?: number | null
+          parrain_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parrainages_filleul_id_fkey"
+            columns: ["filleul_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parrainages_parrain_id_fkey"
+            columns: ["parrain_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produits: {
         Row: {
           actif: boolean | null
@@ -974,7 +1051,9 @@ export type Database = {
       }
       sellers: {
         Row: {
+          badge_niveau: string | null
           catalogue_debloque: boolean | null
+          code_parrainage: string | null
           conditions_acceptees: boolean | null
           created_at: string
           date_naissance: string | null
@@ -995,7 +1074,9 @@ export type Database = {
           kyc_type_document: string | null
           motivation: string | null
           numero_mobile_money: string | null
+          objectif_mensuel: number | null
           operateur_mobile_money: string | null
+          parraine_par: string | null
           photo_profil_url: string | null
           quartier: string | null
           role: string
@@ -1015,7 +1096,9 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          badge_niveau?: string | null
           catalogue_debloque?: boolean | null
+          code_parrainage?: string | null
           conditions_acceptees?: boolean | null
           created_at?: string
           date_naissance?: string | null
@@ -1036,7 +1119,9 @@ export type Database = {
           kyc_type_document?: string | null
           motivation?: string | null
           numero_mobile_money?: string | null
+          objectif_mensuel?: number | null
           operateur_mobile_money?: string | null
+          parraine_par?: string | null
           photo_profil_url?: string | null
           quartier?: string | null
           role?: string
@@ -1056,7 +1141,9 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          badge_niveau?: string | null
           catalogue_debloque?: boolean | null
+          code_parrainage?: string | null
           conditions_acceptees?: boolean | null
           created_at?: string
           date_naissance?: string | null
@@ -1077,7 +1164,9 @@ export type Database = {
           kyc_type_document?: string | null
           motivation?: string | null
           numero_mobile_money?: string | null
+          objectif_mensuel?: number | null
           operateur_mobile_money?: string | null
+          parraine_par?: string | null
           photo_profil_url?: string | null
           quartier?: string | null
           role?: string
