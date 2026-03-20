@@ -13,7 +13,8 @@ export default function ProduitDetail() {
   const { produitId } = useParams();
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
-
+  const [showDemo, setShowDemo] = useState(false);
+  const session = getVendeurSession();
   const { data: produit, isLoading } = useQuery({
     queryKey: ["produit_detail", produitId],
     queryFn: async () => {
