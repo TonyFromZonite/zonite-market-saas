@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
