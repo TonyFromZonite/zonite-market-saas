@@ -126,6 +126,7 @@ export default function Commandes() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-4">
       {/* Filtres */}
       <div className="flex flex-col sm:flex-row gap-3">
