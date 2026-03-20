@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Package, ExternalLink } from "lucide-react";
+import { ChevronLeft, Package, ExternalLink, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-
+import WhatsAppShare from "@/components/WhatsAppShare";
+import ModeDemoClient from "@/components/ModeDemoClient";
+import { getVendeurSession } from "@/components/useSessionGuard";
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
