@@ -141,7 +141,7 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
         })
       );
 
-      return withCount.filter(c => c.produits_count > 0);
+      return withCount;
     },
   });
 
