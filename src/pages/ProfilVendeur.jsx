@@ -125,9 +125,12 @@ export default function ProfilVendeur() {
             {compteVendeur?.username && (
               <p className="text-slate-300 text-xs">@{compteVendeur.username}</p>
             )}
-            <Badge className={`text-xs border-0 mt-1 ${compteVendeur?.seller_status === "active_seller" ? "bg-emerald-500 text-white" : "bg-yellow-500 text-white"}`}>
-              {compteVendeur?.seller_status === "active_seller" ? "✓ Compte actif" : "En attente"}
-            </Badge>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge className={`text-xs border-0 ${compteVendeur?.seller_status === "active_seller" ? "bg-emerald-500 text-white" : "bg-yellow-500 text-white"}`}>
+                {compteVendeur?.seller_status === "active_seller" ? "✓ Actif" : "En attente"}
+              </Badge>
+              <BadgeVendeur badge={compteVendeur?.badge_niveau || 'nouveau'} size="sm" />
+            </div>
           </div>
         </div>
       </div>
