@@ -259,5 +259,6 @@ export default function Commandes() {
         </DialogContent>
       </Dialog>
     </div>
+    </PullToRefresh>
   );
 }

@@ -271,5 +271,6 @@ export default function GestionKYC() {
         </DialogContent>
       </Dialog>
     </div>
+    </PullToRefresh>
   );
 }

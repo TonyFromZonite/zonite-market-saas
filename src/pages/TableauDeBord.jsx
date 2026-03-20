@@ -355,6 +355,7 @@ function DashboardAdmin() {
         <TopVendeurs vendeurs={vendeursArray} />
       </ResponsiveRow>
     </div>
+    </PullToRefresh>
   );
 }
 

@@ -195,5 +195,6 @@ export default function Commissions() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

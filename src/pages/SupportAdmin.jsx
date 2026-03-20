@@ -470,5 +470,6 @@ export default function SupportAdmin() {
       </div>
       </div>}
     </div>
+    </PullToRefresh>
   );
 }
