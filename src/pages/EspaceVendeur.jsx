@@ -118,9 +118,10 @@ export default function EspaceVendeur() {
         setUtilisateur({ email: session.email });
 
         // Always load fresh seller data from DB
+        const SELLER_COLS = "id, email, full_name, telephone, whatsapp, ville, quartier, role, seller_status, statut_kyc, kyc_raison_rejet, kyc_document_recto_url, kyc_document_verso_url, kyc_selfie_url, kyc_type_document, training_completed, training_completed_at, catalogue_debloque, conditions_acceptees, email_verified, solde_commission, solde_en_attente, total_commissions_gagnees, total_commissions_payees, badge_niveau, code_parrainage, parraine_par, objectif_mensuel, photo_profil_url, numero_mobile_money, operateur_mobile_money, user_id, created_at, updated_at";
         const { data: freshSeller } = await supabase
           .from("sellers")
-          .select("*")
+          .select(SELLER_COLS)
           .eq("id", session.id)
           .maybeSingle();
         
