@@ -12,6 +12,7 @@ import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingB
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
