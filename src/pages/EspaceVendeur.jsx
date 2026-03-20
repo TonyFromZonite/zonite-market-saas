@@ -22,6 +22,10 @@ import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/co
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
+import ObjectifMensuel from "@/components/ObjectifMensuel";
+import ParrainageSection from "@/components/ParrainageSection";
+import ClassementHebdo from "@/components/ClassementHebdo";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
