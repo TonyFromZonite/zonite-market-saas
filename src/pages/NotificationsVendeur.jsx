@@ -93,7 +93,12 @@ export default function NotificationsVendeur() {
   const notifsFiltrees = filtrer(notifications);
   const nbNonLues = notifications.filter(n => !n.lu).length;
 
+  const handlePullRefresh = async () => {
+    queryClient.invalidateQueries({ queryKey: ["notifs_vendeur_page"] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex items-center justify-between gap-3">
