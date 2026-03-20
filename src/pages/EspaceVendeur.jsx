@@ -710,9 +710,21 @@ export default function EspaceVendeur() {
             <span className="text-slate-300 text-lg">→</span>
           </div>
         </Link>
+
+        {/* Objectif mensuel + Badge progression */}
+        <div className="grid grid-cols-1 gap-3 mb-3">
+          <ObjectifMensuel ventesCount={vendeurStats?.ventesMois || 0} objectif={compteVendeur.objectif_mensuel || 10} />
+          <BadgeProgression totalVentes={vendeurStats?.totalVentes || 0} currentBadge={compteVendeur.badge_niveau || getBadgeForVentes(vendeurStats?.totalVentes || 0)} />
+        </div>
+
+        {/* Parrainage */}
+        <div className="mb-3">
+          <ParrainageSection vendeur={compteVendeur} />
+        </div>
+
         {/* SECTION B — Top vendeurs (collapsible) */}
         <CollapsibleSection
-          title="Classement des vendeurs"
+          title="Classement hebdomadaire — Top 10"
           icon={<Trophy className="w-4 h-4 text-yellow-500" />}
           onFirstOpen={() => setLoadTopVendeurs(true)}
         >
@@ -725,9 +737,9 @@ export default function EspaceVendeur() {
                 <TabsTrigger value="month" className="text-xs">Ce mois</TabsTrigger>
                 <TabsTrigger value="year" className="text-xs">Cette année</TabsTrigger>
               </TabsList>
-              <TabsContent value="week"><TopVendeursSection data={topVendeurs?.topWeek} currentVendeurId={compteVendeur.id} /></TabsContent>
-              <TabsContent value="month"><TopVendeursSection data={topVendeurs?.topMonth} currentVendeurId={compteVendeur.id} /></TabsContent>
-              <TabsContent value="year"><TopVendeursSection data={topVendeurs?.topYear} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="week"><ClassementHebdo topVendeurs={topVendeurs?.topWeek} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="month"><ClassementHebdo topVendeurs={topVendeurs?.topMonth} currentVendeurId={compteVendeur.id} /></TabsContent>
+              <TabsContent value="year"><ClassementHebdo topVendeurs={topVendeurs?.topYear} currentVendeurId={compteVendeur.id} /></TabsContent>
             </Tabs>
           )}
         </CollapsibleSection>
