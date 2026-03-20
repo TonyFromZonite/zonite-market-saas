@@ -72,6 +72,14 @@ export default function InscriptionVendeur() {
   const { toast } = useToast();
   const [etape, setEtape] = useState(1);
   const [typeDocument, setTypeDocument] = useState("cni");
+
+  // Referral code from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const refFromUrl = urlParams.get('ref') || '';
+  const [refCode, setRefCode] = useState(refFromUrl);
+  const [refValid, setRefValid] = useState(refFromUrl ? null : undefined);
+  const [checkingRef, setCheckingRef] = useState(false);
+
   const [form, setForm] = useState({
     username: "",
     nom_complet: "",
@@ -161,6 +169,25 @@ export default function InscriptionVendeur() {
     }, 500);
     return () => clearTimeout(timer);
   }, [form.username]);
+
+  // Validate referral code from URL on mount
+  useEffect(() => {
+    if (refFromUrl) validateRefCode(refFromUrl);
+  }, []);
+
+  const validateRefCode = async (code) => {
+    if (!code?.trim() || code.length < 4) { setRefValid(undefined); return; }
+    setCheckingRef(true);
+    try {
+      const { data } = await supabase
+        .from('sellers')
+        .select('id, full_name, email')
+        .eq('code_parrainage', code.toUpperCase().trim())
+        .maybeSingle();
+      setRefValid(data || null);
+    } catch { setRefValid(null); }
+    finally { setCheckingRef(false); }
+  };
 
   // Real-time password validation
   useEffect(() => {
@@ -370,20 +397,40 @@ export default function InscriptionVendeur() {
     setErreur("");
 
     try {
+      const updateData = {
+        ville: form.ville,
+        quartier: form.quartier,
+        numero_mobile_money: form.numero_mobile_money,
+        operateur_mobile_money: form.operateur_mobile_money,
+        experience_vente: form.experience_vente || null,
+      };
+
+      // Save referral code if valid
+      if (refCode && refValid) {
+        updateData.parraine_par = refCode.toUpperCase().trim();
+      }
+
       const { error } = await supabase
         .from('sellers')
-        .update({
-          ville: form.ville,
-          quartier: form.quartier,
-          numero_mobile_money: form.numero_mobile_money,
-          operateur_mobile_money: form.operateur_mobile_money,
-          experience_vente: form.experience_vente || null,
-        })
+        .update(updateData)
         .eq('email', vendeurEmail);
 
       if (error) {
         setErreur("Erreur lors de la sauvegarde du profil: " + error.message);
         return;
+      }
+
+      // Notify parrain if referral was used
+      if (refCode && refValid) {
+        try {
+          await supabase.from('notifications_vendeur').insert({
+            vendeur_id: refValid.id,
+            vendeur_email: refValid.email || '',
+            titre: '🎉 Nouveau filleul !',
+            message: `${form.nom_complet} vient de s'inscrire avec votre code ${refCode} !\n\nVous gagnerez 500 FCFA sur chacune de ses 10 premières livraisons réussies.`,
+            type: 'succes',
+          });
+        } catch (e) { console.warn('Notification parrain failed:', e); }
       }
 
       // Set session with seller ID and redirect
@@ -600,6 +647,37 @@ export default function InscriptionVendeur() {
                 <p className="text-red-400 text-xs mt-1">✗ Les mots de passe ne correspondent pas</p>
               )}
             </div>
+            {/* Referral code field */}
+            <div>
+              <Label className="text-slate-200 text-xs">Code de parrainage <span className="text-slate-400">(optionnel)</span></Label>
+              <Input
+                value={refCode}
+                onChange={e => {
+                  const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  setRefCode(val);
+                  if (val.length >= 4) validateRefCode(val);
+                  else setRefValid(undefined);
+                }}
+                placeholder="Ex: JEAN237"
+                disabled={!!refFromUrl}
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1 text-center text-lg tracking-widest font-bold"
+              />
+              {refCode.length > 0 && (
+                <div className="mt-1">
+                  {checkingRef ? (
+                    <p className="text-slate-400 text-xs">⏳ Vérification...</p>
+                  ) : refValid ? (
+                    <p className="text-emerald-400 text-xs">✅ Code valide ! Parrain : <strong className="text-amber-400">{refValid.full_name}</strong></p>
+                  ) : refCode.length >= 4 && refValid === null ? (
+                    <p className="text-slate-400 text-xs">ℹ️ Code introuvable. Laissez vide pour continuer sans parrain.</p>
+                  ) : null}
+                </div>
+              )}
+              {!refCode && (
+                <p className="text-slate-400 text-[11px] mt-1">Si quelqu'un vous a invité, entrez son code ici.</p>
+              )}
+            </div>
+
             <Button onClick={validerEtape1} disabled={enCours} className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
               {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer →"}
             </Button>

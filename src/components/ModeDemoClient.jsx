@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, Share2 } from "lucide-react";
 
 export default function ModeDemoClient({ produit, onClose }) {
   const [currentImage, setCurrentImage] = useState(0);
@@ -7,76 +7,210 @@ export default function ModeDemoClient({ produit, onClose }) {
 
   if (!produit) return null;
 
+  const handleShare = async (imageUrl) => {
+    const text =
+      `🛍️ *${produit.nom}*\n\n` +
+      `${(produit.description || '').slice(0, 120)}\n\n` +
+      `✅ Disponible maintenant !\n` +
+      `📦 Livraison à domicile\n` +
+      `📞 Contactez-moi pour commander !\n\n` +
+      `_Vendeur officiel ZONITE Market 🇨🇲_`;
+
+    if (navigator.share) {
+      try {
+        if (imageUrl) {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const file = new File(
+            [blob],
+            `zonite_${produit.nom.replace(/\s+/g, '_')}.jpg`,
+            { type: blob.type }
+          );
+          await navigator.share({ title: produit.nom, text, files: [file] });
+        } else {
+          await navigator.share({ title: produit.nom, text });
+        }
+        return;
+      } catch {}
+    }
+    // Fallback WhatsApp
+    window.open(
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
+      '_blank'
+    );
+  };
+
+  const handleShareAll = async () => {
+    const text =
+      `🛍️ *${produit.nom}*\n\n` +
+      `${(produit.description || '').slice(0, 150)}\n\n` +
+      `✅ Disponible maintenant !\n` +
+      `📦 Livraison à domicile\n` +
+      `📞 Contactez-moi pour commander !\n\n` +
+      `_Vendeur officiel ZONITE Market 🇨🇲_`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: produit.nom, text, url: 'https://zonite.org' });
+        return;
+      } catch {}
+    }
+    window.open(
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
+      '_blank'
+    );
+  };
+
+  const getEmbedUrl = (url) => {
+    if (!url) return null;
+    // YouTube
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+    return url;
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/80 text-white" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))" }}>
-        <span className="text-xs text-white/50">Mode Démonstration</span>
-        <button onClick={onClose} className="p-1">
-          <X className="w-6 h-6 text-white" />
+    <div className="fixed inset-0 z-[100] bg-[#0a0e2e] flex flex-col overflow-y-auto">
+      {/* Header */}
+      <div
+        className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b border-white/10"
+        style={{
+          paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
+          background: "rgba(10,14,46,0.95)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center"
+        >
+          <X className="w-5 h-5 text-white" />
         </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-white font-bold text-sm truncate">{produit.nom}</p>
+          <p className="text-amber-400 text-[11px]">Mode démonstration client</p>
+        </div>
       </div>
 
-      {/* Image */}
-      <div className="flex-1 relative flex items-center justify-center bg-black">
-        {images.length > 0 ? (
-          <>
-            <img
-              src={images[currentImage]}
-              alt={produit.nom}
-              className="max-w-full max-h-full object-contain"
-            />
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={() => setCurrentImage(i => i > 0 ? i - 1 : images.length - 1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-                >
-                  <ChevronLeft className="w-5 h-5 text-white" />
-                </button>
-                <button
-                  onClick={() => setCurrentImage(i => i < images.length - 1 ? i + 1 : 0)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-                >
-                  <ChevronRight className="w-5 h-5 text-white" />
-                </button>
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                  {images.map((_, i) => (
-                    <div key={i} className={`w-2 h-2 rounded-full ${i === currentImage ? 'bg-white' : 'bg-white/30'}`} />
-                  ))}
+      <div className="px-4 py-4 space-y-5">
+        {/* Product Images */}
+        {images.length > 0 && (
+          <div>
+            <p className="text-amber-400 font-semibold text-xs mb-3">📸 Photos du produit</p>
+            {images.map((img, idx) => (
+              <div key={idx} className="mb-4">
+                <img
+                  src={img}
+                  alt={`${produit.nom} ${idx + 1}`}
+                  className="w-full rounded-xl"
+                  style={{ display: "block" }}
+                />
+                <div className="flex gap-2 mt-2">
+                  <a
+                    href={img}
+                    download={`${produit.nom.replace(/\s+/g, '_')}_photo_${idx + 1}.jpg`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-white/10 text-white text-xs font-semibold no-underline"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Télécharger
+                  </a>
+                  <button
+                    onClick={() => handleShare(img)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border-none text-white text-xs font-semibold cursor-pointer"
+                    style={{ background: "#25D366" }}
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Partager
+                  </button>
                 </div>
-              </>
-            )}
-          </>
-        ) : (
-          <div className="text-white/30 text-center">
-            <p className="text-6xl mb-4">📦</p>
-            <p>Aucune image disponible</p>
-          </div>
-        )}
-      </div>
-
-      {/* Product info — NO PRICES */}
-      <div className="bg-gradient-to-t from-black via-black/90 to-transparent px-4 py-5">
-        <h2 className="text-white text-xl font-bold mb-1">{produit.nom}</h2>
-        {produit.description && (
-          <p className="text-white/60 text-sm leading-relaxed line-clamp-3">{produit.description}</p>
-        )}
-        {(produit.variations || []).length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {produit.variations.map((v, i) => (
-              <div key={i} className="flex flex-wrap gap-1.5">
-                {(v.options || []).map(opt => (
-                  <span key={opt} className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/80">{opt}</span>
-                ))}
               </div>
             ))}
           </div>
         )}
-        <div className="mt-3 flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${(produit.stock_global || 0) > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-            {(produit.stock_global || 0) > 0 ? '✅ Disponible' : '❌ Indisponible'}
-          </span>
+
+        {/* No images */}
+        {images.length === 0 && (
+          <div className="text-center py-12 text-white/30">
+            <p className="text-5xl mb-3">📦</p>
+            <p>Aucune image disponible</p>
+          </div>
+        )}
+
+        {/* Product Video */}
+        {produit.lien_telegram && getEmbedUrl(produit.lien_telegram) && (
+          <div>
+            <p className="text-amber-400 font-semibold text-xs mb-3">🎬 Vidéo de démonstration</p>
+            <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={getEmbedUrl(produit.lien_telegram)}
+                className="absolute inset-0 w-full h-full border-none"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <button
+              onClick={() => {
+                const msg =
+                  `🎬 *${produit.nom}* - Vidéo démonstration\n\n` +
+                  `${(produit.description || '').slice(0, 100)}\n\n` +
+                  `Voir la vidéo : ${produit.lien_telegram}\n\n` +
+                  `Disponible chez ZONITE Market !`;
+                window.open(
+                  `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,
+                  '_blank'
+                );
+              }}
+              className="w-full mt-2 py-3 rounded-xl border-none text-white text-sm font-bold cursor-pointer flex items-center justify-center gap-2"
+              style={{ background: "#25D366" }}
+            >
+              💬 Partager la vidéo sur WhatsApp
+            </button>
+          </div>
+        )}
+
+        {/* Product Info — NO PRICES */}
+        <div className="rounded-xl p-4" style={{ background: "rgba(245,166,35,0.08)" }}>
+          <h2 className="text-white text-lg font-bold mb-2">{produit.nom}</h2>
+          {produit.description && (
+            <p className="text-white/70 text-sm leading-relaxed whitespace-pre-line">{produit.description}</p>
+          )}
+          {(produit.variations || []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {produit.variations.map((v, i) => (
+                <div key={i} className="flex flex-wrap gap-1.5">
+                  {(v.options || []).map(opt => (
+                    <span key={opt} className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/80">{opt}</span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3">
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${(produit.stock_global || 0) > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+              {(produit.stock_global || 0) > 0 ? '✅ Disponible' : '❌ Indisponible'}
+            </span>
+          </div>
+        </div>
+
+        {/* Share All button */}
+        <button
+          onClick={handleShareAll}
+          className="w-full py-3.5 rounded-xl border-none text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+          style={{
+            background: "linear-gradient(135deg, #f5a623, #e8940f)",
+            boxShadow: "0 4px 15px rgba(245,166,35,0.4)",
+          }}
+        >
+          📤 Partager ce produit
+        </button>
+
+        {/* Branding */}
+        <div className="text-center py-3 border-t border-white/5">
+          <p className="text-white/20 text-[11px]">Produit certifié</p>
+          <p className="text-amber-400 font-bold text-sm mt-0.5">ZONITE Market 🇨🇲</p>
+          <p className="text-white/20 text-[10px] mt-0.5">Livraison rapide partout au Cameroun</p>
         </div>
       </div>
     </div>
