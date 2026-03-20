@@ -48,7 +48,7 @@ export default function ParrainageSection({ vendeur }) {
   };
 
   const shareWhatsApp = () => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
   const totalGains = filleuls.reduce((s, f) => s + (f.commission_totale || 0), 0);
