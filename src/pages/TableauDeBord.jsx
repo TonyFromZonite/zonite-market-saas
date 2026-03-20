@@ -286,6 +286,7 @@ function DashboardAdmin() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {(candidaturesArray.length > 0 || kycArray.length > 0 || paiementsArray.length > 0) && (
         <div style={{ background: "#FEFCE8", border: "1px solid #FDE68A", borderRadius: 12, padding: 16 }}>
