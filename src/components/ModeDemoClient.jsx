@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Download } from "lucide-react";
+import { X, Download, Copy, Check, Share2 } from "lucide-react";
 import { addWatermark, blobToFile } from "@/lib/watermark";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -13,6 +13,8 @@ export default function ModeDemoClient({ produit, onClose }) {
   const [currentImage, setCurrentImage] = useState(0);
   const [downloading, setDownloading] = useState({});
   const [sharing, setSharing] = useState({});
+  const [copied, setCopied] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
   const { toast } = useToast();
   const images = produit?.images || [];
 
@@ -73,16 +75,34 @@ export default function ModeDemoClient({ produit, onClose }) {
     }
   };
 
-  const handleShareAll = async () => {
-    const text =
-      `🛍️ *${produit.nom}*\n\n` +
-      `${(produit.description || '').slice(0, 150)}\n\n` +
-      `✅ Disponible maintenant !\n📦 Livraison à domicile\n📞 Contactez-moi pour commander !\n\n` +
-      `_Vendeur officiel ZONITE Market 🇨🇲_`;
+  const shareText =
+    `🛍️ *${produit.nom}*\n\n` +
+    `${(produit.description || '').slice(0, 150)}\n\n` +
+    `✅ Disponible maintenant !\n📦 Livraison à domicile\n📞 Contactez-moi pour commander !\n\n` +
+    `_Vendeur officiel ZONITE Market 🇨🇲_`;
+
+  const shareLink = `https://zonitemarket.lovable.app`;
+
+  const handleCopyLink = () => {
+    const fullText = `${shareText}\n\n👉 ${shareLink}`;
+    navigator.clipboard?.writeText(fullText);
+    setCopied(true);
+    toast({ title: '✅ Lien copié !' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareNative = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: produit.nom, text, url: 'https://zonite.org' }); return; } catch {}
+      try {
+        await navigator.share({ title: produit.nom, text: shareText, url: shareLink });
+        return;
+      } catch {}
     }
-    openWhatsApp(text);
+    handleCopyLink();
+  };
+
+  const handleShareWhatsApp = () => {
+    openWhatsApp(`${shareText}\n\n👉 ${shareLink}`);
   };
 
   const getEmbedUrl = (url) => {
@@ -197,14 +217,62 @@ export default function ModeDemoClient({ produit, onClose }) {
           </div>
         </div>
 
-        {/* Share All */}
-        <button
-          onClick={handleShareAll}
-          className="w-full py-3.5 rounded-xl border-none text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
-          style={{ background: "linear-gradient(135deg, #f5a623, #e8940f)", boxShadow: "0 4px 15px rgba(245,166,35,0.4)" }}
-        >
-          📤 Partager ce produit
-        </button>
+        {/* Share Panel */}
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowSharePanel(!showSharePanel)}
+            className="w-full py-3.5 rounded-xl border-none text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+            style={{ background: "linear-gradient(135deg, #f5a623, #e8940f)", boxShadow: "0 4px 15px rgba(245,166,35,0.4)" }}
+          >
+            <Share2 className="w-5 h-5" />
+            Partager ce produit
+          </button>
+
+          {showSharePanel && (
+            <div className="rounded-xl p-3 space-y-2 border border-white/10" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              {/* WhatsApp */}
+              <button
+                onClick={handleShareWhatsApp}
+                className="w-full py-3 rounded-lg border-none text-white text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+                style={{ background: '#25D366' }}
+              >
+                <WhatsAppIcon className="w-5 h-5" />
+                Envoyer via WhatsApp
+              </button>
+
+              {/* Copy link */}
+              <button
+                onClick={handleCopyLink}
+                className="w-full py-3 rounded-lg border border-white/15 text-white text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+                style={{ background: 'rgba(255,255,255,0.08)' }}
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copié !' : 'Copier le texte + lien'}
+              </button>
+
+              {/* Native share */}
+              <button
+                onClick={handleShareNative}
+                className="w-full py-3 rounded-lg border border-amber-500/30 text-amber-400 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+                style={{ background: 'rgba(245,166,35,0.1)' }}
+              >
+                <Share2 className="w-4 h-4" />
+                Partager sur tous les réseaux
+              </button>
+
+              {/* Link preview */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <span className="text-white/40 text-[11px] truncate flex-1">{shareLink}</span>
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(shareLink); toast({ title: '✅ Lien copié !' }); }}
+                  className="text-amber-400 text-[11px] font-semibold shrink-0 bg-transparent border-none cursor-pointer"
+                >
+                  Copier
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Branding */}
         <div className="text-center py-3 border-t border-white/5">
