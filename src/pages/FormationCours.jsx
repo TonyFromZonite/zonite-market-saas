@@ -184,5 +184,6 @@ export default function FormationCours() {
       </div>
       
     </div>
+    </PullToRefresh>
   );
 }

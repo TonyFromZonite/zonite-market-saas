@@ -147,5 +147,6 @@ export default function MesCommandesVendeur() {
 
       
     </div>
+    </PullToRefresh>
   );
 }

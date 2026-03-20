@@ -489,5 +489,6 @@ export default function ProfilVendeur() {
         </Button>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

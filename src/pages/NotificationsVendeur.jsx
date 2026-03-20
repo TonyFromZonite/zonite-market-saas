@@ -177,5 +177,6 @@ export default function NotificationsVendeur() {
 
       
     </div>
+    </PullToRefresh>
   );
 }
