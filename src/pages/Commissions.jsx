@@ -66,6 +66,7 @@ export default function Commissions() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-6">
       {/* Résumé */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
