@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Download } from "lucide-react";
+import { X, Download, Copy, Check, Share2 } from "lucide-react";
 import { addWatermark, blobToFile } from "@/lib/watermark";
 import { useToast } from "@/components/ui/use-toast";
 
