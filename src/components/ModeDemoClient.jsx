@@ -75,16 +75,34 @@ export default function ModeDemoClient({ produit, onClose }) {
     }
   };
 
-  const handleShareAll = async () => {
-    const text =
-      `🛍️ *${produit.nom}*\n\n` +
-      `${(produit.description || '').slice(0, 150)}\n\n` +
-      `✅ Disponible maintenant !\n📦 Livraison à domicile\n📞 Contactez-moi pour commander !\n\n` +
-      `_Vendeur officiel ZONITE Market 🇨🇲_`;
+  const shareText =
+    `🛍️ *${produit.nom}*\n\n` +
+    `${(produit.description || '').slice(0, 150)}\n\n` +
+    `✅ Disponible maintenant !\n📦 Livraison à domicile\n📞 Contactez-moi pour commander !\n\n` +
+    `_Vendeur officiel ZONITE Market 🇨🇲_`;
+
+  const shareLink = `https://zonitemarket.lovable.app`;
+
+  const handleCopyLink = () => {
+    const fullText = `${shareText}\n\n👉 ${shareLink}`;
+    navigator.clipboard?.writeText(fullText);
+    setCopied(true);
+    toast({ title: '✅ Lien copié !' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareNative = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: produit.nom, text, url: 'https://zonite.org' }); return; } catch {}
+      try {
+        await navigator.share({ title: produit.nom, text: shareText, url: shareLink });
+        return;
+      } catch {}
     }
-    openWhatsApp(text);
+    handleCopyLink();
+  };
+
+  const handleShareWhatsApp = () => {
+    openWhatsApp(`${shareText}\n\n👉 ${shareLink}`);
   };
 
   const getEmbedUrl = (url) => {
