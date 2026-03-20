@@ -121,6 +121,7 @@ export default function CatalogueVendeur() {
 // ─── Categories Grid ───────────────────────────────────────
 function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories_with_count"],
