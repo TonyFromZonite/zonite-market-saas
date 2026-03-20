@@ -8,12 +8,16 @@ import React from "react";
 
 const CACHE_VERSION = 'v1';
 const CACHE_TTL = {
-  PRODUITS: 30 * 60 * 1000, // 30 min
-  VENDEURS: 60 * 60 * 1000, // 1h
-  COMMANDES: 5 * 60 * 1000, // 5 min
-  VENTES: 10 * 60 * 1000, // 10 min
-  NOTIFICATIONS: 2 * 60 * 1000, // 2 min
-  STATS: 15 * 60 * 1000, // 15 min
+  PRODUITS: 5 * 60 * 1000,       // 5 min — catalogue
+  CATEGORIES: 10 * 60 * 1000,    // 10 min — catégories
+  VENDEURS: 5 * 60 * 1000,       // 5 min — profil vendeur
+  VIDEOS: 10 * 60 * 1000,        // 10 min — vidéos formation
+  CONFIG: 10 * 60 * 1000,        // 10 min — config app
+  COMMANDES: 0,                  // temps réel
+  VENTES: 0,                     // temps réel
+  NOTIFICATIONS: 0,              // temps réel
+  STATS: 0,                      // temps réel
+  PAIEMENTS: 0,                  // temps réel
 };
 
 class CacheStore {
