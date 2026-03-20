@@ -750,17 +750,33 @@ export default function InscriptionVendeur() {
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 space-y-4">
             <h2 className="text-white font-bold">Mon profil vendeur</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-slate-200 text-xs">Ville *</Label>
-                <Input value={form.ville} onChange={e => modifier("ville", e.target.value)} placeholder="Douala" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
+              <div id="field-ville">
+                <Label className="text-slate-200 text-xs">Ville <span className="text-red-400">*</span></Label>
+                <Select value={form.ville} onValueChange={v => modifier("ville", v)}>
+                  <SelectTrigger className={`bg-white/10 text-white rounded-xl h-11 mt-1 ${!form.ville && erreur ? 'border-red-400' : 'border-white/20'}`}>
+                    <SelectValue placeholder="Sélectionnez votre ville" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Douala">Douala</SelectItem>
+                    <SelectItem value="Yaoundé">Yaoundé</SelectItem>
+                    <SelectItem value="Bafoussam">Bafoussam</SelectItem>
+                    <SelectItem value="Kribi">Kribi</SelectItem>
+                    <SelectItem value="Limbé">Limbé</SelectItem>
+                    <SelectItem value="Buéa">Buéa</SelectItem>
+                    <SelectItem value="Bamenda">Bamenda</SelectItem>
+                    <SelectItem value="Autre">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!form.ville && erreur && <p className="text-red-400 text-[11px] mt-1">⚠️ La ville est obligatoire</p>}
               </div>
-              <div>
-                <Label className="text-slate-200 text-xs">Quartier *</Label>
-                <Input value={form.quartier} onChange={e => modifier("quartier", e.target.value)} placeholder="Akwa" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
+              <div id="field-quartier">
+                <Label className="text-slate-200 text-xs">Quartier <span className="text-red-400">*</span></Label>
+                <Input value={form.quartier} onChange={e => modifier("quartier", e.target.value)} placeholder="Ex: Akwa, Bastos..." className={`bg-white/10 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1 ${!form.quartier && erreur ? 'border-red-400' : 'border-white/20'}`} />
+                {!form.quartier && erreur && <p className="text-red-400 text-[11px] mt-1">⚠️ Le quartier est obligatoire</p>}
               </div>
             </div>
             <div>
-              <Label className="text-slate-200 text-xs">Opérateur Mobile Money *</Label>
+              <Label className="text-slate-200 text-xs">Opérateur Mobile Money <span className="text-red-400">*</span></Label>
               <Select value={form.operateur_mobile_money} onValueChange={v => modifier("operateur_mobile_money", v)}>
                 <SelectTrigger className="bg-white/10 border-white/20 text-white rounded-xl h-11 mt-1">
                   <SelectValue />
@@ -772,7 +788,7 @@ export default function InscriptionVendeur() {
               </Select>
             </div>
             <div>
-              <Label className="text-slate-200 text-xs">Numéro Mobile Money * <span className="text-slate-400">(pour recevoir vos commissions)</span></Label>
+              <Label className="text-slate-200 text-xs">Numéro Mobile Money <span className="text-red-400">*</span> <span className="text-slate-400">(pour recevoir vos commissions)</span></Label>
               <Input value={form.numero_mobile_money} onChange={e => modifier("numero_mobile_money", e.target.value)} placeholder="+237 6XX XXX XXX" className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1" />
             </div>
             <div>
@@ -783,7 +799,7 @@ export default function InscriptionVendeur() {
               <Button variant="outline" onClick={() => { setEtape(2); setErreur(""); }} className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-11">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
-              <Button onClick={validerEtape3} disabled={enCours} className="flex-1 h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
+              <Button onClick={validerEtape3} disabled={enCours || !form.ville || !form.quartier || !form.numero_mobile_money} className="flex-1 h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl disabled:opacity-40">
                 {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Accéder à mon espace →"}
               </Button>
             </div>

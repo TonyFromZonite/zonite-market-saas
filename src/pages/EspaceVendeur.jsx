@@ -528,6 +528,18 @@ export default function EspaceVendeur() {
         </div>
       )}
 
+      {/* Banner profil incomplet */}
+      {compteVendeur && (!compteVendeur.ville || !compteVendeur.quartier) && (
+        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div className="flex-1">
+            <p className="text-red-700 font-semibold text-sm">Profil incomplet</p>
+            <p className="text-red-500 text-xs">Ville et quartier requis pour les livraisons.</p>
+          </div>
+          <button onClick={() => navigate('/ProfilVendeur')} className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">Compléter</button>
+        </div>
+      )}
+
       {/* Modal KYC obligatoire */}
       {compteVendeur.seller_status === SELLER_STATUSES.KYC_REQUIRED && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
