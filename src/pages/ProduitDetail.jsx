@@ -216,6 +216,7 @@ export default function ProduitDetail() {
         >
           👁️ Mode démonstration client
         </button>
+      </div>
 
       {/* Demo overlay */}
       {showDemo && <ModeDemoClient produit={produit} onClose={() => setShowDemo(false)} />}
