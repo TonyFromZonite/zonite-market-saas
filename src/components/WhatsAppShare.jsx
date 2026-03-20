@@ -7,7 +7,7 @@ export default function WhatsAppShare({ produit, vendeurName }) {
     const text = `🛍️ *${produit.nom}*\n\n${produit.description ? produit.description.slice(0, 120) + '...' : ''}\n\n💰 Prix: ${formater(produit.prix_vente)}\n${produit.stock_global > 0 ? '✅ En stock' : '❌ Rupture de stock'}\n\n📱 Contactez-moi pour commander !\n👤 ${vendeurName || 'Votre vendeur Zonite'}`;
 
     const imageUrl = produit.images?.[0] || '';
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}${imageUrl ? '' : ''}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
   };
 
