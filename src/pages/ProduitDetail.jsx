@@ -177,29 +177,7 @@ export default function ProduitDetail() {
           </a>
         )}
 
-        {/* Share Product */}
-        <button
-          onClick={() => setShowShare(true)}
-          className="w-full py-3 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.97] transition-transform border-none cursor-pointer"
-          style={{ background: "linear-gradient(135deg, #f5a623, #e8940f)", boxShadow: "0 4px 15px rgba(245,166,35,0.4)" }}
-        >
-          <span style={{ fontSize: "18px" }}>📤</span>
-          Partager ce produit
-        </button>
-        {showShare && (
-          <ShareProductModal produit={produit} seller={session} onClose={() => setShowShare(false)} />
-        )}
-
-        {/* Demo Mode */}
-        <button
-          onClick={() => setShowDemo(true)}
-          className="w-full py-3 rounded-xl text-sm font-bold bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
-        >
-          <Eye className="w-4 h-4" />
-          Mode Démonstration Client
-        </button>
-
-        {/* Commander button */}
+        {/* BUTTON 1 — Commander (GREEN) */}
         {stockOk && (
           <button
             onClick={() => navigate('/NouvelleCommandeVendeur', {
@@ -207,18 +185,37 @@ export default function ProduitDetail() {
                 produit_id: produit.id,
                 produit_nom: produit.nom,
                 prix_vente: produit.prix_vente,
+                prix_gros: produit.prix_gros,
               }
             })}
-            className="w-full py-4 rounded-xl text-base font-bold text-white"
-            style={{
-              background: 'linear-gradient(135deg, #f5a623, #e8940f)',
-              boxShadow: '0 4px 15px rgba(245,166,35,0.4)',
-            }}
+            className="w-full py-4 rounded-xl text-base font-bold text-white border-none cursor-pointer flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+            style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', boxShadow: '0 4px 15px rgba(34,197,94,0.35)' }}
           >
             🛒 Commander ce produit
           </button>
         )}
-      </div>
+
+        {/* BUTTON 2 — Partager (WhatsApp green) */}
+        <button
+          onClick={() => setShowShare(true)}
+          className="w-full py-3.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform border-none cursor-pointer"
+          style={{ background: '#25D366' }}
+        >
+          <span style={{ fontSize: '18px' }}>💬</span>
+          Partager ce produit
+        </button>
+        {showShare && (
+          <ShareProductModal produit={produit} seller={session} onClose={() => setShowShare(false)} />
+        )}
+
+        {/* BUTTON 3 — Demo (Blue) */}
+        <button
+          onClick={() => setShowDemo(true)}
+          className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.97] transition-transform cursor-pointer"
+          style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '12px' }}
+        >
+          👁️ Mode démonstration client
+        </button>
 
       {/* Demo overlay */}
       {showDemo && <ModeDemoClient produit={produit} onClose={() => setShowDemo(false)} />}
