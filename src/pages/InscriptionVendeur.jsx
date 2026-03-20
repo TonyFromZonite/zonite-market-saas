@@ -181,7 +181,7 @@ export default function InscriptionVendeur() {
     try {
       const { data } = await supabase
         .from('sellers')
-        .select('id, full_name')
+        .select('id, full_name, email')
         .eq('code_parrainage', code.toUpperCase().trim())
         .maybeSingle();
       setRefValid(data || null);
