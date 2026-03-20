@@ -178,11 +178,12 @@ export default function EspaceVendeur() {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-      const [ventesWeek, ventesMois, ventesAnnee, commandesEC] = await Promise.all([
+      const [ventesWeek, ventesMois, ventesAnnee, commandesEC, totalVentes] = await Promise.all([
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfWeek.toISOString()),
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfMonth.toISOString()),
         supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfYear.toISOString()),
         supabase.from('commandes_vendeur').select('id').eq('vendeur_id', compteVendeur.id).in('statut', ['en_attente_validation_admin', 'validee_admin', 'attribuee_livreur', 'en_livraison']),
+        supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', compteVendeur.id),
       ]);
 
       const sum = (arr, field) => (arr || []).reduce((s, v) => s + (v[field] || 0), 0);
@@ -194,6 +195,8 @@ export default function EspaceVendeur() {
         caAnnee: sum(ventesAnnee.data, 'montant_total'),
         commAnnee: sum(ventesAnnee.data, 'commission_vendeur'),
         commandesEnCours: commandesEC.data?.length || 0,
+        totalVentes: totalVentes.count || 0,
+        ventesMois: ventesMois.data?.length || 0,
       };
     },
     enabled: !!compteVendeur?.id,
