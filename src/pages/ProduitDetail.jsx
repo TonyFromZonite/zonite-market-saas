@@ -177,8 +177,18 @@ export default function ProduitDetail() {
           </a>
         )}
 
-        {/* WhatsApp Share */}
-        <WhatsAppShare produit={produit} vendeurName={session?.full_name} />
+        {/* Share Product */}
+        <button
+          onClick={() => setShowShare(true)}
+          className="w-full py-3 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.97] transition-transform border-none cursor-pointer"
+          style={{ background: "linear-gradient(135deg, #f5a623, #e8940f)", boxShadow: "0 4px 15px rgba(245,166,35,0.4)" }}
+        >
+          <span style={{ fontSize: "18px" }}>📤</span>
+          Partager ce produit
+        </button>
+        {showShare && (
+          <ShareProductModal produit={produit} seller={session} onClose={() => setShowShare(false)} />
+        )}
 
         {/* Demo Mode */}
         <button
