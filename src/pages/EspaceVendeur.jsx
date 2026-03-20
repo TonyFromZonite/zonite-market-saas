@@ -473,7 +473,14 @@ export default function EspaceVendeur() {
     );
   };
 
+  const handlePullRefresh = useCallback(async () => {
+    queryClient.invalidateQueries();
+    const { data: freshSeller } = await supabase.from("sellers").select("*").eq("id", compteVendeur?.id).maybeSingle();
+    if (freshSeller) setCompteVendeur(freshSeller);
+  }, [compteVendeur?.id, queryClient]);
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}>
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
