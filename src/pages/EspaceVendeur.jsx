@@ -553,7 +553,10 @@ export default function EspaceVendeur() {
             <img src={LOGO} alt="Zonite" className="h-8 w-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <span className="text-xs font-bold tracking-tight leading-none">ZONITE <span className="text-[#F5C518]">Vendeurs</span></span>
-              <p className="text-slate-300 text-[11px] mt-0.5 truncate max-w-[160px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-slate-300 text-[11px] truncate max-w-[120px]">👋 {compteVendeur.full_name || compteVendeur.nom_complet}</p>
+                <BadgeVendeur badge={compteVendeur.badge_niveau || getBadgeForVentes(vendeurStats?.totalVentes || 0)} size="sm" />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
