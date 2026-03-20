@@ -148,7 +148,7 @@ function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
 }
 
 function DashboardAdmin() {
-  const REFRESH = 15 * 1000;
+  const REFRESH = 60 * 1000;
   const queryClient = useQueryClient();
 
   const { data: ventes = [], isLoading: chargementVentes } = useQuery({
