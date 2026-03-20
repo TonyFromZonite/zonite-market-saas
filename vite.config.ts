@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => ({
           ],
           'charts': ['recharts'],
           'pdf-export': ['jspdf'],
+          'date-locale': ['date-fns/locale'],
         },
       },
     },
