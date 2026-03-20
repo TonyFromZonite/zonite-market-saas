@@ -315,6 +315,12 @@ export default function EspaceVendeur() {
 
   const soldeAffiche = compteActualise?.[0] || compteVendeur;
 
+  const handlePullRefresh = useCallback(async () => {
+    queryClient.invalidateQueries();
+    const { data: freshSeller } = await supabase.from("sellers").select("*").eq("id", compteVendeur?.id).maybeSingle();
+    if (freshSeller) setCompteVendeur(freshSeller);
+  }, [compteVendeur?.id, queryClient]);
+
   if (loadingCompte && !compteActualise) {
     return <div className="p-4 space-y-4">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>;
   }
