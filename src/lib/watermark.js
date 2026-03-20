@@ -1,4 +1,4 @@
-const LOGO_PATHS = ['/logo192.png', '/logo.png', '/logo512.png', '/favicon.ico'];
+const LOGO_PATHS = ['/zonite-logo-watermark.png', '/logo192.png', '/logo.png', '/favicon.ico'];
 
 export const addWatermark = async (imageUrl) => {
   return new Promise(async (resolve) => {
