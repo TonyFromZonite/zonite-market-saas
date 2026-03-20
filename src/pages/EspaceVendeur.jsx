@@ -202,8 +202,8 @@ export default function EspaceVendeur() {
       };
     },
     enabled: !!compteVendeur?.id,
-    staleTime: 10 * 1000,
-    refetchInterval: 15 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
