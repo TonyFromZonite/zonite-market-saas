@@ -60,15 +60,47 @@ export default function EspaceVendeur() {
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
-    const { file_url } = await uploadFile(fichier);
-    setKycForm(p => ({ ...p, [champ]: file_url }));
-    setKycUpload(p => ({ ...p, [key]: false }));
+    try {
+      if (fichier.size > 5 * 1024 * 1024) { setKycErreur("Fichier trop volumineux (max 5MB)"); setKycUpload(p => ({ ...p, [key]: false })); return; }
+      if (!fichier.type.startsWith('image/')) { setKycErreur("Seules les images sont acceptées"); setKycUpload(p => ({ ...p, [key]: false })); return; }
+      const fileName = `kyc/${compteVendeur.id}/${key}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('kyc-documents').upload(fileName, fichier, { upsert: true, contentType: fichier.type });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('kyc-documents').getPublicUrl(fileName);
+      setKycForm(p => ({ ...p, [champ]: urlData.publicUrl }));
+    } catch (err) {
+      setKycErreur("Erreur upload : " + (err.message || "Réessayez"));
+    } finally {
+      setKycUpload(p => ({ ...p, [key]: false }));
+    }
+  };
+
+  // KYC validation helpers
+  const isKycComplete = () => {
+    if (typeDocument === "cni") return !!kycForm.photo_identite_url && !!kycForm.photo_identite_verso_url && !!kycForm.selfie_url;
+    if (typeDocument === "passeport") return !!kycForm.photo_identite_url && !!kycForm.selfie_url;
+    return false;
+  };
+  const getKycMissingCount = () => {
+    if (typeDocument === "cni") return [kycForm.photo_identite_url, kycForm.photo_identite_verso_url, kycForm.selfie_url].filter(x => !x).length;
+    if (typeDocument === "passeport") return [kycForm.photo_identite_url, kycForm.selfie_url].filter(x => !x).length;
+    return 3;
   };
 
   const soumettreKyc = async () => {
-    if (!kycForm.photo_identite_url) { setKycErreur("Veuillez uploader votre pièce d'identité."); return; }
-    if (typeDocument === "cni" && !kycForm.photo_identite_verso_url) { setKycErreur("Veuillez uploader le verso de votre CNI."); return; }
-    if (!kycForm.selfie_url) { setKycErreur("Veuillez uploader votre selfie."); return; }
+    // Strict validation - block if any document missing
+    if (!kycForm.photo_identite_url) { setKycErreur("❌ Veuillez uploader votre pièce d'identité (recto)."); return; }
+    if (typeDocument === "cni" && !kycForm.photo_identite_verso_url) { setKycErreur("❌ Veuillez uploader le verso de votre CNI."); return; }
+    if (!kycForm.selfie_url) { setKycErreur("❌ Veuillez uploader votre selfie avec la pièce d'identité."); return; }
+
+    // Double-check URLs are real uploaded URLs (not empty strings)
+    const urls = [kycForm.photo_identite_url, kycForm.selfie_url];
+    if (typeDocument === "cni") urls.push(kycForm.photo_identite_verso_url);
+    if (urls.some(u => !u || !u.startsWith('http'))) {
+      setKycErreur("❌ Documents non uploadés correctement. Réessayez.");
+      return;
+    }
+
     setKycEnCours(true);
     setKycErreur("");
     const { error } = await supabase
@@ -80,6 +112,7 @@ export default function EspaceVendeur() {
         kyc_type_document: typeDocument,
         statut_kyc: 'en_attente',
         seller_status: 'kyc_pending',
+        kyc_submitted_at: new Date().toISOString(),
       })
       .eq('id', compteVendeur.id);
 
@@ -87,8 +120,8 @@ export default function EspaceVendeur() {
 
     if (!error) {
       await supabase.from('notifications_admin').insert({
-        titre: 'Nouveau KYC à valider',
-        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC`,
+        titre: '🪪 Nouveau KYC à valider',
+        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}`,
         type: 'kyc',
         vendeur_email: compteVendeur.email,
         reference_id: compteVendeur.id,
