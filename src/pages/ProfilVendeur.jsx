@@ -77,15 +77,36 @@ export default function ProfilVendeur() {
       setNombreVentes(count || 0);
 
       // Fetch filleuls (sellers referred by me)
-      const { data: refs } = await supabase
+      // Fetch filleuls via parrainages table (stable even if code changes)
+      const { data: parrainageRefs } = await supabase
+        .from('parrainages')
+        .select('*, filleul:filleul_id(id, full_name, seller_status, created_at)')
+        .eq('parrain_id', seller.id)
+        .order('created_at', { ascending: false });
+
+      // Also check legacy parraine_par field
+      const { data: legacyRefs } = await supabase
         .from('sellers')
         .select('id, full_name, seller_status, created_at')
         .eq('parraine_par', seller.code_parrainage)
         .order('created_at', { ascending: false });
-      setFilleuls(refs || []);
 
-      // Fetch my parrain
-      if (seller.parraine_par) {
+      // Merge: parrainages table + legacy, deduplicate by id
+      const parrainageFilleuls = (parrainageRefs || []).map(r => r.filleul).filter(Boolean);
+      const allFilleuls = [...parrainageFilleuls, ...(legacyRefs || [])];
+      const uniqueFilleuls = allFilleuls.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i);
+      setFilleuls(uniqueFilleuls);
+
+      // Fetch my parrain via parrainages table first, fallback to parraine_par
+      const { data: myParrainage } = await supabase
+        .from('parrainages')
+        .select('parrain:parrain_id(full_name, code_parrainage)')
+        .eq('filleul_id', seller.id)
+        .maybeSingle();
+
+      if (myParrainage?.parrain) {
+        setParrain(myParrainage.parrain);
+      } else if (seller.parraine_par) {
         const { data: p } = await supabase
           .from('sellers')
           .select('full_name, code_parrainage')

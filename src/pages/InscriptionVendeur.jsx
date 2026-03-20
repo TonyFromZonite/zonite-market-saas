@@ -420,8 +420,20 @@ export default function InscriptionVendeur() {
         return;
       }
 
-      // Notify parrain if referral was used
+      // Create parrainages record + notify parrain
       if (refCode && refValid) {
+        try {
+          // Create stable parrainage link using IDs (survives code changes)
+          await supabase.from('parrainages').insert({
+            parrain_id: refValid.id,
+            filleul_id: sellerId,
+            code_parrainage: refCode.toUpperCase().trim(),
+            actif: true,
+            livraisons_comptees: 0,
+            commission_totale: 0,
+          });
+        } catch (e) { console.warn('Parrainages insert failed:', e); }
+
         try {
           await supabase.from('notifications_vendeur').insert({
             vendeur_id: refValid.id,
