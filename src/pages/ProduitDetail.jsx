@@ -5,7 +5,7 @@ import { ChevronLeft, Package, ExternalLink, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import WhatsAppShare from "@/components/WhatsAppShare";
+import ShareProductModal from "@/components/vendor/ShareProductModal";
 import ModeDemoClient from "@/components/ModeDemoClient";
 import { getVendeurSession } from "@/components/useSessionGuard";
 
@@ -14,6 +14,7 @@ export default function ProduitDetail() {
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
   const [showDemo, setShowDemo] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const session = getVendeurSession();
   const { data: produit, isLoading } = useQuery({
     queryKey: ["produit_detail", produitId],
