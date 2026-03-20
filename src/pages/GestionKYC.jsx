@@ -99,6 +99,7 @@ export default function GestionKYC() {
   const traites = comptes.filter(c => c.statut_kyc !== "en_attente");
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-5">
       <div className="flex items-center justify-between mb-2">
         <div>
