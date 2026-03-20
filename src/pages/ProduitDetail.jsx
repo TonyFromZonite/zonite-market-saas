@@ -5,7 +5,7 @@ import { ChevronLeft, Package, ExternalLink, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import WhatsAppShare from "@/components/WhatsAppShare";
+import ShareProductModal from "@/components/vendor/ShareProductModal";
 import ModeDemoClient from "@/components/ModeDemoClient";
 import { getVendeurSession } from "@/components/useSessionGuard";
 
@@ -14,6 +14,7 @@ export default function ProduitDetail() {
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
   const [showDemo, setShowDemo] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const session = getVendeurSession();
   const { data: produit, isLoading } = useQuery({
     queryKey: ["produit_detail", produitId],
@@ -176,8 +177,18 @@ export default function ProduitDetail() {
           </a>
         )}
 
-        {/* WhatsApp Share */}
-        <WhatsAppShare produit={produit} vendeurName={session?.full_name} />
+        {/* Share Product */}
+        <button
+          onClick={() => setShowShare(true)}
+          className="w-full py-3 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.97] transition-transform border-none cursor-pointer"
+          style={{ background: "linear-gradient(135deg, #f5a623, #e8940f)", boxShadow: "0 4px 15px rgba(245,166,35,0.4)" }}
+        >
+          <span style={{ fontSize: "18px" }}>📤</span>
+          Partager ce produit
+        </button>
+        {showShare && (
+          <ShareProductModal produit={produit} seller={session} onClose={() => setShowShare(false)} />
+        )}
 
         {/* Demo Mode */}
         <button
