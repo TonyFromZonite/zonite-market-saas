@@ -210,6 +210,7 @@ export default function ProfilVendeur() {
   const displayName = compteVendeur?.full_name || "Vendeur";
 
   return (
+    <PullToRefresh onRefresh={chargerDonnees}>
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
 
