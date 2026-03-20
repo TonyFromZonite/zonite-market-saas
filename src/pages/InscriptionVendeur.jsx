@@ -627,6 +627,37 @@ export default function InscriptionVendeur() {
                 <p className="text-red-400 text-xs mt-1">✗ Les mots de passe ne correspondent pas</p>
               )}
             </div>
+            {/* Referral code field */}
+            <div>
+              <Label className="text-slate-200 text-xs">Code de parrainage <span className="text-slate-400">(optionnel)</span></Label>
+              <Input
+                value={refCode}
+                onChange={e => {
+                  const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  setRefCode(val);
+                  if (val.length >= 4) validateRefCode(val);
+                  else setRefValid(undefined);
+                }}
+                placeholder="Ex: JEAN237"
+                disabled={!!refFromUrl}
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 rounded-xl h-11 mt-1 text-center text-lg tracking-widest font-bold"
+              />
+              {refCode.length > 0 && (
+                <div className="mt-1">
+                  {checkingRef ? (
+                    <p className="text-slate-400 text-xs">⏳ Vérification...</p>
+                  ) : refValid ? (
+                    <p className="text-emerald-400 text-xs">✅ Code valide ! Parrain : <strong className="text-amber-400">{refValid.full_name}</strong></p>
+                  ) : refCode.length >= 4 && refValid === null ? (
+                    <p className="text-slate-400 text-xs">ℹ️ Code introuvable. Laissez vide pour continuer sans parrain.</p>
+                  ) : null}
+                </div>
+              )}
+              {!refCode && (
+                <p className="text-slate-400 text-[11px] mt-1">Si quelqu'un vous a invité, entrez son code ici.</p>
+              )}
+            </div>
+
             <Button onClick={validerEtape1} disabled={enCours} className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl">
               {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer →"}
             </Button>
