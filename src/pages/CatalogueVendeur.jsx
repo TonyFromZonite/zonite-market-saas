@@ -151,7 +151,12 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
     c.nom.toLowerCase().includes((recherche || "").toLowerCase())
   );
 
+  const handlePullRefresh = async () => {
+    queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
