@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { X, Download, Copy, Check, Share2 } from "lucide-react";
 import { addWatermark, blobToFile } from "@/lib/watermark";
 import { useToast } from "@/components/ui/use-toast";
+import ShareProductModal from "@/components/vendor/ShareProductModal";
+import { getVendeurSession } from "@/components/useSessionGuard";
 
 const WhatsAppIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
