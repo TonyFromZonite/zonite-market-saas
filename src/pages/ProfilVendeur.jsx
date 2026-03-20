@@ -159,7 +159,7 @@ export default function ProfilVendeur() {
       `Jusqu'à 50 000 FCFA/mois !\n\n` +
       `Mon code : *${compteVendeur?.code_parrainage}*\n` +
       `Lien : ${referralLink}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const copyLink = () => {
