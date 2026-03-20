@@ -20,7 +20,7 @@ import NotificationCenterVendeur from "@/components/NotificationCenterVendeur";
 
 import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/components/SellerStatusEngine";
 import BanniereKycPending from "@/components/BanniereKycPending";
-import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
+import { filterTable, getCurrentUser, subscribeToTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
 import ObjectifMensuel from "@/components/ObjectifMensuel";
@@ -60,15 +60,47 @@ export default function EspaceVendeur() {
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
-    const { file_url } = await uploadFile(fichier);
-    setKycForm(p => ({ ...p, [champ]: file_url }));
-    setKycUpload(p => ({ ...p, [key]: false }));
+    try {
+      if (fichier.size > 5 * 1024 * 1024) { setKycErreur("Fichier trop volumineux (max 5MB)"); setKycUpload(p => ({ ...p, [key]: false })); return; }
+      if (!fichier.type.startsWith('image/')) { setKycErreur("Seules les images sont acceptées"); setKycUpload(p => ({ ...p, [key]: false })); return; }
+      const fileName = `kyc/${compteVendeur.id}/${key}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('kyc-documents').upload(fileName, fichier, { upsert: true, contentType: fichier.type });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('kyc-documents').getPublicUrl(fileName);
+      setKycForm(p => ({ ...p, [champ]: urlData.publicUrl }));
+    } catch (err) {
+      setKycErreur("Erreur upload : " + (err.message || "Réessayez"));
+    } finally {
+      setKycUpload(p => ({ ...p, [key]: false }));
+    }
+  };
+
+  // KYC validation helpers
+  const isKycComplete = () => {
+    if (typeDocument === "cni") return !!kycForm.photo_identite_url && !!kycForm.photo_identite_verso_url && !!kycForm.selfie_url;
+    if (typeDocument === "passeport") return !!kycForm.photo_identite_url && !!kycForm.selfie_url;
+    return false;
+  };
+  const getKycMissingCount = () => {
+    if (typeDocument === "cni") return [kycForm.photo_identite_url, kycForm.photo_identite_verso_url, kycForm.selfie_url].filter(x => !x).length;
+    if (typeDocument === "passeport") return [kycForm.photo_identite_url, kycForm.selfie_url].filter(x => !x).length;
+    return 3;
   };
 
   const soumettreKyc = async () => {
-    if (!kycForm.photo_identite_url) { setKycErreur("Veuillez uploader votre pièce d'identité."); return; }
-    if (typeDocument === "cni" && !kycForm.photo_identite_verso_url) { setKycErreur("Veuillez uploader le verso de votre CNI."); return; }
-    if (!kycForm.selfie_url) { setKycErreur("Veuillez uploader votre selfie."); return; }
+    // Strict validation - block if any document missing
+    if (!kycForm.photo_identite_url) { setKycErreur("❌ Veuillez uploader votre pièce d'identité (recto)."); return; }
+    if (typeDocument === "cni" && !kycForm.photo_identite_verso_url) { setKycErreur("❌ Veuillez uploader le verso de votre CNI."); return; }
+    if (!kycForm.selfie_url) { setKycErreur("❌ Veuillez uploader votre selfie avec la pièce d'identité."); return; }
+
+    // Double-check URLs are real uploaded URLs (not empty strings)
+    const urls = [kycForm.photo_identite_url, kycForm.selfie_url];
+    if (typeDocument === "cni") urls.push(kycForm.photo_identite_verso_url);
+    if (urls.some(u => !u || !u.startsWith('http'))) {
+      setKycErreur("❌ Documents non uploadés correctement. Réessayez.");
+      return;
+    }
+
     setKycEnCours(true);
     setKycErreur("");
     const { error } = await supabase
@@ -80,6 +112,7 @@ export default function EspaceVendeur() {
         kyc_type_document: typeDocument,
         statut_kyc: 'en_attente',
         seller_status: 'kyc_pending',
+        kyc_submitted_at: new Date().toISOString(),
       })
       .eq('id', compteVendeur.id);
 
@@ -87,8 +120,8 @@ export default function EspaceVendeur() {
 
     if (!error) {
       await supabase.from('notifications_admin').insert({
-        titre: 'Nouveau KYC à valider',
-        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC`,
+        titre: '🪪 Nouveau KYC à valider',
+        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}`,
         type: 'kyc',
         vendeur_email: compteVendeur.email,
         reference_id: compteVendeur.id,
@@ -539,10 +572,38 @@ export default function EspaceVendeur() {
                 <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadKycFile(e.target.files[0], "selfie_url")} />
               </label>
             </div>
+
+            {/* Document checklist */}
+            <div className="mb-3 bg-slate-50 rounded-xl p-3">
+              <p className="text-xs font-semibold text-slate-700 mb-2">Documents requis :</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <span>{kycForm.photo_identite_url ? '✅' : '❌'}</span>
+                  <span className={kycForm.photo_identite_url ? 'text-emerald-600' : 'text-red-500'}>
+                    {typeDocument === 'cni' ? 'CNI Recto' : 'Photo passeport'} {kycForm.photo_identite_url ? '— Ajouté' : '— Manquant'}
+                  </span>
+                </div>
+                {typeDocument === 'cni' && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span>{kycForm.photo_identite_verso_url ? '✅' : '❌'}</span>
+                    <span className={kycForm.photo_identite_verso_url ? 'text-emerald-600' : 'text-red-500'}>
+                      CNI Verso {kycForm.photo_identite_verso_url ? '— Ajouté' : '— Manquant'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-xs">
+                  <span>{kycForm.selfie_url ? '✅' : '❌'}</span>
+                  <span className={kycForm.selfie_url ? 'text-emerald-600' : 'text-red-500'}>
+                    Selfie avec pièce {kycForm.selfie_url ? '— Ajouté' : '— Manquant'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {kycErreur && <p className="text-red-500 text-xs mb-3 text-center">{kycErreur}</p>}
-            <Button onClick={soumettreKyc} disabled={kycEnCours || kycUpload.id || kycUpload.idVerso || kycUpload.selfie}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11">
-              {kycEnCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Soumettre mes documents"}
+            <Button onClick={soumettreKyc} disabled={!isKycComplete() || kycEnCours || kycUpload.id || kycUpload.idVerso || kycUpload.selfie}
+              className={`w-full font-bold h-11 ${isKycComplete() ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+              {kycEnCours ? <Loader2 className="w-4 h-4 animate-spin" /> : isKycComplete() ? '✅ Soumettre mon dossier KYC' : `📎 ${getKycMissingCount()} document${getKycMissingCount() > 1 ? 's' : ''} manquant${getKycMissingCount() > 1 ? 's' : ''}`}
             </Button>
           </div>
         </div>
