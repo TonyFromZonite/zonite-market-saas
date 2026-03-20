@@ -295,9 +295,16 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
             {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p>Aucun produit dans cette catégorie</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+            <div className="text-5xl mb-3">📭</div>
+            <h3 className="text-base font-bold text-slate-700 mb-1">Aucun produit pour l'instant</h3>
+            <p className="text-sm text-slate-400 mb-5 max-w-xs">Les produits de cette catégorie arrivent bientôt. Revenez très vite !</p>
+            <button
+              onClick={() => navigate('/CatalogueVendeur')}
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-pointer"
+            >
+              ← Voir les autres catégories
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
