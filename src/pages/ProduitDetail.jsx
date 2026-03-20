@@ -176,6 +176,18 @@ export default function ProduitDetail() {
           </a>
         )}
 
+        {/* WhatsApp Share */}
+        <WhatsAppShare produit={produit} vendeurName={session?.full_name} />
+
+        {/* Demo Mode */}
+        <button
+          onClick={() => setShowDemo(true)}
+          className="w-full py-3 rounded-xl text-sm font-bold bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+        >
+          <Eye className="w-4 h-4" />
+          Mode Démonstration Client
+        </button>
+
         {/* Commander button */}
         {stockOk && (
           <button
@@ -197,6 +209,8 @@ export default function ProduitDetail() {
         )}
       </div>
 
+      {/* Demo overlay */}
+      {showDemo && <ModeDemoClient produit={produit} onClose={() => setShowDemo(false)} />}
     </div>
   );
 }
