@@ -26,6 +26,7 @@ import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/
 import ObjectifMensuel from "@/components/ObjectifMensuel";
 import ParrainageSection from "@/components/ParrainageSection";
 import ClassementHebdo from "@/components/ClassementHebdo";
+import PullToRefresh from "@/components/PullToRefresh";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -472,7 +473,14 @@ export default function EspaceVendeur() {
     );
   };
 
+  const handlePullRefresh = useCallback(async () => {
+    queryClient.invalidateQueries();
+    const { data: freshSeller } = await supabase.from("sellers").select("*").eq("id", compteVendeur?.id).maybeSingle();
+    if (freshSeller) setCompteVendeur(freshSeller);
+  }, [compteVendeur?.id, queryClient]);
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}>
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -828,5 +836,6 @@ export default function EspaceVendeur() {
       </div>
 
     </div>
+    </PullToRefresh>
   );
 }

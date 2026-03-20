@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Search, Package, ChevronLeft, PlayCircle, Lock } from "lucide-react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getVendeurSession } from "@/components/useSessionGuard";
@@ -120,6 +121,7 @@ export default function CatalogueVendeur() {
 // ─── Categories Grid ───────────────────────────────────────
 function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories_with_count"],
@@ -149,7 +151,12 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
     c.nom.toLowerCase().includes((recherche || "").toLowerCase())
   );
 
+  const handlePullRefresh = async () => {
+    queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {/* Header */}
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
@@ -230,6 +237,7 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
       </div>
 
     </div>
+    </PullToRefresh>
   );
 }
 

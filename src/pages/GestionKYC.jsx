@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import PullToRefresh from "@/components/PullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +99,7 @@ export default function GestionKYC() {
   const traites = comptes.filter(c => c.statut_kyc !== "en_attente");
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-5">
       <div className="flex items-center justify-between mb-2">
         <div>
@@ -269,5 +271,6 @@ export default function GestionKYC() {
         </DialogContent>
       </Dialog>
     </div>
+    </PullToRefresh>
   );
 }

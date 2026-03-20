@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import PullToRefresh from "@/components/PullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -92,7 +93,12 @@ export default function NotificationsVendeur() {
   const notifsFiltrees = filtrer(notifications);
   const nbNonLues = notifications.filter(n => !n.lu).length;
 
+  const handlePullRefresh = async () => {
+    queryClient.invalidateQueries({ queryKey: ["notifs_vendeur_page"] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
         <div className="flex items-center justify-between gap-3">
@@ -171,5 +177,6 @@ export default function NotificationsVendeur() {
 
       
     </div>
+    </PullToRefresh>
   );
 }

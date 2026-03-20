@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +70,16 @@ export default function MesCommandesVendeur() {
     `${c.produit_nom} ${c.client_nom} ${c.client_ville}`.toLowerCase().includes(recherche.toLowerCase())
   );
 
+  const handlePullRefresh = useCallback(async () => {
+    const { data } = await supabase.from("commandes_vendeur").select("*")
+      .or(`vendeur_id.eq.${compteVendeur.id},vendeur_email.eq.${compteVendeur.email}`)
+      .order("created_at", { ascending: false }).limit(100);
+    // Force re-render by triggering query refetch
+    window.dispatchEvent(new Event('focus'));
+  }, [compteVendeur]);
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
       <div className="bg-[#1a1f5e] text-white px-4 pb-4 sticky top-0 z-10" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
@@ -137,5 +147,6 @@ export default function MesCommandesVendeur() {
 
       
     </div>
+    </PullToRefresh>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/components/adminApi";
 import { Badge } from "@/components/ui/badge";
@@ -125,6 +126,7 @@ export default function Commandes() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-4">
       {/* Filtres */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -257,5 +259,6 @@ export default function Commandes() {
         </DialogContent>
       </Dialog>
     </div>
+    </PullToRefresh>
   );
 }

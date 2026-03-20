@@ -12,6 +12,7 @@ import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingB
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
@@ -209,6 +210,7 @@ export default function ProfilVendeur() {
   const displayName = compteVendeur?.full_name || "Vendeur";
 
   return (
+    <PullToRefresh onRefresh={chargerDonnees}>
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-6">
       {compteVendeur?.seller_status === "kyc_pending" && <BanniereKycPending />}
 
@@ -487,5 +489,6 @@ export default function ProfilVendeur() {
         </Button>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

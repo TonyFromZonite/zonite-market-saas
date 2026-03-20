@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { adminApi } from "@/components/adminApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -201,6 +202,7 @@ export default function SupportAdmin() {
   };
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -468,5 +470,6 @@ export default function SupportAdmin() {
       </div>
       </div>}
     </div>
+    </PullToRefresh>
   );
 }

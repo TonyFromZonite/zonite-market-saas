@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import PullToRefresh from "@/components/PullToRefresh";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -65,6 +66,7 @@ export default function Commissions() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div className="space-y-6">
       {/* Résumé */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -193,5 +195,6 @@ export default function Commissions() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

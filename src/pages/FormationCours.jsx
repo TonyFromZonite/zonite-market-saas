@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import PullToRefresh from "@/components/PullToRefresh";
 import { createPageUrl } from "@/utils";
 
 
@@ -118,8 +119,13 @@ export default function FormationCours() {
     );
   }
 
-  // VIDEOS LIST VIEW
+  const handlePullRefresh = async () => {
+    const { data } = await supabase.from("formation_videos").select("*").eq("actif", true).order("ordre", { ascending: true });
+    setVideos(data || []);
+  };
+
   return (
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-[#1a1f4e] text-white pb-24">
       <div className="px-4 py-5 border-b border-white/10"
         style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))" }}>
@@ -178,5 +184,6 @@ export default function FormationCours() {
       </div>
       
     </div>
+    </PullToRefresh>
   );
 }

@@ -1,5 +1,6 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import PullToRefresh from "@/components/PullToRefresh";
 import { useCachedQuery } from "@/components/CacheManager";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -148,6 +149,7 @@ function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
 
 function DashboardAdmin() {
   const REFRESH = 15 * 1000;
+  const queryClient = useQueryClient();
 
   const { data: ventes = [], isLoading: chargementVentes } = useQuery({
     queryKey: ["dashboard_ventes"],
@@ -284,6 +286,7 @@ function DashboardAdmin() {
   }
 
   return (
+    <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {(candidaturesArray.length > 0 || kycArray.length > 0 || paiementsArray.length > 0) && (
         <div style={{ background: "#FEFCE8", border: "1px solid #FDE68A", borderRadius: 12, padding: 16 }}>
@@ -352,6 +355,7 @@ function DashboardAdmin() {
         <TopVendeurs vendeurs={vendeursArray} />
       </ResponsiveRow>
     </div>
+    </PullToRefresh>
   );
 }
 
