@@ -179,9 +179,33 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
             {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p>Aucune catégorie disponible</p>
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-6xl mb-4" style={{ animation: 'float 3s ease-in-out infinite' }}>🛍️</div>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">Catalogue bientôt disponible !</h2>
+            <p className="text-sm text-slate-500 mb-6 max-w-xs leading-relaxed">
+              Nos produits de qualité arrivent très bientôt. Vous serez notifié dès que le catalogue sera disponible !
+            </p>
+            <div className="w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden mb-6">
+              <div className="h-full bg-amber-500 rounded-full" style={{ animation: 'progress 2s ease-in-out infinite' }} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-6 w-full max-w-xs">
+              {[
+                { icon: '📦', text: 'Produits de qualité' },
+                { icon: '🚀', text: 'Livraison rapide' },
+                { icon: '💰', text: 'Commissions attractives' },
+                { icon: '🇨🇲', text: 'Partout au Cameroun' },
+              ].map(item => (
+                <div key={item.text} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2.5 border border-slate-100 shadow-sm">
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-xs text-slate-600 font-medium">{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400">Zonite Market — Lancement très prochainement 🇨🇲</p>
+            <style>{`
+              @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+              @keyframes progress { 0%{width:0%;margin-left:0} 50%{width:70%} 100%{width:0%;margin-left:100%} }
+            `}</style>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
