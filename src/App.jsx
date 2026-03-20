@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect } from 'react'
+import React, { Suspense, lazy, useState, useEffect, forwardRef } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -22,27 +22,29 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : () => <></>;
 
-const LoadingScreen = () => (
-  <div style={{
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100vh',
-    background: '#1a1f4e',
-    gap: 16,
-  }}>
-    <div style={{
-      width: 48,
-      height: 48,
-      border: '3px solid rgba(245,197,24,0.3)',
-      borderTopColor: '#F5C518',
-      borderRadius: '50%',
-      animation: 'spin 0.6s linear infinite',
-    }} />
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </div>
-);
+const LoadingScreen = forwardRef(function LoadingScreen(props, ref) {
+  return (
+    <div ref={ref} style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      background: '#1a1f4e',
+      gap: 16,
+    }}>
+      <div style={{
+        width: 48,
+        height: 48,
+        border: '3px solid rgba(245,197,24,0.3)',
+        borderTopColor: '#F5C518',
+        borderRadius: '50%',
+        animation: 'spin 0.6s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+});
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
