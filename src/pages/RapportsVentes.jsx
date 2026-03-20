@@ -7,7 +7,7 @@ import { DollarSign, TrendingUp, ShoppingCart, Package, Users, MapPin, Download,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { jsPDF } from "jspdf";
+
 import { listTable } from "@/lib/supabaseHelpers";
 
 const PERIODES = [

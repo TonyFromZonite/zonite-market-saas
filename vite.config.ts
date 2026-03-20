@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => ({
             '@radix-ui/react-tabs',
           ],
           'charts': ['recharts'],
-          'pdf-export': ['jspdf', 'html2canvas'],
+          'pdf-export': ['jspdf'],
         },
       },
     },
