@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── HIDE ALL SCROLLBARS ── */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+*::-webkit-scrollbar-track { display: none !important; }
+*::-webkit-scrollbar-thumb { display: none !important; }
+
 /* ====== PWA / Mobile optimizations ====== */
 html, body {
   -webkit-tap-highlight-color: transparent;
