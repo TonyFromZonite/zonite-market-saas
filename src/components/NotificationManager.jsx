@@ -9,11 +9,20 @@ export default function NotificationManager() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Init audio on first user interaction (iOS requirement)
+    const initAudio = () => {
+      notifSystem.initAudio();
+      document.removeEventListener('touchstart', initAudio);
+      document.removeEventListener('click', initAudio);
+    };
+    document.addEventListener('touchstart', initAudio, { once: true });
+    document.addEventListener('click', initAudio, { once: true });
+
     initNotifications();
 
-    // iOS background notification fix: check missed notifications on visibility change
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible") {
+        await restoreBadgeFromDB();
         await checkMissedNotifications();
       }
     };
@@ -22,6 +31,8 @@ export default function NotificationManager() {
     return () => {
       notifSystem.unsubscribeAll();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('touchstart', initAudio);
+      document.removeEventListener('click', initAudio);
     };
   }, []);
 
@@ -31,46 +42,48 @@ export default function NotificationManager() {
 
     await notifSystem.requestPermission();
 
-    const count = await loadUnreadCount(active);
-    notifSystem.updateBadge(count);
+    // Restore badge from DB (not just localStorage)
+    await restoreBadgeFromDB();
 
     const isAdmin = active.type === "admin" || active.type === "sous_admin";
 
     if (isAdmin) {
       notifSystem.subscribeAdmin((notif) => {
-        notifSystem.updateBadge(notifSystem.unreadCount + 1);
         queryClient.invalidateQueries({ queryKey: ["notifications_admin"] });
         showInAppToast(notif);
       });
     } else {
       notifSystem.subscribeVendeur(active.data.id, (notif) => {
-        notifSystem.updateBadge(notifSystem.unreadCount + 1);
         queryClient.invalidateQueries({ queryKey: ["notifications_vendeur"] });
+        queryClient.invalidateQueries({ queryKey: ["notifications-vendeur"] });
         showInAppToast(notif);
       });
     }
 
-    // Save initial check time
     localStorage.setItem("last_notif_check", new Date().toISOString());
   };
 
-  const loadUnreadCount = async (active) => {
+  const restoreBadgeFromDB = async () => {
     try {
-      const isAdmin = active.type === "admin" || active.type === "sous_admin";
+      const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
+      const vendorSession = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
+      const isAdmin = !!(adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin"));
+      const session = isAdmin ? adminSession : vendorSession;
+      if (!session?.email) return;
+
       const table = isAdmin ? "notifications_admin" : "notifications_vendeur";
       const query = supabase.from(table).select("*", { count: "exact", head: true }).eq("lu", false);
-      if (!isAdmin) query.eq("vendeur_id", active.data.id);
+      if (!isAdmin && session.id) query.eq("vendeur_id", session.id);
+
       const { count } = await query;
-      return count || 0;
-    } catch { return 0; }
+      await notifSystem.updateBadge(count || 0);
+    } catch {}
   };
 
   const checkMissedNotifications = async () => {
     try {
-      // Determine session from localStorage (admin first)
       const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
       const vendorSession = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
-
       const isAdmin = !!(adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin"));
       const session = isAdmin ? adminSession : vendorSession;
       if (!session?.email) return;
@@ -86,17 +99,12 @@ export default function NotificationManager() {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (!isAdmin && session.id) {
-        query.eq("vendeur_id", session.id);
-      }
+      if (!isAdmin && session.id) query.eq("vendeur_id", session.id);
 
       const { data: missed } = await query;
 
       if (missed?.length > 0) {
-        notifSystem.updateBadge(missed.length);
-        // Invalidate queries so UI updates
         queryClient.invalidateQueries({ queryKey: [isAdmin ? "notifications_admin" : "notifications_vendeur"] });
-        // Show latest missed notification as toast
         showInAppToast(missed[0]);
       }
 

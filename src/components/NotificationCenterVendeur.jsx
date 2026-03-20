@@ -1,28 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { notifSystem } from "@/lib/notificationSystem";
 import { Bell, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 
 const ICONES_TYPE = {
-  kyc_soumis: "👤",
-  kyc_valide: "✅",
-  kyc_rejete: "❌",
-  nouvelle_vente: "🛒",
-  commande_validee: "✓",
-  commande_livree: "📦",
-  stock_faible: "⚠️",
-  paiement_demande: "💰",
-  paiement_effectue: "💵",
-  retour_produit: "↩️",
-  support_ticket: "💬",
-  systeme: "⚙️",
-  info: "ℹ️",
-  succes: "✅",
-  alerte: "⚠️",
-  paiement: "💰",
+  kyc_soumis: "👤", kyc_valide: "✅", kyc_rejete: "❌",
+  nouvelle_vente: "🛒", commande_validee: "✓", commande_livree: "📦",
+  stock_faible: "⚠️", paiement_demande: "💰", paiement_effectue: "💵",
+  retour_produit: "↩️", support_ticket: "💬", systeme: "⚙️",
+  info: "ℹ️", succes: "✅", alerte: "⚠️", paiement: "💰",
 };
 
 export default function NotificationCenterVendeur() {
@@ -60,7 +50,7 @@ export default function NotificationCenterVendeur() {
 
   const nbNonLues = notifications.filter((n) => !n.lu).length;
 
-  const markAllAsRead = async () => {
+  const markAllAsReadAndClearBadge = async () => {
     if (!sellerId || nbNonLues === 0) return;
     const { error } = await supabase
       .from("notifications_vendeur")
@@ -68,6 +58,7 @@ export default function NotificationCenterVendeur() {
       .eq("vendeur_id", sellerId)
       .eq("lu", false);
     if (!error) {
+      await notifSystem.updateBadge(0);
       queryClient.invalidateQueries({ queryKey: ["notifications-vendeur", sellerId] });
       queryClient.invalidateQueries({ queryKey: ["notifs_vendeur"] });
       queryClient.invalidateQueries({ queryKey: ["notifications_count"] });
@@ -78,7 +69,7 @@ export default function NotificationCenterVendeur() {
     setOuvert((prev) => {
       const newState = !prev;
       if (newState) {
-        markAllAsRead();
+        markAllAsReadAndClearBadge();
       }
       return newState;
     });
@@ -149,10 +140,7 @@ export default function NotificationCenterVendeur() {
                           <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
                           <p className="text-xs text-slate-400 mt-1">
                             {new Date(notif.created_at).toLocaleString("fr-FR", {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
+                              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                             })}
                           </p>
                         </div>
