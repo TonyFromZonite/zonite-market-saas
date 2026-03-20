@@ -20,7 +20,7 @@ import NotificationCenterVendeur from "@/components/NotificationCenterVendeur";
 
 import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/components/SellerStatusEngine";
 import BanniereKycPending from "@/components/BanniereKycPending";
-import { filterTable, getCurrentUser, subscribeToTable, uploadFile } from "@/lib/supabaseHelpers";
+import { filterTable, getCurrentUser, subscribeToTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
 import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
 import ObjectifMensuel from "@/components/ObjectifMensuel";
