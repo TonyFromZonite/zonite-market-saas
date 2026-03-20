@@ -836,5 +836,6 @@ export default function EspaceVendeur() {
       </div>
 
     </div>
+    </PullToRefresh>
   );
 }
