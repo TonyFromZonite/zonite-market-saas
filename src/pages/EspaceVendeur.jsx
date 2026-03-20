@@ -160,7 +160,7 @@ export default function EspaceVendeur() {
   const { data: compteActualise, isLoading: loadingCompte } = useQuery({
     queryKey: ['COMPTE_VENDEUR_FRESH', compteVendeur?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("sellers").select("*").eq("id", compteVendeur.id).maybeSingle();
+      const { data } = await supabase.from("sellers").select("id, email, full_name, solde_commission, solde_en_attente, total_commissions_gagnees, total_commissions_payees, seller_status, statut_kyc, badge_niveau, catalogue_debloque, training_completed, objectif_mensuel, code_parrainage").eq("id", compteVendeur.id).maybeSingle();
       return data ? [data] : [];
     },
     enabled: !!compteVendeur?.id,
