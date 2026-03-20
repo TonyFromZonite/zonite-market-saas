@@ -230,6 +230,12 @@ export default function GestionCommandes() {
       message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
       type: "succes",
     });
+
+    // 5. Credit referral bonus to parrain (if applicable)
+    try {
+      const { creditReferralBonus } = await import("@/lib/referralBonus");
+      await creditReferralBonus(commande.vendeur_id);
+    } catch (e) { console.warn("Referral bonus skipped:", e); }
   };
 
   // === BUSINESS LOGIC: Échec livraison / Annulation ===

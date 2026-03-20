@@ -240,6 +240,12 @@ export default function CommandesVendeurs() {
         details: `Commande ${cmd.id} livrée — Commission: ${Math.round(commissionVendeur)} FCFA`,
         entite_id: cmd.id,
       });
+
+      // Credit referral bonus to parrain (if applicable)
+      try {
+        const { creditReferralBonus } = await import("@/lib/referralBonus");
+        await creditReferralBonus(cmd.vendeur_id);
+      } catch (e) { console.warn("Referral bonus skipped:", e); }
     } catch (err) { console.error("marquerLivree:", err); }
     queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
     setEnCours(false);
