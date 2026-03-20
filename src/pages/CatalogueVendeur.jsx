@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Search, Package, ChevronLeft, PlayCircle, Lock } from "lucide-react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getVendeurSession } from "@/components/useSessionGuard";
