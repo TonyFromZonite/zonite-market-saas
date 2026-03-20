@@ -131,7 +131,7 @@ export default function EspaceVendeur() {
           // Fallback: try by email
           const { data: sellerByEmail } = await supabase
             .from("sellers")
-            .select("*")
+            .select(SELLER_COLS)
             .eq("email", session.email)
             .maybeSingle();
           
