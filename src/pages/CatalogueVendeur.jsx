@@ -237,6 +237,7 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
       </div>
 
     </div>
+    </PullToRefresh>
   );
 }
 
