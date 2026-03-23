@@ -87,7 +87,8 @@ export default function GestionCommandes() {
         .from("coursiers")
         .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
         .eq("ville_id", ville.id)
-        .eq("actif", true);
+        .eq("actif", true)
+        .order("frais_livraison_defaut", { ascending: true });
 
       if (!coursiers || coursiers.length === 0) {
         // No coursiers in city — show all with warning

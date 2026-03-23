@@ -145,9 +145,21 @@ export default function NouvelleCommandeVendeur() {
       const stock = getStockForVariation(c.id);
       return stock > 0;
     });
-    setAvailableCoursiers(matching);
-    if (matching.length === 1) setSelectedCoursierId(matching[0].id);
-    else setSelectedCoursierId("");
+    // Sort by cheapest first
+    const sorted = [...matching].sort((a, b) => (a.frais_livraison_defaut || 0) - (b.frais_livraison_defaut || 0));
+    
+    // If no zone-matched coursiers have stock, show ALL active coursiers with stock
+    if (sorted.length === 0) {
+      const allWithStock = coursiers.filter((c) => getStockForVariation(c.id) > 0)
+        .sort((a, b) => (a.frais_livraison_defaut || 0) - (b.frais_livraison_defaut || 0));
+      setAvailableCoursiers(allWithStock);
+      if (allWithStock.length > 0) setSelectedCoursierId(allWithStock[0].id);
+      else setSelectedCoursierId("");
+    } else {
+      setAvailableCoursiers(sorted);
+      // Auto-select cheapest
+      setSelectedCoursierId(sorted[0].id);
+    }
   }, [villeId, produitSelectionne?.id, variationKey]);
 
   const selectedCoursier = coursiers.find((c) => c.id === selectedCoursierId);
@@ -391,9 +403,9 @@ export default function NouvelleCommandeVendeur() {
                   <Select value={selectedCoursierId} onValueChange={setSelectedCoursierId}>
                     <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                     <SelectContent>
-                      {availableCoursiers.map((c) => (
+                      {availableCoursiers.map((c, idx) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nom} — Stock: {getStockForVariation(c.id)} | {formater(c.frais_livraison_defaut)}
+                          {idx === 0 ? "⭐ " : ""}{c.nom} — Stock: {getStockForVariation(c.id)} | {formater(c.frais_livraison_defaut)}{idx === 0 ? " (Moins cher)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

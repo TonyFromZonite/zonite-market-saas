@@ -73,14 +73,25 @@ export default function GestionCoursiers() {
 
   const deleteMut = useMutation({
     mutationFn: async (id) => {
+      // Clean FK references before deleting
+      await supabase.from("commandes_vendeur").update({ coursier_id: null, coursier_nom: null }).eq("coursier_id", id);
+      await supabase.from("mouvements_stock").update({ coursier_id: null }).eq("coursier_id", id);
+      // Clean stocks_par_coursier JSONB in produits
+      const { data: produits } = await supabase.from("produits").select("id, stocks_par_coursier").not("stocks_par_coursier", "is", null);
+      for (const p of (produits || [])) {
+        const filtered = (p.stocks_par_coursier || []).filter(s => s.coursier_id !== id);
+        if (filtered.length !== (p.stocks_par_coursier || []).length) {
+          await supabase.from("produits").update({ stocks_par_coursier: filtered }).eq("id", p.id);
+        }
+      }
       const { error } = await supabase.from("coursiers").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coursiers"] });
-      toast({ title: "Coursier supprimé" });
+      toast({ title: "✅ Coursier supprimé", description: "Suppression effectuée avec succès." });
     },
-    onError: (err) => toast({ title: "Erreur", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "❌ Erreur suppression", description: err.message, variant: "destructive" }),
   });
 
   const toggleMut = useMutation({
