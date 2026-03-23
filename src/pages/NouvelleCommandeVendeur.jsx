@@ -403,9 +403,9 @@ export default function NouvelleCommandeVendeur() {
                   <Select value={selectedCoursierId} onValueChange={setSelectedCoursierId}>
                     <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                     <SelectContent>
-                      {availableCoursiers.map((c) => (
+                      {availableCoursiers.map((c, idx) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nom} — Stock: {getStockForVariation(c.id)} | {formater(c.frais_livraison_defaut)}
+                          {idx === 0 ? "⭐ " : ""}{c.nom} — Stock: {getStockForVariation(c.id)} | {formater(c.frais_livraison_defaut)}{idx === 0 ? " (Moins cher)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
