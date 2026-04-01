@@ -185,10 +185,6 @@ export default function Connexion() {
           setErreur("Profil vendeur introuvable. Veuillez vous inscrire.");
           return;
         }
-        if (seller.seller_status === "pending_verification") {
-          window.location.href = createPageUrl("EnAttenteValidation");
-          return;
-        }
         localStorage.setItem("vendeur_session", JSON.stringify({
           id: seller.id,
           user_id: user.id,
@@ -200,7 +196,8 @@ export default function Connexion() {
           telephone: seller.telephone,
           catalogue_debloque: seller.catalogue_debloque,
           training_completed: seller.training_completed,
-          solde_commission: seller.solde_commission
+          solde_commission: seller.solde_commission,
+          wizard_completed: seller.wizard_completed || false,
         }));
         window.location.href = "/EspaceVendeur";
       }
