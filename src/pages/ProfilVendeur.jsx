@@ -240,6 +240,9 @@ export default function ProfilVendeur() {
       </div>
 
       <div className="px-3 sm:px-4 -mt-5 space-y-3 sm:space-y-4 max-w-screen-md mx-auto w-full">
+        {/* Profile Progress */}
+        <ProfileProgress seller={compteVendeur} />
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
