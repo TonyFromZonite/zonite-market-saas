@@ -1,6 +1,9 @@
 /**
  * Seller Status Engine
  * Controls access to features based on seller_status
+ * SIMPLIFIED: After registration + code verification → active_seller
+ * KYC only required for payment requests
+ * Catalogue locked by training only
  */
 
 export const SELLER_STATUSES = {
@@ -13,74 +16,40 @@ export const SELLER_STATUSES = {
 };
 
 export const STATUS_LABELS = {
-  pending_verification: "Email à vérifier",
-  kyc_required: "Vérification d'identité requise",
-  kyc_pending: "Dossier KYC en révision",
-  kyc_rejected: "Dossier KYC rejeté",
-  kyc_approved_training_required: "Formation obligatoire",
+  pending_verification: "Vérification en cours",
+  kyc_required: "Vendeur actif",
+  kyc_pending: "KYC en révision",
+  kyc_rejected: "KYC rejeté",
+  kyc_approved_training_required: "Formation requise",
   active_seller: "Vendeur actif",
 };
 
 /**
  * Check if seller can access a feature based on their status and training completion
- * @param {string} sellerStatus - The seller's current status
- * @param {string} feature - The feature to check access for
- * @param {boolean} trainingCompleted - Whether seller has completed training
- * @returns {boolean} - True if seller can access the feature
  */
 export const canAccessFeature = (sellerStatus, feature, trainingCompleted = false) => {
-  const accessMap = {
-    // dashboard = tableau de bord, profil, notifs, support
-    dashboard: {
-      [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: true,
-      [SELLER_STATUSES.KYC_PENDING]: true,
-      [SELLER_STATUSES.KYC_REJECTED]: true,
-      [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
-      [SELLER_STATUSES.ACTIVE_SELLER]: true,
-    },
-    catalog: {
-      [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: false,
-      [SELLER_STATUSES.KYC_PENDING]: false,
-      [SELLER_STATUSES.KYC_REJECTED]: false,
-      [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: false,
-      [SELLER_STATUSES.ACTIVE_SELLER]: true,
-    },
-    sales: {
-      [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: false,
-      [SELLER_STATUSES.KYC_PENDING]: false,
-      [SELLER_STATUSES.KYC_REJECTED]: false,
-      [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: false,
-      [SELLER_STATUSES.ACTIVE_SELLER]: true,
-    },
-    training: {
-      [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: false,
-      [SELLER_STATUSES.KYC_PENDING]: false,
-      [SELLER_STATUSES.KYC_REJECTED]: false,
-      [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
-      [SELLER_STATUSES.ACTIVE_SELLER]: true,
-    },
-    profile: {
-      [SELLER_STATUSES.PENDING_VERIFICATION]: false,
-      [SELLER_STATUSES.KYC_REQUIRED]: true,
-      [SELLER_STATUSES.KYC_PENDING]: true,
-      [SELLER_STATUSES.KYC_REJECTED]: true,
-      [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: true,
-      [SELLER_STATUSES.ACTIVE_SELLER]: true,
-    },
-  };
-
-  let canAccess = accessMap[feature]?.[sellerStatus] ?? false;
-
-  // Block catalog/sales if training not completed, regardless of status
-  if (!trainingCompleted && ["catalog", "sales"].includes(feature)) {
-    canAccess = false;
+  // Dashboard, profile, support → always accessible for all statuses
+  if (["dashboard", "profile"].includes(feature)) {
+    return sellerStatus !== SELLER_STATUSES.PENDING_VERIFICATION;
   }
 
-  return canAccess;
+  // Training → accessible for active sellers or those needing training
+  if (feature === "training") {
+    return sellerStatus === SELLER_STATUSES.ACTIVE_SELLER || 
+           sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED ||
+           sellerStatus === SELLER_STATUSES.KYC_REQUIRED ||
+           sellerStatus === SELLER_STATUSES.KYC_PENDING;
+  }
+
+  // Catalog & sales → only if training completed
+  if (["catalog", "sales"].includes(feature)) {
+    if (!trainingCompleted) return false;
+    return sellerStatus === SELLER_STATUSES.ACTIVE_SELLER ||
+           sellerStatus === SELLER_STATUSES.KYC_REQUIRED ||
+           sellerStatus === SELLER_STATUSES.KYC_PENDING;
+  }
+
+  return false;
 };
 
 /**
@@ -89,50 +58,36 @@ export const canAccessFeature = (sellerStatus, feature, trainingCompleted = fals
 export const getRestrictionMessage = (sellerStatus, feature) => {
   if (canAccessFeature(sellerStatus, feature)) return null;
 
-  const messages = {
-    [SELLER_STATUSES.PENDING_VERIFICATION]: "Veuillez vérifier votre email pour continuer.",
-    [SELLER_STATUSES.KYC_REQUIRED]: `Veuillez soumettre votre dossier KYC pour accéder à ${feature}.`,
-    [SELLER_STATUSES.KYC_PENDING]: "Votre dossier KYC est en révision. Veuillez patienter.",
-    [SELLER_STATUSES.KYC_REJECTED]: "Votre dossier KYC a été rejeté. Veuillez resoumettre vos documents.",
-    [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: "Veuillez regarder et valider la vidéo de formation avant d'accéder aux autres fonctionnalités.",
-  };
-
-  return messages[sellerStatus] || "Accès non autorisé.";
-};
-
-/**
- * Get the modal to show based on seller status and training completion
- * @param {string} sellerStatus - The seller's current status
- * @param {boolean} trainingCompleted - Whether seller has completed training
- * @returns {string|null} - Modal type to show, or null if no modal needed
- */
-export const getRequiredModal = (sellerStatus, trainingCompleted = false) => {
-  const modals = {
-    [SELLER_STATUSES.PENDING_VERIFICATION]: "email_verification",
-    [SELLER_STATUSES.KYC_REQUIRED]: "kyc_submission",
-    [SELLER_STATUSES.KYC_PENDING]: "kyc_pending",
-    [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: "training_required",
-  };
-
-  // Always show training modal if training not completed and seller is at training stage
-  if (sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED && !trainingCompleted) {
-    return "training_required";
+  if (sellerStatus === SELLER_STATUSES.PENDING_VERIFICATION) {
+    return "Veuillez vérifier votre numéro pour continuer.";
   }
 
-  return modals[sellerStatus] || null;
+  if (["catalog", "sales"].includes(feature)) {
+    return "Veuillez compléter la formation pour accéder à cette fonctionnalité.";
+  }
+
+  return "Accès non autorisé.";
 };
 
 /**
- * Check if seller needs training modal to appear
- * Used to auto-show training modal when accessing restricted features
- * @param {string} sellerStatus - The seller's current status
- * @param {boolean} trainingCompleted - Whether seller has completed training
- * @returns {boolean} - True if training modal should appear
+ * Get the modal to show based on seller status
+ * SIMPLIFIED: No KYC modal on load anymore
+ */
+export const getRequiredModal = (sellerStatus, trainingCompleted = false) => {
+  if (sellerStatus === SELLER_STATUSES.PENDING_VERIFICATION) {
+    return "email_verification";
+  }
+  // KYC modals removed from auto-show
+  // KYC_REQUIRED and KYC_PENDING no longer show modals
+  if (sellerStatus === SELLER_STATUSES.KYC_REQUIRED) return "kyc_submission";
+  if (sellerStatus === SELLER_STATUSES.KYC_PENDING) return "kyc_pending";
+  return null;
+};
+
+/**
+ * Check if seller needs training modal
+ * Only show if NOT completed training yet
  */
 export const shouldShowTrainingModal = (sellerStatus, trainingCompleted = false) => {
-  // Show training modal for active_seller who hasn't completed training too
-  return (
-    (sellerStatus === SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED || sellerStatus === SELLER_STATUSES.ACTIVE_SELLER) 
-    && !trainingCompleted
-  );
+  return false; // Disabled - we use catalogue lock screen instead
 };

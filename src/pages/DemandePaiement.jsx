@@ -77,6 +77,15 @@ export default function DemandePaiement() {
   const formaterDate = d => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
   const soumettre = async () => {
+    // KYC gate: block payment if KYC not validated
+    if (!compteVendeur?.statut_kyc || compteVendeur.statut_kyc !== "valide") {
+      const kycMsg = compteVendeur?.statut_kyc === "en_attente"
+        ? "Votre KYC est en cours de validation. Vous pourrez demander un paiement une fois approuvé."
+        : "Vous devez soumettre et faire valider votre KYC avant de pouvoir demander un paiement. Rendez-vous dans votre profil.";
+      setErreur(kycMsg);
+      return;
+    }
+
     const montant = parseFloat(form.montant);
     if (!montant || montant < 5000) return setErreur("Montant minimum : 5 000 FCFA");
     if (montant > (compteVendeur.solde_commission || 0)) return setErreur("Montant supérieur à votre solde disponible");

@@ -40,12 +40,8 @@ export default function CatalogueVendeur() {
 
       setCompteVendeur(seller);
 
-      if (seller.seller_status === "kyc_pending") {
-        setIsLocked(false);
-        return;
-      }
-
-      if (!seller.catalogue_debloque || !seller.training_completed) {
+      // Only lock if training not completed - KYC does NOT block catalogue
+      if (!seller.catalogue_debloque && !seller.training_completed) {
         setIsLocked(true);
         return;
       }
@@ -54,11 +50,6 @@ export default function CatalogueVendeur() {
     };
     checkAccess();
   }, []);
-
-  // Blocage KYC
-  if (compteVendeur && compteVendeur.seller_status === "kyc_pending") {
-    return <BlocageKycPending titre="Catalogue Produits" />;
-  }
 
   // Loading
   if (isLocked === null) {

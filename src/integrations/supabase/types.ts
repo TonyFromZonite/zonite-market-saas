@@ -1094,6 +1094,7 @@ export type Database = {
           username: string | null
           ville: string | null
           whatsapp: string | null
+          wizard_completed: boolean | null
         }
         Insert: {
           badge_niveau?: string | null
@@ -1139,6 +1140,7 @@ export type Database = {
           username?: string | null
           ville?: string | null
           whatsapp?: string | null
+          wizard_completed?: boolean | null
         }
         Update: {
           badge_niveau?: string | null
@@ -1184,6 +1186,7 @@ export type Database = {
           username?: string | null
           ville?: string | null
           whatsapp?: string | null
+          wizard_completed?: boolean | null
         }
         Relationships: []
       }

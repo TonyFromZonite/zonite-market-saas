@@ -27,6 +27,7 @@ import ObjectifMensuel from "@/components/ObjectifMensuel";
 import ParrainageSection from "@/components/ParrainageSection";
 import ClassementHebdo from "@/components/ClassementHebdo";
 import PullToRefresh from "@/components/PullToRefresh";
+import WelcomeWizardComponent from "@/components/vendor/WelcomeWizard";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
@@ -378,34 +379,15 @@ export default function EspaceVendeur() {
     );
   }
 
-  if (!canAccessFeature(compteVendeur.seller_status, "dashboard")) {
-    if (compteVendeur.seller_status === SELLER_STATUSES.PENDING_VERIFICATION) {
-      return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Email à vérifier</h2>
-            <p className="text-sm text-slate-500">Veuillez vérifier votre email pour continuer.</p>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  if (compteVendeur.statut_kyc === "rejete" || compteVendeur.seller_status === SELLER_STATUSES.KYC_REJECTED) {
+  // Allow all active statuses to see dashboard (simplified onboarding)
+  // Only block pending_verification
+  if (compteVendeur.seller_status === SELLER_STATUSES.PENDING_VERIFICATION) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
-          <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC rejeté</h2>
-          {compteVendeur.kyc_raison_rejet && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 mb-4 text-left">
-              <p className="font-semibold mb-1">Raison du rejet :</p>
-              <p>{compteVendeur.kyc_raison_rejet}</p>
-            </div>
-          )}
-          <p className="text-sm text-slate-500 mb-4">Vous pouvez corriger et resoumettre vos documents.</p>
-          <Link to={createPageUrl("ResoumissionKYC")}><Button className="w-full bg-[#1a1f5e] hover:bg-[#141952] mb-2">📝 Resoumettre mon dossier</Button></Link>
+          <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Vérification en cours</h2>
+          <p className="text-sm text-slate-500">Veuillez vérifier votre numéro pour continuer.</p>
         </div>
       </div>
     );
@@ -514,9 +496,27 @@ export default function EspaceVendeur() {
   };
 
 
+  // Welcome wizard state
+  const [showWizard, setShowWizard] = useState(() => {
+    const session = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
+    return !session.wizard_completed && !compteVendeur?.wizard_completed;
+  });
+
   return (
     <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen bg-slate-50" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}>
+      {/* Welcome Wizard (first time only) */}
+      {showWizard && (
+        <WelcomeWizardComponent
+          seller={compteVendeur}
+          onComplete={() => {
+            const s = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
+            localStorage.setItem("vendeur_session", JSON.stringify({ ...s, wizard_completed: true }));
+            setShowWizard(false);
+          }}
+        />
+      )}
+
       {restrictionMessage && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
@@ -540,96 +540,15 @@ export default function EspaceVendeur() {
         </div>
       )}
 
-      {/* Modal KYC obligatoire */}
-      {compteVendeur.seller_status === SELLER_STATUSES.KYC_REQUIRED && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="text-center mb-4">
-              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3"><span className="text-2xl">📋</span></div>
-              <h2 className="text-lg font-bold text-slate-900">Complétez votre vérification KYC</h2>
-              <p className="text-xs text-slate-500 mt-1">Uploadez vos documents pour activer votre compte.</p>
-            </div>
-            <div className="flex gap-2 mb-3">
-              <button onClick={() => { setTypeDocument("cni"); setKycForm(p => ({ ...p, photo_identite_verso_url: "" })); }}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${typeDocument === "cni" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-600 border-slate-200"}`}>🪪 CNI</button>
-              <button onClick={() => { setTypeDocument("passeport"); setKycForm(p => ({ ...p, photo_identite_verso_url: "" })); }}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${typeDocument === "passeport" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-600 border-slate-200"}`}>📘 Passeport</button>
-            </div>
-            <div className="mb-3">
-              <p className="text-xs text-slate-500 mb-1">{typeDocument === "cni" ? "CNI Recto *" : "Page principale *"}</p>
-              <label className={`flex flex-col items-center justify-center h-20 rounded-xl border-2 border-dashed cursor-pointer transition-all ${kycForm.photo_identite_url ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100"}`}>
-                {kycUpload.id ? <Loader2 className="w-5 h-5 animate-spin text-slate-400" /> :
-                  kycForm.photo_identite_url ? <><CheckCircle2 className="w-5 h-5 text-emerald-500 mb-1" /><span className="text-xs text-emerald-600 font-medium">Uploadé ✓</span></> :
-                  <><Upload className="w-5 h-5 text-slate-400 mb-1" /><span className="text-xs text-slate-400">Appuyer pour uploader</span></>}
-                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadKycFile(e.target.files[0], "photo_identite_url")} />
-              </label>
-            </div>
-            {typeDocument === "cni" && (
-              <div className="mb-3">
-                <p className="text-xs text-slate-500 mb-1">CNI Verso *</p>
-                <label className={`flex flex-col items-center justify-center h-20 rounded-xl border-2 border-dashed cursor-pointer transition-all ${kycForm.photo_identite_verso_url ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100"}`}>
-                  {kycUpload.idVerso ? <Loader2 className="w-5 h-5 animate-spin text-slate-400" /> :
-                    kycForm.photo_identite_verso_url ? <><CheckCircle2 className="w-5 h-5 text-emerald-500 mb-1" /><span className="text-xs text-emerald-600 font-medium">Uploadé ✓</span></> :
-                    <><Upload className="w-5 h-5 text-slate-400 mb-1" /><span className="text-xs text-slate-400">Appuyer pour uploader</span></>}
-                  <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadKycFile(e.target.files[0], "photo_identite_verso_url")} />
-                </label>
-              </div>
-            )}
-            <div className="mb-3">
-              <p className="text-xs text-slate-500 mb-1">Selfie avec pièce d'identité *</p>
-              <label className={`flex flex-col items-center justify-center h-20 rounded-xl border-2 border-dashed cursor-pointer transition-all ${kycForm.selfie_url ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100"}`}>
-                {kycUpload.selfie ? <Loader2 className="w-5 h-5 animate-spin text-slate-400" /> :
-                  kycForm.selfie_url ? <><CheckCircle2 className="w-5 h-5 text-emerald-500 mb-1" /><span className="text-xs text-emerald-600 font-medium">Uploadé ✓</span></> :
-                  <><Upload className="w-5 h-5 text-slate-400 mb-1" /><span className="text-xs text-slate-400">Selfie avec votre pièce visible</span></>}
-                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadKycFile(e.target.files[0], "selfie_url")} />
-              </label>
-            </div>
-
-            {/* Document checklist */}
-            <div className="mb-3 bg-slate-50 rounded-xl p-3">
-              <p className="text-xs font-semibold text-slate-700 mb-2">Documents requis :</p>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <span>{kycForm.photo_identite_url ? '✅' : '❌'}</span>
-                  <span className={kycForm.photo_identite_url ? 'text-emerald-600' : 'text-red-500'}>
-                    {typeDocument === 'cni' ? 'CNI Recto' : 'Photo passeport'} {kycForm.photo_identite_url ? '— Ajouté' : '— Manquant'}
-                  </span>
-                </div>
-                {typeDocument === 'cni' && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span>{kycForm.photo_identite_verso_url ? '✅' : '❌'}</span>
-                    <span className={kycForm.photo_identite_verso_url ? 'text-emerald-600' : 'text-red-500'}>
-                      CNI Verso {kycForm.photo_identite_verso_url ? '— Ajouté' : '— Manquant'}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs">
-                  <span>{kycForm.selfie_url ? '✅' : '❌'}</span>
-                  <span className={kycForm.selfie_url ? 'text-emerald-600' : 'text-red-500'}>
-                    Selfie avec pièce {kycForm.selfie_url ? '— Ajouté' : '— Manquant'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {kycErreur && <p className="text-red-500 text-xs mb-3 text-center">{kycErreur}</p>}
-            <Button onClick={soumettreKyc} disabled={!isKycComplete() || kycEnCours || kycUpload.id || kycUpload.idVerso || kycUpload.selfie}
-              className={`w-full font-bold h-11 ${isKycComplete() ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-              {kycEnCours ? <Loader2 className="w-4 h-4 animate-spin" /> : isKycComplete() ? '✅ Soumettre mon dossier KYC' : `📎 ${getKycMissingCount()} document${getKycMissingCount() > 1 ? 's' : ''} manquant${getKycMissingCount() > 1 ? 's' : ''}`}
-            </Button>
+      {/* KYC rejected banner (non-blocking) */}
+      {(compteVendeur.statut_kyc === "rejete" || compteVendeur.seller_status === SELLER_STATUSES.KYC_REJECTED) && (
+        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+          <span className="text-2xl">🪪</span>
+          <div className="flex-1">
+            <p className="text-red-700 font-semibold text-sm">KYC rejeté</p>
+            <p className="text-red-500 text-xs">{compteVendeur.kyc_raison_rejet || "Resoumettre vos documents."}</p>
           </div>
-        </div>
-      )}
-
-      {/* Training Required modal */}
-      {shouldShowTrainingModal(compteVendeur.seller_status, compteVendeur.training_completed) && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-3xl">🎬</span></div>
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Formation obligatoire</h2>
-            <p className="text-sm text-slate-500 mb-4">Regardez la vidéo de présentation ZONITE pour déverrouiller l'accès complet.</p>
-            <Link to={createPageUrl("VideoFormation")}><Button className="w-full bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-bold">Commencer la formation →</Button></Link>
-          </div>
+          <button onClick={() => navigate('/ResoumissionKYC')} className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">Corriger</button>
         </div>
       )}
 

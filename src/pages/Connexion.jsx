@@ -56,12 +56,17 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      if (!loginEmail.includes("@")) {
+      // Detect phone number → convert to generated email
+      const isPhone = /^[0-9+\s]+$/.test(loginEmail) && loginEmail.replace(/[^0-9]/g, "").length >= 9;
+      if (isPhone) {
+        const phoneClean = loginEmail.replace(/[^0-9]/g, "");
+        loginEmail = `${phoneClean}@zonite.org`;
+      } else if (!loginEmail.includes("@")) {
         const { data: resolvedEmail, error: rpcError } = await supabase
           .rpc("resolve_username_to_email", { _username: loginEmail });
 
         if (rpcError || !resolvedEmail) {
-          setErreur("Nom d'utilisateur introuvable.");
+          setErreur("Identifiant introuvable.");
           return;
         }
         loginEmail = resolvedEmail.toLowerCase();
@@ -180,10 +185,6 @@ export default function Connexion() {
           setErreur("Profil vendeur introuvable. Veuillez vous inscrire.");
           return;
         }
-        if (seller.seller_status === "pending_verification") {
-          window.location.href = createPageUrl("EnAttenteValidation");
-          return;
-        }
         localStorage.setItem("vendeur_session", JSON.stringify({
           id: seller.id,
           user_id: user.id,
@@ -195,7 +196,8 @@ export default function Connexion() {
           telephone: seller.telephone,
           catalogue_debloque: seller.catalogue_debloque,
           training_completed: seller.training_completed,
-          solde_commission: seller.solde_commission
+          solde_commission: seller.solde_commission,
+          wizard_completed: seller.wizard_completed || false,
         }));
         window.location.href = "/EspaceVendeur";
       }
@@ -297,10 +299,11 @@ export default function Connexion() {
             
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="text-slate-200 text-xs font-medium block mb-1.5">Email ou nom d'utilisateur</label>
-                  <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com ou username" autoComplete="username"
-                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
-                </div>
+                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Téléphone, email ou nom d'utilisateur</label>
+                   <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="699123456 ou votre@email.com" autoComplete="username"
+                 className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
+                   <p className="text-slate-400 text-[10px] mt-1">Ex: 699123456 ou nom@email.com</p>
+                 </div>
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Mot de passe</label>
                   <div className="relative">
