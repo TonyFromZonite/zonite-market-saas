@@ -27,6 +27,7 @@ import ObjectifMensuel from "@/components/ObjectifMensuel";
 import ParrainageSection from "@/components/ParrainageSection";
 import ClassementHebdo from "@/components/ClassementHebdo";
 import PullToRefresh from "@/components/PullToRefresh";
+import WelcomeWizardComponent from "@/components/vendor/WelcomeWizard";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
