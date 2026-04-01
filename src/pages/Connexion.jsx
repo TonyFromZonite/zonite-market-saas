@@ -56,12 +56,17 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      if (!loginEmail.includes("@")) {
+      // Detect phone number → convert to generated email
+      const isPhone = /^[0-9+\s]+$/.test(loginEmail) && loginEmail.replace(/[^0-9]/g, "").length >= 9;
+      if (isPhone) {
+        const phoneClean = loginEmail.replace(/[^0-9]/g, "");
+        loginEmail = `${phoneClean}@zonite.org`;
+      } else if (!loginEmail.includes("@")) {
         const { data: resolvedEmail, error: rpcError } = await supabase
           .rpc("resolve_username_to_email", { _username: loginEmail });
 
         if (rpcError || !resolvedEmail) {
-          setErreur("Nom d'utilisateur introuvable.");
+          setErreur("Identifiant introuvable.");
           return;
         }
         loginEmail = resolvedEmail.toLowerCase();
