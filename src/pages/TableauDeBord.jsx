@@ -223,6 +223,7 @@ function DashboardAdmin() {
   const { data: candidaturesEnAttente } = useQuery({
     queryKey: ["dashboard_candidatures"],
     queryFn: () => filterTable("candidatures_vendeur", { statut: "en_attente" }),
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
