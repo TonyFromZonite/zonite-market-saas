@@ -289,7 +289,7 @@ export default function ResoumissionKYC() {
               ? '⏳ Envoi en cours...'
               : !allDocsUploaded()
                 ? `📎 ${getRequiredDocs().filter(k => !kycDocs[k]).length} document(s) manquant(s)`
-                : '✅ Resoummettre mon dossier'
+                : isResubmission ? '✅ Resoummettre mon dossier' : '✅ Soumettre mon dossier'
             }
           </button>
         </div>
