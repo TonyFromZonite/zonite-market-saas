@@ -439,6 +439,36 @@ export default function InscriptionVendeur() {
               {errors.password && <p className="text-red-400 text-[11px] mt-1">⚠️ {errors.password}</p>}
             </div>
 
+            {/* Field 5: Referral code (optional) */}
+            {!refCode && (
+              <div>
+                <Label className="text-slate-200 text-xs">Code de parrainage <span className="text-slate-400">(optionnel)</span></Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={manualRef}
+                    onChange={e => {
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      setManualRef(val);
+                      if (val.length >= 3) validateManualRef(val);
+                      else setManualRefValid(undefined);
+                    }}
+                    placeholder="Ex: MARIE237"
+                    maxLength={12}
+                    className={`bg-white/10 text-white placeholder:text-slate-400 rounded-xl h-11 pr-10 ${manualRefValid === null ? "border-red-400/50" : manualRefValid ? "border-emerald-400/50" : "border-white/20"}`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+                    {manualRef.length >= 3 && manualRefValid === undefined ? "⏳" : manualRefValid ? "✅" : manualRefValid === null ? "❌" : ""}
+                  </span>
+                </div>
+                {manualRefValid && (
+                  <p className="text-emerald-400 text-[10px] mt-1">🤝 Invité par {manualRefValid.full_name}</p>
+                )}
+                {manualRefValid === null && manualRef.length >= 3 && (
+                  <p className="text-red-400 text-[10px] mt-1">❌ Code invalide</p>
+                )}
+              </div>
+            )}
+
             <Button onClick={handleRegister} disabled={loading}
               className="w-full h-12 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl text-base">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "🚀 Créer mon compte gratuit"}
