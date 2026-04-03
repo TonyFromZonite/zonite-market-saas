@@ -88,26 +88,9 @@ export default function ProfilVendeur() {
       const { count } = await supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', seller.id);
       setNombreVentes(count || 0);
 
-      // Fetch filleuls (sellers referred by me)
-      // Fetch filleuls via parrainages table (stable even if code changes)
-      const { data: parrainageRefs } = await supabase
-        .from('parrainages')
-        .select('*, filleul:filleul_id(id, full_name, seller_status, created_at)')
-        .eq('parrain_id', seller.id)
-        .order('created_at', { ascending: false });
-
-      // Also check legacy parraine_par field
-      const { data: legacyRefs } = await supabase
-        .from('sellers')
-        .select('id, full_name, seller_status, created_at')
-        .eq('parraine_par', seller.code_parrainage)
-        .order('created_at', { ascending: false });
-
-      // Merge: parrainages table + legacy, deduplicate by id
-      const parrainageFilleuls = (parrainageRefs || []).map(r => r.filleul).filter(Boolean);
-      const allFilleuls = [...parrainageFilleuls, ...(legacyRefs || [])];
-      const uniqueFilleuls = allFilleuls.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i);
-      setFilleuls(uniqueFilleuls);
+      // Fetch filleuls via SECURITY DEFINER RPC (bypasses RLS on sellers)
+      const { data: filleulsData } = await supabase.rpc('get_filleuls_for_parrain', { _parrain_id: seller.id });
+      setFilleuls(filleulsData || []);
 
       // Fetch my parrain info
       // First try parrainages table to get the code, then use RPC to get parrain info (bypasses RLS)
@@ -538,13 +521,15 @@ export default function ProfilVendeur() {
               filleuls.slice(0, 10).map(f => {
                 const isActive = f.seller_status === 'active_seller';
                 return (
-                  <div key={f.id} className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
+                  <div key={f.filleul_id} className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                       {f.full_name?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{f.full_name}</p>
-                      <p className="text-[11px] text-slate-400">{new Date(f.created_at).toLocaleDateString('fr-FR')}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {f.livraisons_comptees || 0}/10 livraisons • +{Math.round(f.commission_totale || 0).toLocaleString('fr-FR')} FCFA
+                      </p>
                     </div>
                     <Badge className={`text-[10px] border-0 ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       {isActive ? '✅ Actif' : '⏳ En attente'}

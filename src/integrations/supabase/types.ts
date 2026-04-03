@@ -1574,6 +1574,18 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_filleuls_for_parrain: {
+        Args: { _parrain_id: string }
+        Returns: {
+          actif: boolean
+          commission_totale: number
+          created_at: string
+          filleul_id: string
+          full_name: string
+          livraisons_comptees: number
+          seller_status: string
+        }[]
+      }
       get_seller_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_seller_role: { Args: { _user_id: string }; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
