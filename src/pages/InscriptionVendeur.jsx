@@ -75,6 +75,21 @@ export default function InscriptionVendeur() {
     } catch { setRefValid(null); }
   };
 
+  const validateManualRef = (code) => {
+    clearTimeout(manualRefTimer.current);
+    setManualRefValid(undefined);
+    manualRefTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("sellers")
+          .select("id, full_name, email")
+          .eq("code_parrainage", code.toUpperCase().trim())
+          .maybeSingle();
+        setManualRefValid(data || null);
+      } catch { setManualRefValid(null); }
+    }, 500);
+  };
+
   // Real-time username check
   const checkUsername = (val) => {
     clearTimeout(usernameTimer.current);
