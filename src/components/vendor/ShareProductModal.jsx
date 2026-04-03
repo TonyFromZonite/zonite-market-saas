@@ -48,6 +48,7 @@ export default function ShareProductModal({ produit, seller, onClose }) {
       const message = buildMessage();
 
       // Try Web Share API with image file
+      // iOS WhatsApp drops text when sharing files, so we copy text to clipboard first
       if (selectedImage && navigator.share && navigator.canShare) {
         try {
           const blob = await addWatermark(selectedImage);
@@ -55,6 +56,12 @@ export default function ShareProductModal({ produit, seller, onClose }) {
             const file = blobToFile(blob, `${produit.nom.replace(/\s+/g, "_")}_ZONITE.jpg`);
             const shareData = { files: [file], text: message };
             if (navigator.canShare(shareData)) {
+              // Pre-copy text to clipboard for iOS WhatsApp compatibility
+              try { await navigator.clipboard.writeText(message); } catch {}
+              toast({
+                title: "📋 Texte copié !",
+                description: "Si le texte n'apparaît pas, collez-le dans le message.",
+              });
               await navigator.share(shareData);
               onClose();
               return;

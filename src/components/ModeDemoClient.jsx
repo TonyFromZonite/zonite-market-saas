@@ -63,6 +63,8 @@ export default function ModeDemoClient({ produit, onClose }) {
         const file = blobToFile(blob, `${produit.nom.replace(/\s+/g, '_')}_ZONITE.jpg`);
         const shareData = { title: produit.nom, text: shareText, files: [file] };
         if (navigator.canShare(shareData)) {
+          // Pre-copy text for iOS WhatsApp compatibility (drops text with files)
+          try { await navigator.clipboard.writeText(shareText); } catch {}
           await navigator.share(shareData);
           return;
         }
