@@ -32,7 +32,13 @@ export async function listTable(table, sort, limit = 100) {
   query = query.order(sortInfo.column, { ascending: sortInfo.ascending });
   query = query.limit(limit);
   const { data, error } = await query;
-  if (error) { console.error(`list ${table}:`, error); return []; }
+  if (error) {
+    console.error(`list ${table}:`, error);
+    if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    return [];
+  }
   return data || [];
 }
 
@@ -52,7 +58,13 @@ export async function filterTable(table, filters, sort, limit = 100) {
   query = query.order(sortInfo.column, { ascending: sortInfo.ascending });
   query = query.limit(limit);
   const { data, error } = await query;
-  if (error) { console.error(`filter ${table}:`, error); return []; }
+  if (error) {
+    console.error(`filter ${table}:`, error);
+    if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    return [];
+  }
   return data || [];
 }
 

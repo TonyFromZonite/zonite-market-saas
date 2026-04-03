@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useCachedQuery } from "@/components/CacheManager";
 import { supabase } from "@/integrations/supabase/client";
+import useAdminAccess from "@/hooks/useAdminAccess";
 
 function ResponsiveRow({ children }) {
   return (
@@ -150,6 +151,7 @@ function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
 function DashboardAdmin() {
   const REFRESH = 60 * 1000;
   const queryClient = useQueryClient();
+  const { isReady } = useAdminAccess();
 
   const { data: ventes = [], isLoading: chargementVentes } = useQuery({
     queryKey: ["dashboard_ventes"],
@@ -160,9 +162,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: produits = [], isLoading: chargementProduits } = useQuery({
@@ -174,9 +178,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const produitsActifs = (Array.isArray(produits) ? produits : []).filter(p => p.statut !== 'supprime');
@@ -189,9 +195,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.seller_status === 'active_seller');
@@ -205,14 +213,17 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: candidaturesEnAttente } = useQuery({
     queryKey: ["dashboard_candidatures"],
     queryFn: () => filterTable("candidatures_vendeur", { statut: "en_attente" }),
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
@@ -221,6 +232,7 @@ function DashboardAdmin() {
   const { data: kycEnAttente } = useQuery({
     queryKey: ["dashboard_kyc"],
     queryFn: () => filterTable("sellers", { statut_kyc: "en_attente" }),
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
@@ -229,6 +241,7 @@ function DashboardAdmin() {
   const { data: paiementsEnAttente } = useQuery({
     queryKey: ["dashboard_paiements"],
     queryFn: () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }),
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
