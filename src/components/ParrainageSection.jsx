@@ -99,13 +99,13 @@ export default function ParrainageSection({ vendeur }) {
         <div>
           <p className="text-xs text-slate-500 mb-2">Vos filleuls</p>
           {filleuls.slice(0, 5).map(f => (
-            <div key={f.id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+            <div key={f.filleul_id} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-600">
-                  {f.filleul?.full_name?.[0]?.toUpperCase() || '?'}
+                  {f.full_name?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-900">{f.filleul?.full_name || 'Vendeur'}</p>
+                  <p className="text-xs font-medium text-slate-900">{f.full_name || 'Vendeur'}</p>
                   <p className="text-[10px] text-slate-400">{f.livraisons_comptees || 0}/10 livraisons</p>
                 </div>
               </div>
