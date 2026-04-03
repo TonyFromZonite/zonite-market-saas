@@ -75,6 +75,7 @@ export const PAGES = {
     "Vendeurs": Vendeurs,
     "VideoFormation": VideoFormation,
     "FormationCours": FormationCours,
+    "MotDePasseOublie": MotDePasseOublie,
 }
 
 export const pagesConfig = {
