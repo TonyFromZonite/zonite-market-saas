@@ -43,8 +43,11 @@ export default function InscriptionVendeur() {
   const [loading, setLoading] = useState(false);
   const [refCode] = useState(refFromUrl);
   const [refValid, setRefValid] = useState(refFromUrl ? null : undefined);
+  const [manualRef, setManualRef] = useState("");
+  const [manualRefValid, setManualRefValid] = useState(undefined);
   const [errors, setErrors] = useState({});
   const [checking, setChecking] = useState({});
+  const manualRefTimer = useRef(null);
 
   // Verification step
   const [etape, setEtape] = useState(1);
@@ -70,6 +73,21 @@ export default function InscriptionVendeur() {
         .maybeSingle();
       setRefValid(data || null);
     } catch { setRefValid(null); }
+  };
+
+  const validateManualRef = (code) => {
+    clearTimeout(manualRefTimer.current);
+    setManualRefValid(undefined);
+    manualRefTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("sellers")
+          .select("id, full_name, email")
+          .eq("code_parrainage", code.toUpperCase().trim())
+          .maybeSingle();
+        setManualRefValid(data || null);
+      } catch { setManualRefValid(null); }
+    }, 500);
   };
 
   // Real-time username check
@@ -149,6 +167,10 @@ export default function InscriptionVendeur() {
       // Sign in immediately for RLS
       await supabase.auth.signInWithPassword({ email: emailClean, password: form.password });
 
+      // Determine effective referral
+      const effectiveRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef && manualRefValid ? manualRef.toUpperCase().trim() : null);
+      const effectiveRefData = refCode ? refValid : manualRefValid;
+
       // Generate verification code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -169,7 +191,7 @@ export default function InscriptionVendeur() {
           wizard_completed: false,
           email_verification_code: code,
           email_verification_expires_at: expiresAt,
-          parraine_par: refCode && refValid ? refCode.toUpperCase().trim() : null,
+          parraine_par: effectiveRefCode || null,
         })
         .select("id")
         .single();
@@ -226,21 +248,23 @@ export default function InscriptionVendeur() {
       await supabase.from("sellers").update(updateData).eq("id", seller.id);
 
       // Create parrainages record if referral
-      if (refCode && refValid) {
+      const finalRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef ? manualRef.toUpperCase().trim() : null);
+      const finalRefData = refCode ? refValid : manualRefValid;
+      if (finalRefCode && finalRefData) {
         try {
           await supabase.from("parrainages").insert({
-            parrain_id: refValid.id,
+            parrain_id: finalRefData.id,
             filleul_id: seller.id,
-            code_parrainage: refCode.toUpperCase().trim(),
+            code_parrainage: finalRefCode,
             actif: true,
             livraisons_comptees: 0,
             commission_totale: 0,
           });
           await supabase.from("notifications_vendeur").insert({
-            vendeur_id: refValid.id,
-            vendeur_email: refValid.email || "",
+            vendeur_id: finalRefData.id,
+            vendeur_email: finalRefData.email || "",
             titre: "🎉 Nouveau filleul !",
-            message: `${form.full_name} vient de s'inscrire avec votre code ${refCode} !`,
+            message: `${form.full_name} vient de s'inscrire avec votre code ${finalRefCode} !`,
             type: "succes",
           });
         } catch (e) { console.warn("Parrainage failed:", e); }
@@ -438,6 +462,36 @@ export default function InscriptionVendeur() {
               )}
               {errors.password && <p className="text-red-400 text-[11px] mt-1">⚠️ {errors.password}</p>}
             </div>
+
+            {/* Field 5: Referral code (optional) */}
+            {!refCode && (
+              <div>
+                <Label className="text-slate-200 text-xs">Code de parrainage <span className="text-slate-400">(optionnel)</span></Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={manualRef}
+                    onChange={e => {
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      setManualRef(val);
+                      if (val.length >= 3) validateManualRef(val);
+                      else setManualRefValid(undefined);
+                    }}
+                    placeholder="Ex: MARIE237"
+                    maxLength={12}
+                    className={`bg-white/10 text-white placeholder:text-slate-400 rounded-xl h-11 pr-10 ${manualRefValid === null ? "border-red-400/50" : manualRefValid ? "border-emerald-400/50" : "border-white/20"}`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+                    {manualRef.length >= 3 && manualRefValid === undefined ? "⏳" : manualRefValid ? "✅" : manualRefValid === null ? "❌" : ""}
+                  </span>
+                </div>
+                {manualRefValid && (
+                  <p className="text-emerald-400 text-[10px] mt-1">🤝 Invité par {manualRefValid.full_name}</p>
+                )}
+                {manualRefValid === null && manualRef.length >= 3 && (
+                  <p className="text-red-400 text-[10px] mt-1">❌ Code invalide</p>
+                )}
+              </div>
+            )}
 
             <Button onClick={handleRegister} disabled={loading}
               className="w-full h-12 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl text-base">
