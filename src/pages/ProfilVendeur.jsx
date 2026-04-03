@@ -18,6 +18,7 @@ import ProfileProgress from "@/components/vendor/ProfileProgress";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
+  const editSectionRef = useRef(null);
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [nombreVentes, setNombreVentes] = useState(0);
   const [chargement, setChargement] = useState(true);
@@ -29,6 +30,13 @@ export default function ProfilVendeur() {
   const [erreurMdp, setErreurMdp] = useState("");
   const [succesMdp, setSuccesMdp] = useState(false);
   const [saveMdpEnCours, setSaveMdpEnCours] = useState(false);
+
+  // Edit profile state
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editFields, setEditFields] = useState({});
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [villes, setVilles] = useState([]);
+  const [quartiers, setQuartiers] = useState([]);
 
   // Referral state
   const [editingCode, setEditingCode] = useState(false);
