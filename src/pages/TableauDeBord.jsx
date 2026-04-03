@@ -232,6 +232,7 @@ function DashboardAdmin() {
   const { data: kycEnAttente } = useQuery({
     queryKey: ["dashboard_kyc"],
     queryFn: () => filterTable("sellers", { statut_kyc: "en_attente" }),
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
