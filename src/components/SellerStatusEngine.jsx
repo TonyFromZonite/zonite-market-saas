@@ -77,10 +77,8 @@ export const getRequiredModal = (sellerStatus, trainingCompleted = false) => {
   if (sellerStatus === SELLER_STATUSES.PENDING_VERIFICATION) {
     return "email_verification";
   }
-  // KYC modals removed from auto-show
-  // KYC_REQUIRED and KYC_PENDING no longer show modals
-  if (sellerStatus === SELLER_STATUSES.KYC_REQUIRED) return "kyc_submission";
-  if (sellerStatus === SELLER_STATUSES.KYC_PENDING) return "kyc_pending";
+  // KYC modals completely removed from auto-show
+  // KYC is only checked when requesting payment (in DemandePaiement.jsx)
   return null;
 };
 
