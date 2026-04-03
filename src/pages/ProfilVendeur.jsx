@@ -161,7 +161,7 @@ export default function ProfilVendeur() {
     setCodeAvailable(null);
   };
 
-  const referralLink = `https://zonitemarket.lovable.app/InscriptionVendeur?ref=${compteVendeur?.code_parrainage || ''}`;
+  const referralLink = `https://zonite.org/InscriptionVendeur?ref=${compteVendeur?.code_parrainage || ''}`;
 
   const shareWhatsApp = () => {
     const msg =

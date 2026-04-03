@@ -38,7 +38,7 @@ export default function ParrainageSection({ vendeur }) {
     setLoading(false);
   };
 
-  const shareLink = `https://zonitemarket.lovable.app/InscriptionVendeur?ref=${codeParrainage}`;
+  const shareLink = `https://zonite.org/InscriptionVendeur?ref=${codeParrainage}`;
   const shareText = `🎉 Rejoins Zonite Market et gagne de l'argent en vendant ! Utilise mon code de parrainage : ${codeParrainage}\n\n👉 ${shareLink}`;
 
   const copyCode = () => {

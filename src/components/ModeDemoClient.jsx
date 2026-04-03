@@ -83,7 +83,7 @@ export default function ModeDemoClient({ produit, onClose }) {
     `✅ Disponible maintenant !\n📦 Livraison à domicile\n📞 Contactez-moi pour commander !\n\n` +
     `_Vendeur officiel ZONITE Market 🇨🇲_`;
 
-  const shareLink = `https://zonitemarket.lovable.app`;
+  const shareLink = `https://zonite.org`;
 
   const handleCopyLink = () => {
     const fullText = `${shareText}\n\n👉 ${shareLink}`;
