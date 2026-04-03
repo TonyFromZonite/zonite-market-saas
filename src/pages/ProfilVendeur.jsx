@@ -210,7 +210,61 @@ export default function ProfilVendeur() {
         setTimeout(() => { clearAllSessions(); window.location.href = createPageUrl("Connexion"); }, 2500);
       }
     } catch { setErreurMdp("Erreur lors du changement de mot de passe."); }
-    setSaveMdpEnCours(false);
+  };
+
+  const startEditingProfile = async () => {
+    setEditFields({
+      telephone: compteVendeur?.telephone || '',
+      ville: compteVendeur?.ville || '',
+      quartier: compteVendeur?.quartier || '',
+      whatsapp: compteVendeur?.whatsapp || '',
+      numero_mobile_money: compteVendeur?.numero_mobile_money || '',
+      operateur_mobile_money: compteVendeur?.operateur_mobile_money || 'orange_money',
+    });
+    const { data: v } = await supabase.from('villes_cameroun').select('id, nom').eq('actif', true).order('nom');
+    setVilles(v || []);
+    if (compteVendeur?.ville) {
+      const villeObj = (v || []).find(vi => vi.nom === compteVendeur.ville);
+      if (villeObj) {
+        const { data: q } = await supabase.from('quartiers').select('id, nom').eq('ville_id', villeObj.id).eq('actif', true).order('nom');
+        setQuartiers(q || []);
+      }
+    }
+    setEditingProfile(true);
+    setTimeout(() => editSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  const handleVilleChange = async (villeName) => {
+    setEditFields(prev => ({ ...prev, ville: villeName, quartier: '' }));
+    const villeObj = villes.find(v => v.nom === villeName);
+    if (villeObj) {
+      const { data: q } = await supabase.from('quartiers').select('id, nom').eq('ville_id', villeObj.id).eq('actif', true).order('nom');
+      setQuartiers(q || []);
+    } else {
+      setQuartiers([]);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const updates = {
+        telephone: editFields.telephone || null,
+        ville: editFields.ville || null,
+        quartier: editFields.quartier || null,
+        whatsapp: editFields.whatsapp || null,
+        numero_mobile_money: editFields.numero_mobile_money || null,
+        operateur_mobile_money: editFields.operateur_mobile_money || 'orange_money',
+      };
+      const { error } = await supabase.from('sellers').update(updates).eq('id', compteVendeur.id);
+      if (error) throw error;
+      setCompteVendeur(prev => ({ ...prev, ...updates }));
+      setEditingProfile(false);
+      toast({ title: '✅ Profil mis à jour !' });
+    } catch (err) {
+      toast({ title: '❌ Erreur', description: err.message || 'Impossible de sauvegarder.', variant: 'destructive' });
+    }
+    setSavingProfile(false);
   };
 
   if (chargement) return (
