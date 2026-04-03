@@ -195,9 +195,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const vendeursActifs = (Array.isArray(vendeurs) ? vendeurs : []).filter(v => v.seller_status === 'active_seller');
