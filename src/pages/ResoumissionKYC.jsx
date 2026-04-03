@@ -133,8 +133,8 @@ export default function ResoumissionKYC() {
       }).eq('id', vendeur.id);
       if (error) throw error;
       await supabase.from('notifications_admin').insert({
-        titre: '🪪 KYC Resoumis',
-        message: `${vendeur.full_name} (${vendeur.email}) a resoumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
+        titre: isResubmission ? '🪪 KYC Resoumis' : '🪪 Nouveau KYC',
+        message: `${vendeur.full_name} (${vendeur.email}) a ${isResubmission ? 'resoumis' : 'soumis'} son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
         type: 'kyc',
         vendeur_email: vendeur.email,
         reference_id: vendeur.id,
