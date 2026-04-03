@@ -56,12 +56,8 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      // Detect phone number → convert to generated email
-      const isPhone = /^[0-9+\s]+$/.test(loginEmail) && loginEmail.replace(/[^0-9]/g, "").length >= 9;
-      if (isPhone) {
-        const phoneClean = loginEmail.replace(/[^0-9]/g, "");
-        loginEmail = `${phoneClean}@zonite.org`;
-      } else if (!loginEmail.includes("@")) {
+      // If it's not an email, try username resolution
+      if (!loginEmail.includes("@")) {
         const { data: resolvedEmail, error: rpcError } = await supabase
           .rpc("resolve_username_to_email", { _username: loginEmail });
 
@@ -299,10 +295,10 @@ export default function Connexion() {
             
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Téléphone, email ou nom d'utilisateur</label>
-                   <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="699123456 ou votre@email.com" autoComplete="username"
+                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Email ou nom d'utilisateur</label>
+                   <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com ou @username" autoComplete="username"
                  className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
-                   <p className="text-slate-400 text-[10px] mt-1">Ex: 699123456 ou nom@email.com</p>
+                   <p className="text-slate-400 text-[10px] mt-1">Ex: nom@email.com ou votre nom d'utilisateur</p>
                  </div>
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Mot de passe</label>
@@ -326,12 +322,12 @@ export default function Connexion() {
               </form>
               {mode === MODE_VENDEUR &&
             <div className="mt-3 md:mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <button onClick={() => {setModeMdpOublie(true);setErreur("");}} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
+                   <button onClick={() => navigate("/MotDePasseOublie")} className="text-slate-400 text-xs hover:text-[#F5C518] transition-colors underline underline-offset-2 text-center md:text-left">
                     Mot de passe oublié ?
-                  </button>
-                  <a href={createPageUrl("InscriptionVendeur")} className="text-[#F5C518] text-xs font-semibold hover:underline text-center md:text-right">
+                   </button>
+                   <a href={createPageUrl("InscriptionVendeur")} className="text-[#F5C518] text-xs font-semibold hover:underline text-center md:text-right">
                     Créer mon compte →
-                  </a>
+                   </a>
                 </div>
             }
             </div>

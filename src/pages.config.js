@@ -38,6 +38,7 @@ const TableauDeBord = lazy(() => import('./pages/TableauDeBord'));
 const Vendeurs = lazy(() => import('./pages/Vendeurs'));
 const VideoFormation = lazy(() => import('./pages/VideoFormation'));
 const FormationCours = lazy(() => import('./pages/FormationCours'));
+const MotDePasseOublie = lazy(() => import('./pages/MotDePasseOublie'));
 
 export const PAGES = {
     "AideVendeur": AideVendeur,
@@ -74,6 +75,7 @@ export const PAGES = {
     "Vendeurs": Vendeurs,
     "VideoFormation": VideoFormation,
     "FormationCours": FormationCours,
+    "MotDePasseOublie": MotDePasseOublie,
 }
 
 export const pagesConfig = {
