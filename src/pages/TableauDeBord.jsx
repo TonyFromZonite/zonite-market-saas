@@ -213,9 +213,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: candidaturesEnAttente } = useQuery({
