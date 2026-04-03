@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useCachedQuery } from "@/components/CacheManager";
 import { supabase } from "@/integrations/supabase/client";
+import useAdminAccess from "@/hooks/useAdminAccess";
 
 function ResponsiveRow({ children }) {
   return (
