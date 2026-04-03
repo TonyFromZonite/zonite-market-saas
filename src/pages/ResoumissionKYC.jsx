@@ -209,13 +209,13 @@ export default function ResoumissionKYC() {
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
         </Link>
-        <h1 className="text-xl font-black text-white">Resoumission KYC</h1>
+        <h1 className="text-xl font-black text-white">{isResubmission ? 'Resoumission KYC' : 'Vérification KYC'}</h1>
       </div>
 
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-white">Correction de votre dossier</h2>
-          <p className="text-slate-300 text-sm mt-1">Resoumettez les documents demandés</p>
+          <h2 className="text-lg font-bold text-white">{isResubmission ? 'Correction de votre dossier' : 'Soumettez vos documents'}</h2>
+          <p className="text-slate-300 text-sm mt-1">{isResubmission ? 'Resoumettez les documents demandés' : 'Téléchargez vos documents d\'identité pour vérification'}</p>
         </div>
 
         {vendeur.kyc_raison_rejet && (
