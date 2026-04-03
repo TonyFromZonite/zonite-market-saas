@@ -127,6 +127,20 @@ export default function ProfilVendeur() {
         setParrain(p || null);
       }
     }
+
+    // Load social configs
+    try {
+      const { data: cfgData } = await supabase.from("config_app").select("cle, valeur");
+      const map = {};
+      (cfgData || []).forEach((i) => {
+        try {
+          const val = typeof i.valeur === "string" ? i.valeur : JSON.stringify(i.valeur);
+          map[i.cle] = val.replace(/^"|"$/g, '');
+        } catch { map[i.cle] = String(i.valeur || '').replace(/^"|"$/g, ''); }
+      });
+      setSocialConfigs(map);
+    } catch (_) {}
+
     setChargement(false);
   };
 
