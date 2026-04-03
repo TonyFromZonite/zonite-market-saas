@@ -178,9 +178,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 30 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const produitsActifs = (Array.isArray(produits) ? produits : []).filter(p => p.statut !== 'supprime');
