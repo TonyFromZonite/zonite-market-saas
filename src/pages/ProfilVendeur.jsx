@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2 } from "lucide-react";
+import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2, Pencil, Save, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
@@ -17,6 +18,7 @@ import ProfileProgress from "@/components/vendor/ProfileProgress";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
+  const editSectionRef = useRef(null);
   const [compteVendeur, setCompteVendeur] = useState(null);
   const [nombreVentes, setNombreVentes] = useState(0);
   const [chargement, setChargement] = useState(true);
@@ -28,6 +30,13 @@ export default function ProfilVendeur() {
   const [erreurMdp, setErreurMdp] = useState("");
   const [succesMdp, setSuccesMdp] = useState(false);
   const [saveMdpEnCours, setSaveMdpEnCours] = useState(false);
+
+  // Edit profile state
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editFields, setEditFields] = useState({});
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [villes, setVilles] = useState([]);
+  const [quartiers, setQuartiers] = useState([]);
 
   // Referral state
   const [editingCode, setEditingCode] = useState(false);
@@ -201,7 +210,61 @@ export default function ProfilVendeur() {
         setTimeout(() => { clearAllSessions(); window.location.href = createPageUrl("Connexion"); }, 2500);
       }
     } catch { setErreurMdp("Erreur lors du changement de mot de passe."); }
-    setSaveMdpEnCours(false);
+  };
+
+  const startEditingProfile = async () => {
+    setEditFields({
+      telephone: compteVendeur?.telephone || '',
+      ville: compteVendeur?.ville || '',
+      quartier: compteVendeur?.quartier || '',
+      whatsapp: compteVendeur?.whatsapp || '',
+      numero_mobile_money: compteVendeur?.numero_mobile_money || '',
+      operateur_mobile_money: compteVendeur?.operateur_mobile_money || 'orange_money',
+    });
+    const { data: v } = await supabase.from('villes_cameroun').select('id, nom').eq('actif', true).order('nom');
+    setVilles(v || []);
+    if (compteVendeur?.ville) {
+      const villeObj = (v || []).find(vi => vi.nom === compteVendeur.ville);
+      if (villeObj) {
+        const { data: q } = await supabase.from('quartiers').select('id, nom').eq('ville_id', villeObj.id).eq('actif', true).order('nom');
+        setQuartiers(q || []);
+      }
+    }
+    setEditingProfile(true);
+    setTimeout(() => editSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  const handleVilleChange = async (villeName) => {
+    setEditFields(prev => ({ ...prev, ville: villeName, quartier: '' }));
+    const villeObj = villes.find(v => v.nom === villeName);
+    if (villeObj) {
+      const { data: q } = await supabase.from('quartiers').select('id, nom').eq('ville_id', villeObj.id).eq('actif', true).order('nom');
+      setQuartiers(q || []);
+    } else {
+      setQuartiers([]);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const updates = {
+        telephone: editFields.telephone || null,
+        ville: editFields.ville || null,
+        quartier: editFields.quartier || null,
+        whatsapp: editFields.whatsapp || null,
+        numero_mobile_money: editFields.numero_mobile_money || null,
+        operateur_mobile_money: editFields.operateur_mobile_money || 'orange_money',
+      };
+      const { error } = await supabase.from('sellers').update(updates).eq('id', compteVendeur.id);
+      if (error) throw error;
+      setCompteVendeur(prev => ({ ...prev, ...updates }));
+      setEditingProfile(false);
+      toast({ title: '✅ Profil mis à jour !' });
+    } catch (err) {
+      toast({ title: '❌ Erreur', description: err.message || 'Impossible de sauvegarder.', variant: 'destructive' });
+    }
+    setSavingProfile(false);
   };
 
   if (chargement) return (
@@ -241,7 +304,7 @@ export default function ProfilVendeur() {
 
       <div className="px-3 sm:px-4 -mt-5 space-y-3 sm:space-y-4 max-w-screen-md mx-auto w-full">
         {/* Profile Progress */}
-        <ProfileProgress seller={compteVendeur} />
+        <ProfileProgress seller={compteVendeur} onEditProfile={startEditingProfile} />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
@@ -258,24 +321,98 @@ export default function ProfilVendeur() {
         </div>
 
         {/* Personal info */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-3 text-sm">Informations personnelles</h2>
-          <div className="space-y-3">
-            {[
-              { icone: User, label: "Nom", val: displayName },
-              { icone: Phone, label: "Téléphone", val: compteVendeur?.telephone },
-              { icone: MapPin, label: "Localisation", val: `${compteVendeur?.ville || ""}${compteVendeur?.quartier ? `, ${compteVendeur.quartier}` : ""}` },
-              { icone: Wallet, label: "Mobile Money", val: `${compteVendeur?.numero_mobile_money || "—"} (${compteVendeur?.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"})` },
-            ].map(({ icone: Icone, label, val }) => (
-              <div key={label} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center"><Icone className="w-4 h-4 text-slate-500" /></div>
-                <div>
-                  <p className="text-xs text-slate-400">{label}</p>
-                  <p className="text-sm font-medium text-slate-900">{val || "—"}</p>
-                </div>
-              </div>
-            ))}
+        <div ref={editSectionRef} className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-900 text-sm">Informations personnelles</h2>
+            {!editingProfile ? (
+              <button onClick={startEditingProfile} className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-700">
+                <Pencil className="w-3.5 h-3.5" /> Modifier
+              </button>
+            ) : (
+              <button onClick={() => setEditingProfile(false)} className="flex items-center gap-1 text-xs text-slate-400 font-medium hover:text-slate-600">
+                <X className="w-3.5 h-3.5" /> Annuler
+              </button>
+            )}
           </div>
+
+          {!editingProfile ? (
+            <div className="space-y-3">
+              {[
+                { icone: User, label: "Nom", val: displayName },
+                { icone: Phone, label: "Téléphone", val: compteVendeur?.telephone },
+                { icone: MapPin, label: "Localisation", val: `${compteVendeur?.ville || ""}${compteVendeur?.quartier ? `, ${compteVendeur.quartier}` : ""}` },
+                { icone: Phone, label: "WhatsApp", val: compteVendeur?.whatsapp },
+                { icone: Wallet, label: "Mobile Money", val: `${compteVendeur?.numero_mobile_money || "—"} (${compteVendeur?.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"})` },
+              ].map(({ icone: Icone, label, val }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center"><Icone className="w-4 h-4 text-slate-500" /></div>
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-400">{label}</p>
+                    <p className="text-sm font-medium text-slate-900">{val || "—"}</p>
+                  </div>
+                  {(!val || val === "—" || val.startsWith("—")) && (
+                    <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">À compléter</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Téléphone */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Téléphone</label>
+                <Input value={editFields.telephone} onChange={e => setEditFields(prev => ({ ...prev, telephone: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Ville */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Ville *</label>
+                <Select value={editFields.ville} onValueChange={handleVilleChange}>
+                  <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
+                  <SelectContent>
+                    {villes.map(v => <SelectItem key={v.id} value={v.nom}>{v.nom}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Quartier */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Quartier *</label>
+                {quartiers.length > 0 ? (
+                  <Select value={editFields.quartier} onValueChange={val => setEditFields(prev => ({ ...prev, quartier: val }))}>
+                    <SelectTrigger><SelectValue placeholder="Choisir un quartier" /></SelectTrigger>
+                    <SelectContent>
+                      {quartiers.map(q => <SelectItem key={q.id} value={q.nom}>{q.nom}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={editFields.quartier} onChange={e => setEditFields(prev => ({ ...prev, quartier: e.target.value }))} placeholder="Votre quartier" />
+                )}
+              </div>
+              {/* WhatsApp */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Numéro WhatsApp</label>
+                <Input value={editFields.whatsapp} onChange={e => setEditFields(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Mobile Money */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Opérateur Mobile Money</label>
+                <Select value={editFields.operateur_mobile_money} onValueChange={val => setEditFields(prev => ({ ...prev, operateur_mobile_money: val }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="orange_money">Orange Money</SelectItem>
+                    <SelectItem value="mtn_momo">MTN MoMo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Numéro Mobile Money</label>
+                <Input value={editFields.numero_mobile_money} onChange={e => setEditFields(prev => ({ ...prev, numero_mobile_money: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Save */}
+              <Button onClick={saveProfile} disabled={savingProfile} className="w-full bg-[#1a1f5e] hover:bg-[#141952]">
+                {savingProfile ? '⏳ Sauvegarde...' : '✅ Enregistrer les modifications'}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ═══════ REFERRAL CODE ═══════ */}

@@ -1,15 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function ProfileProgress({ seller }) {
+export default function ProfileProgress({ seller, onEditProfile }) {
   const navigate = useNavigate();
 
   const steps = [
     { label: "Compte créé", done: true, points: 15 },
     { label: "Email vérifié", done: !!seller.email_verified, points: 10 },
-    { label: "Ville & quartier", done: !!seller.ville && !!seller.quartier, points: 15, path: "/ProfilVendeur" },
-    { label: "Numéro WhatsApp", done: !!seller.whatsapp, points: 10, path: "/ProfilVendeur" },
-    { label: "Mobile Money", done: !!seller.numero_mobile_money, points: 15, path: "/ProfilVendeur" },
+    { label: "Ville & quartier", done: !!seller.ville && !!seller.quartier, points: 15, action: "edit" },
+    { label: "Numéro WhatsApp", done: !!seller.whatsapp, points: 10, action: "edit" },
+    { label: "Mobile Money", done: !!seller.numero_mobile_money, points: 15, action: "edit" },
     { label: "Formation terminée", done: !!seller.training_completed, points: 10, path: "/VideoFormation" },
     { label: "KYC soumis", done: seller.statut_kyc && seller.statut_kyc !== "non_soumis" && seller.statut_kyc !== "en_attente", points: 10 },
     { label: "KYC validé", done: seller.statut_kyc === "valide", points: 15 },
@@ -29,6 +29,14 @@ export default function ProfileProgress({ seller }) {
   const status = getLabel(percentage);
   const nextStep = steps.find(s => !s.done);
 
+  const handleStepClick = (step) => {
+    if (step.action === "edit" && onEditProfile) {
+      onEditProfile();
+    } else if (step.path) {
+      navigate(step.path);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
@@ -46,7 +54,10 @@ export default function ProfileProgress({ seller }) {
 
       <div className="space-y-1.5 mb-3">
         {steps.map((step, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs">
+          <div key={i}
+            className={`flex items-center gap-2 text-xs ${!step.done && (step.action || step.path) ? 'cursor-pointer hover:bg-slate-50 rounded-lg px-1 -mx-1 py-0.5' : ''}`}
+            onClick={() => !step.done && handleStepClick(step)}
+          >
             <span className={step.done ? "text-emerald-500" : "text-slate-300"}>{step.done ? "✅" : "○"}</span>
             <span className={step.done ? "text-slate-500" : "text-slate-700 font-medium"}>{step.label}</span>
             <span className="text-slate-300 ml-auto">+{step.points}pts</span>
@@ -56,11 +67,11 @@ export default function ProfileProgress({ seller }) {
 
       {nextStep && (
         <div className="flex items-center justify-between p-2.5 bg-amber-50 rounded-xl cursor-pointer"
-          onClick={() => nextStep.path && navigate(nextStep.path)}>
+          onClick={() => handleStepClick(nextStep)}>
           <div className="text-xs text-slate-600">
             Prochaine étape : <span className="font-bold text-amber-700">{nextStep.label}</span>
           </div>
-          {nextStep.path && <span className="text-xs text-amber-600 font-semibold">→</span>}
+          <span className="text-xs text-amber-600 font-semibold">→</span>
         </div>
       )}
     </div>
