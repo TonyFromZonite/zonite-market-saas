@@ -366,12 +366,7 @@ export default function ProfilVendeur() {
               {/* Ville */}
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">Ville *</label>
-                <Select value={editFields.ville} onValueChange={handleVilleChange}>
-                  <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
-                  <SelectContent>
-                    {villes.map(v => <SelectItem key={v.id} value={v.nom}>{v.nom}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Input value={editFields.ville} onChange={e => setEditFields(prev => ({ ...prev, ville: e.target.value }))} placeholder="Ex: Douala, Yaoundé..." />
               </div>
               {/* Quartier */}
               <div>
