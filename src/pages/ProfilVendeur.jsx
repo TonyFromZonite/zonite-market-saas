@@ -88,26 +88,9 @@ export default function ProfilVendeur() {
       const { count } = await supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', seller.id);
       setNombreVentes(count || 0);
 
-      // Fetch filleuls (sellers referred by me)
-      // Fetch filleuls via parrainages table (stable even if code changes)
-      const { data: parrainageRefs } = await supabase
-        .from('parrainages')
-        .select('*, filleul:filleul_id(id, full_name, seller_status, created_at)')
-        .eq('parrain_id', seller.id)
-        .order('created_at', { ascending: false });
-
-      // Also check legacy parraine_par field
-      const { data: legacyRefs } = await supabase
-        .from('sellers')
-        .select('id, full_name, seller_status, created_at')
-        .eq('parraine_par', seller.code_parrainage)
-        .order('created_at', { ascending: false });
-
-      // Merge: parrainages table + legacy, deduplicate by id
-      const parrainageFilleuls = (parrainageRefs || []).map(r => r.filleul).filter(Boolean);
-      const allFilleuls = [...parrainageFilleuls, ...(legacyRefs || [])];
-      const uniqueFilleuls = allFilleuls.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i);
-      setFilleuls(uniqueFilleuls);
+      // Fetch filleuls via SECURITY DEFINER RPC (bypasses RLS on sellers)
+      const { data: filleulsData } = await supabase.rpc('get_filleuls_for_parrain', { _parrain_id: seller.id });
+      setFilleuls(filleulsData || []);
 
       // Fetch my parrain info
       // First try parrainages table to get the code, then use RPC to get parrain info (bypasses RLS)
