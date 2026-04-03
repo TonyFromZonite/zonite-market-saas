@@ -43,8 +43,11 @@ export default function InscriptionVendeur() {
   const [loading, setLoading] = useState(false);
   const [refCode] = useState(refFromUrl);
   const [refValid, setRefValid] = useState(refFromUrl ? null : undefined);
+  const [manualRef, setManualRef] = useState("");
+  const [manualRefValid, setManualRefValid] = useState(undefined);
   const [errors, setErrors] = useState({});
   const [checking, setChecking] = useState({});
+  const manualRefTimer = useRef(null);
 
   // Verification step
   const [etape, setEtape] = useState(1);
