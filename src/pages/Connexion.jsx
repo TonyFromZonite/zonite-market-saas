@@ -243,10 +243,10 @@ export default function Connexion() {
 
   const lienFacebook = safeUrl(configs["lien_facebook"]);
   const lienTiktok = safeUrl(configs["lien_tiktok"]);
-  const lienTelegram = safeUrl(configs["lien_telegram"]);
-  const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
-  const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
-  const hasSocialLinks = lienFacebook || lienTiktok || lienTelegram;
+   const lienWhatsapp = safeUrl(configs["lien_whatsapp"]);
+   const messageAccueil = safeStr(configs["message_accueil"] || "Chaque vente est une victoire.\nAllons-y 🚀", 300);
+   const nomApp = safeStr(configs["nom_app"] || "ZONITE Vendeurs", 40);
+   const hasSocialLinks = lienFacebook || lienTiktok || lienWhatsapp;
 
   const changerMode = (m) => {setMode(m);setErreur("");setModeMdpOublie(false);setMdpOublieSucces(false);setEmail("");setMotDePasse("");};
 
