@@ -176,10 +176,10 @@ export default function ConfigurationApp() {
               TikTok
             </a>
           )}
-          {valeurs["lien_telegram"] && (
-            <a href={valeurs["lien_telegram"]} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 text-sky-700 text-sm font-medium">
-              <Send className="w-3.5 h-3.5" /> Telegram
+          {valeurs["lien_whatsapp"] && (
+            <a href={valeurs["lien_whatsapp"]} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5 text-green-700 text-sm font-medium">
+              <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
             </a>
           )}
         </div>
