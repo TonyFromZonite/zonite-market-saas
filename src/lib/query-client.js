@@ -7,8 +7,8 @@ export const queryClientInstance = new QueryClient({
       gcTime: 1000 * 60 * 10,        // 10 minutes in cache
       retry: 1,
       refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
+      refetchOnMount: true,           // Allow refetch on mount after auth is ready
+      refetchOnReconnect: true,       // Refetch when reconnecting
     },
   },
 });
