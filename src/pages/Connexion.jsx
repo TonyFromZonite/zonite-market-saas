@@ -56,12 +56,8 @@ export default function Connexion() {
     try {
       let loginEmail = email.trim().toLowerCase();
 
-      // Detect phone number → convert to generated email
-      const isPhone = /^[0-9+\s]+$/.test(loginEmail) && loginEmail.replace(/[^0-9]/g, "").length >= 9;
-      if (isPhone) {
-        const phoneClean = loginEmail.replace(/[^0-9]/g, "");
-        loginEmail = `${phoneClean}@zonite.org`;
-      } else if (!loginEmail.includes("@")) {
+      // If it's not an email, try username resolution
+      if (!loginEmail.includes("@")) {
         const { data: resolvedEmail, error: rpcError } = await supabase
           .rpc("resolve_username_to_email", { _username: loginEmail });
 
