@@ -321,24 +321,98 @@ export default function ProfilVendeur() {
         </div>
 
         {/* Personal info */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-3 text-sm">Informations personnelles</h2>
-          <div className="space-y-3">
-            {[
-              { icone: User, label: "Nom", val: displayName },
-              { icone: Phone, label: "Téléphone", val: compteVendeur?.telephone },
-              { icone: MapPin, label: "Localisation", val: `${compteVendeur?.ville || ""}${compteVendeur?.quartier ? `, ${compteVendeur.quartier}` : ""}` },
-              { icone: Wallet, label: "Mobile Money", val: `${compteVendeur?.numero_mobile_money || "—"} (${compteVendeur?.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"})` },
-            ].map(({ icone: Icone, label, val }) => (
-              <div key={label} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center"><Icone className="w-4 h-4 text-slate-500" /></div>
-                <div>
-                  <p className="text-xs text-slate-400">{label}</p>
-                  <p className="text-sm font-medium text-slate-900">{val || "—"}</p>
-                </div>
-              </div>
-            ))}
+        <div ref={editSectionRef} className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-900 text-sm">Informations personnelles</h2>
+            {!editingProfile ? (
+              <button onClick={startEditingProfile} className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-700">
+                <Pencil className="w-3.5 h-3.5" /> Modifier
+              </button>
+            ) : (
+              <button onClick={() => setEditingProfile(false)} className="flex items-center gap-1 text-xs text-slate-400 font-medium hover:text-slate-600">
+                <X className="w-3.5 h-3.5" /> Annuler
+              </button>
+            )}
           </div>
+
+          {!editingProfile ? (
+            <div className="space-y-3">
+              {[
+                { icone: User, label: "Nom", val: displayName },
+                { icone: Phone, label: "Téléphone", val: compteVendeur?.telephone },
+                { icone: MapPin, label: "Localisation", val: `${compteVendeur?.ville || ""}${compteVendeur?.quartier ? `, ${compteVendeur.quartier}` : ""}` },
+                { icone: Phone, label: "WhatsApp", val: compteVendeur?.whatsapp },
+                { icone: Wallet, label: "Mobile Money", val: `${compteVendeur?.numero_mobile_money || "—"} (${compteVendeur?.operateur_mobile_money === "orange_money" ? "Orange Money" : "MTN MoMo"})` },
+              ].map(({ icone: Icone, label, val }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center"><Icone className="w-4 h-4 text-slate-500" /></div>
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-400">{label}</p>
+                    <p className="text-sm font-medium text-slate-900">{val || "—"}</p>
+                  </div>
+                  {(!val || val === "—" || val.startsWith("—")) && (
+                    <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">À compléter</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Téléphone */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Téléphone</label>
+                <Input value={editFields.telephone} onChange={e => setEditFields(prev => ({ ...prev, telephone: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Ville */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Ville *</label>
+                <Select value={editFields.ville} onValueChange={handleVilleChange}>
+                  <SelectTrigger><SelectValue placeholder="Choisir une ville" /></SelectTrigger>
+                  <SelectContent>
+                    {villes.map(v => <SelectItem key={v.id} value={v.nom}>{v.nom}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Quartier */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Quartier *</label>
+                {quartiers.length > 0 ? (
+                  <Select value={editFields.quartier} onValueChange={val => setEditFields(prev => ({ ...prev, quartier: val }))}>
+                    <SelectTrigger><SelectValue placeholder="Choisir un quartier" /></SelectTrigger>
+                    <SelectContent>
+                      {quartiers.map(q => <SelectItem key={q.id} value={q.nom}>{q.nom}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={editFields.quartier} onChange={e => setEditFields(prev => ({ ...prev, quartier: e.target.value }))} placeholder="Votre quartier" />
+                )}
+              </div>
+              {/* WhatsApp */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Numéro WhatsApp</label>
+                <Input value={editFields.whatsapp} onChange={e => setEditFields(prev => ({ ...prev, whatsapp: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Mobile Money */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Opérateur Mobile Money</label>
+                <Select value={editFields.operateur_mobile_money} onValueChange={val => setEditFields(prev => ({ ...prev, operateur_mobile_money: val }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="orange_money">Orange Money</SelectItem>
+                    <SelectItem value="mtn_momo">MTN MoMo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Numéro Mobile Money</label>
+                <Input value={editFields.numero_mobile_money} onChange={e => setEditFields(prev => ({ ...prev, numero_mobile_money: e.target.value }))} placeholder="Ex: 690123456" />
+              </div>
+              {/* Save */}
+              <Button onClick={saveProfile} disabled={savingProfile} className="w-full bg-[#1a1f5e] hover:bg-[#141952]">
+                {savingProfile ? '⏳ Sauvegarde...' : '✅ Enregistrer les modifications'}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* ═══════ REFERRAL CODE ═══════ */}
