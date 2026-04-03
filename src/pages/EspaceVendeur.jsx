@@ -244,6 +244,7 @@ export default function EspaceVendeur() {
     }
   }, [compteVendeur?.id]);
 
+  const { data: commandes = [] } = useCachedQuery(
     'COMMANDES',
     () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_at", 50),
     { ttl: 5 * 60 * 1000, enabled: !!compteVendeur?.id }
