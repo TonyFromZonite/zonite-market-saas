@@ -133,8 +133,8 @@ export default function ResoumissionKYC() {
       }).eq('id', vendeur.id);
       if (error) throw error;
       await supabase.from('notifications_admin').insert({
-        titre: '🪪 KYC Resoumis',
-        message: `${vendeur.full_name} (${vendeur.email}) a resoumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
+        titre: isResubmission ? '🪪 KYC Resoumis' : '🪪 Nouveau KYC',
+        message: `${vendeur.full_name} (${vendeur.email}) a ${isResubmission ? 'resoumis' : 'soumis'} son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
         type: 'kyc',
         vendeur_email: vendeur.email,
         reference_id: vendeur.id,
@@ -158,15 +158,18 @@ export default function ResoumissionKYC() {
     );
   }
 
-  if (vendeur.statut_kyc !== 'rejete') {
+  const isResubmission = vendeur.statut_kyc === 'rejete';
+  const canSubmit = !vendeur.statut_kyc || vendeur.statut_kyc === 'en_attente' || vendeur.statut_kyc === 'non_soumis' || vendeur.statut_kyc === 'rejete';
+
+  if (!canSubmit) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0d1240] to-[#1a1f5e] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC Approuvé ✓</h2>
-          <p className="text-sm text-slate-500 mb-5">Votre dossier a déjà été validé ou est en cours de vérification.</p>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC Validé ✓</h2>
+          <p className="text-sm text-slate-500 mb-5">Votre dossier a déjà été validé.</p>
           <Link to={createPageUrl("EspaceVendeur")}>
             <Button className="w-full bg-[#1a1f5e] hover:bg-[#141952]">Retour à mon espace</Button>
           </Link>
@@ -206,13 +209,13 @@ export default function ResoumissionKYC() {
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
         </Link>
-        <h1 className="text-xl font-black text-white">Resoumission KYC</h1>
+        <h1 className="text-xl font-black text-white">{isResubmission ? 'Resoumission KYC' : 'Vérification KYC'}</h1>
       </div>
 
       <div className="w-full max-w-md">
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-white">Correction de votre dossier</h2>
-          <p className="text-slate-300 text-sm mt-1">Resoumettez les documents demandés</p>
+          <h2 className="text-lg font-bold text-white">{isResubmission ? 'Correction de votre dossier' : 'Soumettez vos documents'}</h2>
+          <p className="text-slate-300 text-sm mt-1">{isResubmission ? 'Resoumettez les documents demandés' : 'Téléchargez vos documents d\'identité pour vérification'}</p>
         </div>
 
         {vendeur.kyc_raison_rejet && (
@@ -286,7 +289,7 @@ export default function ResoumissionKYC() {
               ? '⏳ Envoi en cours...'
               : !allDocsUploaded()
                 ? `📎 ${getRequiredDocs().filter(k => !kycDocs[k]).length} document(s) manquant(s)`
-                : '✅ Resoummettre mon dossier'
+                : isResubmission ? '✅ Resoummettre mon dossier' : '✅ Soumettre mon dossier'
             }
           </button>
         </div>
