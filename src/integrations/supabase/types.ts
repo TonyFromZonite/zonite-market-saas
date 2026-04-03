@@ -1610,6 +1610,7 @@ export type Database = {
       validate_referral_code: {
         Args: { _code: string }
         Returns: {
+          email: string
           full_name: string
           id: string
         }[]
