@@ -167,9 +167,9 @@ export default function InscriptionVendeur() {
       // Sign in immediately for RLS
       await supabase.auth.signInWithPassword({ email: emailClean, password: form.password });
 
-      // Generate verification code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      // Determine effective referral
+      const effectiveRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef && manualRefValid ? manualRef.toUpperCase().trim() : null);
+      const effectiveRefData = refCode ? refValid : manualRefValid;
 
       // Generate referral code from username
       const myRefCode = usernameClean.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
