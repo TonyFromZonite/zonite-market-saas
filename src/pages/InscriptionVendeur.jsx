@@ -187,7 +187,7 @@ export default function InscriptionVendeur() {
           wizard_completed: false,
           email_verification_code: code,
           email_verification_expires_at: expiresAt,
-          parraine_par: refCode && refValid ? refCode.toUpperCase().trim() : null,
+          parraine_par: effectiveRefCode || null,
         })
         .select("id")
         .single();
