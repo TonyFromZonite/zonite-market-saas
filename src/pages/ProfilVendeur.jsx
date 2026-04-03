@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getVendeurSession, clearAllSessions } from "@/components/useSessionGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2 } from "lucide-react";
+import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2, Pencil, Save, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
