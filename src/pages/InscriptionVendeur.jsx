@@ -248,21 +248,23 @@ export default function InscriptionVendeur() {
       await supabase.from("sellers").update(updateData).eq("id", seller.id);
 
       // Create parrainages record if referral
-      if (refCode && refValid) {
+      const finalRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef ? manualRef.toUpperCase().trim() : null);
+      const finalRefData = refCode ? refValid : manualRefValid;
+      if (finalRefCode && finalRefData) {
         try {
           await supabase.from("parrainages").insert({
-            parrain_id: refValid.id,
+            parrain_id: finalRefData.id,
             filleul_id: seller.id,
-            code_parrainage: refCode.toUpperCase().trim(),
+            code_parrainage: finalRefCode,
             actif: true,
             livraisons_comptees: 0,
             commission_totale: 0,
           });
           await supabase.from("notifications_vendeur").insert({
-            vendeur_id: refValid.id,
-            vendeur_email: refValid.email || "",
+            vendeur_id: finalRefData.id,
+            vendeur_email: finalRefData.email || "",
             titre: "🎉 Nouveau filleul !",
-            message: `${form.full_name} vient de s'inscrire avec votre code ${refCode} !`,
+            message: `${form.full_name} vient de s'inscrire avec votre code ${finalRefCode} !`,
             type: "succes",
           });
         } catch (e) { console.warn("Parrainage failed:", e); }
