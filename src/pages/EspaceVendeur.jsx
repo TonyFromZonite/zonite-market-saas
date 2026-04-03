@@ -498,58 +498,6 @@ export default function EspaceVendeur() {
     return `${days}j`;
   };
 
-  const CollapsibleSection = ({ title, icon, badge, trailing, onFirstOpen, children }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [hasOpened, setHasOpened] = useState(false);
-
-    const toggle = () => {
-      const next = !isOpen;
-      setIsOpen(next);
-      if (next && !hasOpened) {
-        setHasOpened(true);
-        onFirstOpen?.();
-      }
-    };
-
-    return (
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
-        <button
-          onClick={toggle}
-          className="w-full flex items-center justify-between p-4 border-b border-slate-100 bg-transparent cursor-pointer"
-          type="button"
-        >
-          <div className="flex items-center gap-2">
-            {icon}
-            <h3 className="font-semibold text-slate-900 text-sm">{title}</h3>
-            {badge !== undefined && (
-              <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{badge}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {trailing}
-            <ChevronDown
-              className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-            />
-          </div>
-        </button>
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{ maxHeight: isOpen ? '2000px' : '0px', opacity: isOpen ? 1 : 0 }}
-        >
-          <div className="p-4">
-            {(hasOpened || !onFirstOpen) && children}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-
-  // Welcome wizard state
-  const [showWizard, setShowWizard] = useState(() => {
-    const session = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
-    return !session.wizard_completed && !compteVendeur?.wizard_completed;
-  });
 
   return (
     <PullToRefresh onRefresh={handlePullRefresh}>
