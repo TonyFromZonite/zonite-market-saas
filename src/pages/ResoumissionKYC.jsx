@@ -158,15 +158,18 @@ export default function ResoumissionKYC() {
     );
   }
 
-  if (vendeur.statut_kyc !== 'rejete') {
+  const isResubmission = vendeur.statut_kyc === 'rejete';
+  const canSubmit = !vendeur.statut_kyc || vendeur.statut_kyc === 'en_attente' || vendeur.statut_kyc === 'non_soumis' || vendeur.statut_kyc === 'rejete';
+
+  if (!canSubmit) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0d1240] to-[#1a1f5e] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC Approuvé ✓</h2>
-          <p className="text-sm text-slate-500 mb-5">Votre dossier a déjà été validé ou est en cours de vérification.</p>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Dossier KYC Validé ✓</h2>
+          <p className="text-sm text-slate-500 mb-5">Votre dossier a déjà été validé.</p>
           <Link to={createPageUrl("EspaceVendeur")}>
             <Button className="w-full bg-[#1a1f5e] hover:bg-[#141952]">Retour à mon espace</Button>
           </Link>
