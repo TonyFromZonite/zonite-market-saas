@@ -1,0 +1,12 @@
+CREATE OR REPLACE FUNCTION public.validate_referral_code(_code text)
+RETURNS TABLE(id uuid, full_name text)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT s.id, s.full_name
+  FROM public.sellers s
+  WHERE s.code_parrainage = UPPER(TRIM(_code))
+  LIMIT 1;
+$$;

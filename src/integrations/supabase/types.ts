@@ -1607,6 +1607,14 @@ export type Database = {
         Args: { _amount: number; _seller_id: string }
         Returns: number
       }
+      validate_referral_code: {
+        Args: { _code: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
