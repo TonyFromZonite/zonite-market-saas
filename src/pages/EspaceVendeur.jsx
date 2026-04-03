@@ -234,7 +234,16 @@ export default function EspaceVendeur() {
     charger();
   }, []);
 
-  const { data: commandes = [] } = useCachedQuery(
+  // Set wizard visibility when compteVendeur loads
+  useEffect(() => {
+    if (compteVendeur) {
+      const session = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
+      if (!session.wizard_completed && !compteVendeur.wizard_completed) {
+        setShowWizard(true);
+      }
+    }
+  }, [compteVendeur?.id]);
+
     'COMMANDES',
     () => filterTable("commandes_vendeur", { vendeur_id: compteVendeur.id }, "-created_at", 50),
     { ttl: 5 * 60 * 1000, enabled: !!compteVendeur?.id }
