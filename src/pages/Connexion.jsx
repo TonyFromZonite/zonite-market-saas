@@ -81,8 +81,8 @@ export default function Connexion() {
       const user = authData.user;
       let role = user.user_metadata?.role || "user";
 
-      // Check actual role from user_roles table (promotion updates this, not metadata)
-      if (mode === MODE_ADMIN && role !== "admin" && role !== "sous_admin") {
+      // ALWAYS check user_roles table for admin access — it's the backend source of truth
+      if (mode === MODE_ADMIN) {
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
@@ -90,6 +90,10 @@ export default function Connexion() {
           .maybeSingle();
         if (roleData?.role === "admin" || roleData?.role === "sous_admin") {
           role = roleData.role;
+        } else if (role !== "admin" && role !== "sous_admin") {
+          // Neither metadata nor user_roles gives admin access
+          setErreur("Ce compte n'a pas les droits administrateur.");
+          return;
         }
       }
 
