@@ -47,6 +47,7 @@ export default function ProfilVendeur() {
   // Referral data
   const [filleuls, setFilleuls] = useState([]);
   const [parrain, setParrain] = useState(null);
+  const [socialConfigs, setSocialConfigs] = useState({});
 
   useEffect(() => {
     chargerDonnees();
