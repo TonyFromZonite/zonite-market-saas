@@ -11,7 +11,7 @@ export default function ProfileProgress({ seller, onEditProfile }) {
     { label: "Numéro WhatsApp", done: !!seller.whatsapp, points: 10, action: "edit" },
     { label: "Mobile Money", done: !!seller.numero_mobile_money, points: 15, action: "edit" },
     { label: "Formation terminée", done: !!seller.training_completed, points: 10, path: "/VideoFormation" },
-    { label: "KYC soumis", done: seller.statut_kyc && seller.statut_kyc !== "non_soumis" && seller.statut_kyc !== "en_attente", points: 10 },
+    { label: "KYC soumis", done: seller.statut_kyc && seller.statut_kyc !== "non_soumis" && seller.statut_kyc !== "en_attente", points: 10, path: "/ResoumissionKYC" },
     { label: "KYC validé", done: seller.statut_kyc === "valide", points: 15 },
   ];
 
