@@ -151,6 +151,7 @@ function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
 function DashboardAdmin() {
   const REFRESH = 60 * 1000;
   const queryClient = useQueryClient();
+  const { isReady } = useAdminAccess();
 
   const { data: ventes = [], isLoading: chargementVentes } = useQuery({
     queryKey: ["dashboard_ventes"],
@@ -161,9 +162,11 @@ function DashboardAdmin() {
       if (error) { console.error(error); return []; }
       return data || [];
     },
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: produits = [], isLoading: chargementProduits } = useQuery({
