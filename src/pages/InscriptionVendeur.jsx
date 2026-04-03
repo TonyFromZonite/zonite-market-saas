@@ -66,12 +66,9 @@ export default function InscriptionVendeur() {
   const validateRefCode = async (code) => {
     if (!code?.trim() || code.length < 3) { setRefValid(undefined); return; }
     try {
-      const { data } = await supabase
-        .from("sellers")
-        .select("id, full_name, email")
-        .eq("code_parrainage", code.toUpperCase().trim())
-        .maybeSingle();
-      setRefValid(data || null);
+      const { data } = await supabase.rpc("validate_referral_code", { _code: code });
+      const match = data?.[0] || null;
+      setRefValid(match);
     } catch { setRefValid(null); }
   };
 
@@ -80,12 +77,9 @@ export default function InscriptionVendeur() {
     setManualRefValid(undefined);
     manualRefTimer.current = setTimeout(async () => {
       try {
-        const { data } = await supabase
-          .from("sellers")
-          .select("id, full_name, email")
-          .eq("code_parrainage", code.toUpperCase().trim())
-          .maybeSingle();
-        setManualRefValid(data || null);
+        const { data } = await supabase.rpc("validate_referral_code", { _code: code });
+        const match = data?.[0] || null;
+        setManualRefValid(match);
       } catch { setManualRefValid(null); }
     }, 500);
   };
