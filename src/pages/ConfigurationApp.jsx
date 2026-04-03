@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Facebook, Globe, MessageCircle, Lock, Youtube, GraduationCap, Send } from "lucide-react";
+import { Save, Facebook, Globe, MessageCircle, Lock, Youtube, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,7 +14,7 @@ const CONFIGS = [
   { cle: "lien_youtube_formation", label: "URL Vidéo de formation YouTube (obligatoire)", placeholder: "https://www.youtube.com/watch?v=...", icone: Youtube, couleur: "text-red-600" },
   { cle: "lien_facebook", label: "Lien Facebook", placeholder: "https://facebook.com/votrepage", icone: Facebook, couleur: "text-blue-600" },
   { cle: "lien_tiktok", label: "Lien TikTok", placeholder: "https://tiktok.com/@votrecompte", icone: Globe, couleur: "text-slate-700" },
-  { cle: "lien_telegram", label: "Lien Telegram", placeholder: "https://t.me/votregroupe", icone: Send, couleur: "text-[#0088cc]" },
+  { cle: "lien_whatsapp", label: "Lien WhatsApp (groupe ou page)", placeholder: "https://chat.whatsapp.com/... ou https://wa.me/...", icone: MessageCircle, couleur: "text-[#25D366]" },
 ];
 
 export default function ConfigurationApp() {
