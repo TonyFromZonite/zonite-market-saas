@@ -241,6 +241,7 @@ function DashboardAdmin() {
   const { data: paiementsEnAttente } = useQuery({
     queryKey: ["dashboard_paiements"],
     queryFn: () => filterTable("demandes_paiement_vendeur", { statut: "en_attente" }),
+    enabled: isReady,
     staleTime: 10 * 1000,
     refetchInterval: REFRESH,
     refetchOnWindowFocus: true,
