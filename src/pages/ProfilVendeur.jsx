@@ -109,22 +109,21 @@ export default function ProfilVendeur() {
       const uniqueFilleuls = allFilleuls.filter((f, i, arr) => arr.findIndex(x => x.id === f.id) === i);
       setFilleuls(uniqueFilleuls);
 
-      // Fetch my parrain via parrainages table first, fallback to parraine_par
+      // Fetch my parrain info
+      // First try parrainages table to get the code, then use RPC to get parrain info (bypasses RLS)
       const { data: myParrainage } = await supabase
         .from('parrainages')
-        .select('parrain:parrain_id(full_name, code_parrainage)')
+        .select('code_parrainage')
         .eq('filleul_id', seller.id)
         .maybeSingle();
 
-      if (myParrainage?.parrain) {
-        setParrain(myParrainage.parrain);
-      } else if (seller.parraine_par) {
-        const { data: p } = await supabase
-          .from('sellers')
-          .select('full_name, code_parrainage')
-          .eq('code_parrainage', seller.parraine_par)
-          .maybeSingle();
-        setParrain(p || null);
+      const parrainCode = myParrainage?.code_parrainage || seller.parraine_par;
+      if (parrainCode) {
+        const { data: parrainData } = await supabase.rpc('validate_referral_code', { _code: parrainCode });
+        const p = parrainData?.[0];
+        if (p) {
+          setParrain({ full_name: p.full_name, code_parrainage: parrainCode.toUpperCase() });
+        }
       }
     }
 
