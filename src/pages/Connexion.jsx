@@ -295,10 +295,10 @@ export default function Connexion() {
             
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Téléphone, email ou nom d'utilisateur</label>
-                   <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="699123456 ou votre@email.com" autoComplete="username"
+                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Email ou nom d'utilisateur</label>
+                   <Input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.com ou @username" autoComplete="username"
                  className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-[#F5C518] rounded-xl h-11" />
-                   <p className="text-slate-400 text-[10px] mt-1">Ex: 699123456 ou nom@email.com</p>
+                   <p className="text-slate-400 text-[10px] mt-1">Ex: nom@email.com ou votre nom d'utilisateur</p>
                  </div>
                 <div>
                   <label className="text-slate-200 text-xs font-medium block mb-1.5">Mot de passe</label>
