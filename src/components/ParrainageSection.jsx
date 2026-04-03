@@ -29,11 +29,7 @@ export default function ParrainageSection({ vendeur }) {
 
   const loadFilleuls = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('parrainages')
-      .select('*, filleul:filleul_id(full_name, email)')
-      .eq('parrain_id', vendeur.id)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.rpc('get_filleuls_for_parrain', { _parrain_id: vendeur.id });
     setFilleuls(data || []);
     setLoading(false);
   };
