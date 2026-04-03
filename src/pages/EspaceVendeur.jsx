@@ -39,6 +39,53 @@ const STATUTS = {
   annulee:                     { label: "Annulée", couleur: "bg-red-100 text-red-800" },
 };
 
+// CollapsibleSection extracted to avoid hooks-in-render issues
+const CollapsibleSection = ({ title, icon, badge, trailing, onFirstOpen, children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
+
+  const toggle = () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    if (next && !hasOpened) {
+      setHasOpened(true);
+      onFirstOpen?.();
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-3">
+      <button
+        onClick={toggle}
+        className="w-full flex items-center justify-between p-4 border-b border-slate-100 bg-transparent cursor-pointer"
+        type="button"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <h3 className="font-semibold text-slate-900 text-sm">{title}</h3>
+          {badge !== undefined && (
+            <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{badge}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {trailing}
+          <ChevronDown
+            className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </div>
+      </button>
+      <div
+        className="transition-all duration-300 ease-in-out overflow-hidden"
+        style={{ maxHeight: isOpen ? '2000px' : '0px', opacity: isOpen ? 1 : 0 }}
+      >
+        <div className="p-4">
+          {(hasOpened || !onFirstOpen) && children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function EspaceVendeur() {
   const [utilisateur, setUtilisateur] = useState(null);
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -58,6 +105,8 @@ export default function EspaceVendeur() {
   // Transaction history
   const [historyFilter, setHistoryFilter] = useState("tout");
 
+  // Welcome wizard state — MUST be before any early return
+  const [showWizard, setShowWizard] = useState(false);
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
