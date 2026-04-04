@@ -6,6 +6,10 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import { getVendeurSession, getSousAdminSession, getAdminSession } from "@/components/useSessionGuard";
 import { getMenuVisible } from "@/components/admin/adminMenuConfig";
 
+const PAGES_VENDEUR_SANS_NAV = new Set([
+  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
+]);
+
 const PAGES_VENDEUR = new Set([
   "EspaceVendeur", "InscriptionVendeur", "VideoFormation", "CatalogueVendeur",
   "NouvelleCommandeVendeur", "MesCommandesVendeur", "ProfilVendeur",
