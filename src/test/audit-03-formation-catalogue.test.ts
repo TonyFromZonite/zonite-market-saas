@@ -20,8 +20,9 @@ describe("Audit 3 — Formation & Catalogue", () => {
     expect(canAccessFeature(SELLER_STATUSES.ACTIVE_SELLER, "catalog", false)).toBe(false);
   });
 
-  it("3.4 shouldShowTrainingModal pour active_seller sans training", () => {
-    expect(shouldShowTrainingModal(SELLER_STATUSES.ACTIVE_SELLER, false)).toBe(true);
+  it("3.4 shouldShowTrainingModal désactivé (catalogue lock screen utilisé)", () => {
+    // shouldShowTrainingModal returns false — catalogue lock screen is used instead
+    expect(shouldShowTrainingModal(SELLER_STATUSES.ACTIVE_SELLER, false)).toBe(false);
     expect(shouldShowTrainingModal(SELLER_STATUSES.ACTIVE_SELLER, true)).toBe(false);
   });
 });
