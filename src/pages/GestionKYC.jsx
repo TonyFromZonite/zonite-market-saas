@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, XCircle, Eye } from "lucide-react";
 
 const STATUTS_KYC = {
+  non_soumis: { label: "Non soumis", couleur: "bg-slate-100 text-slate-600" },
   en_attente: { label: "En attente", couleur: "bg-yellow-100 text-yellow-800" },
   valide: { label: "Validé", couleur: "bg-emerald-100 text-emerald-800" },
   rejete: { label: "Rejeté", couleur: "bg-red-100 text-red-800" },
