@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminHeader from "@/components/admin/AdminHeader";
 import VendeurBottomNav from "@/components/VendeurBottomNav";
@@ -50,7 +50,10 @@ function useResponsive() {
 export default function Layout({ children, currentPageName }) {
   const [sidebarOuverte, setSidebarOuverte] = useState(false);
   const [badges, setBadges] = useState({ commandes: 0, kyc: 0 });
+  const [unauthorizedLogged, setUnauthorizedLogged] = useState(false);
   const vendeurSession = getVendeurSession();
+  const sousAdmin = getSousAdminSession();
+  const adminSession = getAdminSession();
   const isDesktop = useResponsive();
 
   // Close mobile sidebar when switching to desktop
@@ -66,8 +69,10 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [isDesktop, sidebarOuverte]);
 
+  const isSkipAdmin = PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession;
+
   useEffect(() => {
-    if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName)) return;
+    if (isSkipAdmin) return;
 
     const chargerBadges = async () => {
       try {
@@ -80,29 +85,10 @@ export default function Layout({ children, currentPageName }) {
     };
 
     chargerBadges();
-  }, [currentPageName]);
-
-  // Skip admin layout for vendor pages or login
-  const isVendorPage = PAGES_VENDEUR.has(currentPageName) || vendeurSession;
-  if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
-    const showNav = isVendorPage && !PAGES_VENDEUR_SANS_NAV.has(currentPageName) && vendeurSession;
-    if (isVendorPage) {
-      return (
-        <>
-          <div style={{ paddingBottom: showNav ? 64 : 0 }}>{children}</div>
-          {showNav && <VendeurBottomNav />}
-        </>
-      );
-    }
-    return <>{children}</>;
-  }
-
-  // Route-level protection for sous_admins
-  const sousAdmin = getSousAdminSession();
-  const adminSession = getAdminSession();
-  const [unauthorizedLogged, setUnauthorizedLogged] = useState(false);
+  }, [currentPageName, isSkipAdmin]);
 
   useEffect(() => {
+    if (isSkipAdmin) return;
     if (sousAdmin && !adminSession && !unauthorizedLogged) {
       const allowedPages = getMenuVisible("sous_admin", sousAdmin.permissions || []).map(m => m.page);
       if (!allowedPages.includes(currentPageName)) {
@@ -120,16 +106,37 @@ export default function Layout({ children, currentPageName }) {
         }).then(() => {});
       }
     }
-  }, [currentPageName, sousAdmin, adminSession, unauthorizedLogged]);
+  }, [currentPageName, sousAdmin, adminSession, unauthorizedLogged, isSkipAdmin]);
 
+  const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);
+  const handleMenuClose = useCallback(() => setSidebarOuverte(false), []);
+
+  // --- Render logic (no hooks below this line) ---
+
+  // Skip admin layout for vendor pages or login
+  const isVendorPage = PAGES_VENDEUR.has(currentPageName) || vendeurSession;
+  if (isSkipAdmin) {
+    const showNav = isVendorPage && !PAGES_VENDEUR_SANS_NAV.has(currentPageName) && vendeurSession;
+    if (isVendorPage) {
+      return (
+        <>
+          <div style={{ paddingBottom: showNav ? 64 : 0 }}>{children}</div>
+          {showNav && <VendeurBottomNav />}
+        </>
+      );
+    }
+    return <>{children}</>;
+  }
+
+  // Route-level protection for sous_admins
   if (sousAdmin && !adminSession) {
     const allowedPages = getMenuVisible("sous_admin", sousAdmin.permissions || []).map(m => m.page);
     if (!allowedPages.includes(currentPageName)) {
       return (
         <div className="min-h-dvh w-full bg-slate-50 lg:flex">
-          <AdminSidebar isOpen={isDesktop ? true : sidebarOuverte} onClose={() => setSidebarOuverte(false)} badges={badges} isDesktop={isDesktop} />
+          <AdminSidebar isOpen={isDesktop ? true : sidebarOuverte} onClose={handleMenuClose} badges={badges} isDesktop={isDesktop} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <AdminHeader currentPageName={currentPageName} onMenuOpen={() => setSidebarOuverte(true)} showBurger={!isDesktop} />
+            <AdminHeader currentPageName={currentPageName} onMenuOpen={handleMenuOpen} showBurger={!isDesktop} />
             <main className="flex-1 flex items-center justify-center p-4">
               <div className="text-center space-y-3">
                 <div className="text-5xl">🔒</div>
@@ -143,19 +150,14 @@ export default function Layout({ children, currentPageName }) {
     }
   }
 
-  const handleMenuOpen = useCallback(() => setSidebarOuverte(true), []);
-  const handleMenuClose = useCallback(() => setSidebarOuverte(false), []);
-
   return (
     <div className="min-h-dvh w-full bg-slate-50 lg:flex">
-      {/* Desktop sidebar — always rendered, hidden via CSS below lg */}
       <AdminSidebar
         isOpen={isDesktop ? true : sidebarOuverte}
         onClose={handleMenuClose}
         badges={badges}
         isDesktop={isDesktop}
       />
-
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader
           currentPageName={currentPageName}
