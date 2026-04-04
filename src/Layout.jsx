@@ -6,6 +6,10 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import { getVendeurSession, getSousAdminSession, getAdminSession } from "@/components/useSessionGuard";
 import { getMenuVisible } from "@/components/admin/adminMenuConfig";
 
+const PAGES_VENDEUR_SANS_NAV = new Set([
+  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
+]);
+
 const PAGES_VENDEUR = new Set([
   "EspaceVendeur", "InscriptionVendeur", "VideoFormation", "CatalogueVendeur",
   "NouvelleCommandeVendeur", "MesCommandesVendeur", "ProfilVendeur",
@@ -81,11 +85,12 @@ export default function Layout({ children, currentPageName }) {
   // Skip admin layout for vendor pages or login
   const isVendorPage = PAGES_VENDEUR.has(currentPageName) || vendeurSession;
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
+    const showNav = isVendorPage && !PAGES_VENDEUR_SANS_NAV.has(currentPageName) && vendeurSession;
     if (isVendorPage) {
       return (
         <>
-          <div style={{ paddingBottom: 64 }}>{children}</div>
-          <VendeurBottomNav />
+          <div style={{ paddingBottom: showNav ? 64 : 0 }}>{children}</div>
+          {showNav && <VendeurBottomNav />}
         </>
       );
     }
