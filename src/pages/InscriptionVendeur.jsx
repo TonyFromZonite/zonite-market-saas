@@ -182,6 +182,7 @@ export default function InscriptionVendeur() {
           email: emailClean,
           code_parrainage: myRefCode,
           seller_status: "pending_verification",
+          statut_kyc: "non_soumis",
           wizard_completed: false,
           email_verification_code: code,
           email_verification_expires_at: expiresAt,
