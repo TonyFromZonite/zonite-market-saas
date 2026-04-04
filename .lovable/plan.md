@@ -1,51 +1,32 @@
 
 
-# Optimisation de la vitesse de chargement des pages
+# Correction des warnings React (refs + Router v7 flags)
 
-## Problemes identifies
+## Warnings identifies
 
-1. **Auth bloquante** : `AuthenticatedApp` affiche un spinner (`LoadingScreen`) tant que `supabase.auth.getSession()` n'a pas repondu. Chaque navigation commence par ce delai (~300-800ms).
+1. **`NotificationManager` ref warning** : `AppWithRouter` passe implicitement un ref a `NotificationManager` qui est un composant fonction sans `forwardRef`.
+2. **`TikTokIcon` ref warning** : Dans `Connexion.jsx`, le composant SVG `TikTokIcon` recoit un ref (probablement via un wrapper `<a>` ou parent) sans `forwardRef`.
+3. **React Router v7 future flags** : Warnings `v7_startTransition` et `v7_relativeSplatPath` emis par `BrowserRouter`.
 
-2. **Page Connexion lazy-loaded** : La page d'accueil (`Connexion`) est chargee via `lazy()` — double attente (auth + chunk JS).
+## Corrections
 
-3. **Layout charge des donnees admin sur toutes les pages** : 2 requetes Supabase (badges commandes + KYC) s'executent meme quand c'est inutile.
+### 1. `NotificationManager` — ajouter `forwardRef`
+**Fichier** : `src/components/NotificationManager.jsx`
+- Wrapper le composant avec `React.forwardRef` pour accepter silencieusement le ref sans erreur.
 
-4. **Pas de prefetch des routes frequentes** : Naviguer vers EspaceVendeur ou InscriptionVendeur necessite un aller-retour reseau pour le chunk JS.
+### 2. `TikTokIcon` — ajouter `forwardRef`
+**Fichier** : `src/pages/Connexion.jsx`
+- Wrapper `TikTokIcon` avec `React.forwardRef` et propager le ref sur le `<svg>`.
 
-## Plan de correction
-
-### 1. Importer Connexion en statique (pas de lazy)
-**Fichier** : `src/pages.config.js`
-- Remplacer `const Connexion = lazy(...)` par un import statique `import Connexion from './pages/Connexion'`
-- La page d'entree se charge immediatement sans attendre le chunk.
-
-### 2. Ne pas bloquer le rendu sur l'auth pour les pages publiques
+### 3. React Router v7 future flags
 **Fichier** : `src/App.jsx`
-- Les pages `Connexion`, `InscriptionVendeur`, `MotDePasseOublie`, `ResetPassword`, `EnAttenteValidation` n'ont pas besoin d'attendre l'auth.
-- Extraire ces routes AVANT le check `isLoadingAuth` pour qu'elles s'affichent instantanement.
+- Ajouter les props `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}` sur `<BrowserRouter>`.
 
-### 3. Prefetch des pages vendeur critiques
-**Fichier** : `src/pages.config.js`
-- Ajouter un prefetch `requestIdleCallback` pour EspaceVendeur et InscriptionVendeur apres le premier rendu.
-
-### 4. Optimiser le Layout pour les pages sans session
-**Fichier** : `src/Layout.jsx`
-- Les requetes badges (commandes + KYC) sont deja conditionnees par `isSkipAdmin`, mais le composant execute quand meme tous les hooks. Pas de changement necessaire ici — c'est deja optimise.
-
-### 5. Reduire le staleTime du QueryClient pour les donnees critiques
-**Fichier** : `src/lib/query-client.js`
-- Garder le staleTime a 2min (deja bon). Pas de changement.
-
-## Resume des fichiers modifies
+## Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages.config.js` | Import statique de Connexion + prefetch idle des pages cles |
-| `src/App.jsx` | Routes publiques rendues sans attendre l'auth |
-
-## Impact attendu
-
-- Page Connexion : affichage ~500ms plus rapide (pas de lazy + pas d'attente auth)
-- InscriptionVendeur : affichage immediat (pas d'attente auth)
-- Navigation vers EspaceVendeur : chunk pre-charge en arriere-plan
+| `src/components/NotificationManager.jsx` | `forwardRef` wrapper |
+| `src/pages/Connexion.jsx` | `forwardRef` sur `TikTokIcon` |
+| `src/App.jsx` | Future flags sur `BrowserRouter` |
 
