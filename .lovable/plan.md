@@ -1,60 +1,59 @@
-# Plan : Refonte du formulaire commande vendeur + filtrage coursier admin
 
-## Contexte
 
-Actuellement, dans `NouvelleCommandeVendeur.jsx`, ville et quartier sont des `<Select>` (listes déroulantes). Le vendeur voit et choisit un coursier spécifique. Or, l'attribution du coursier est une responsabilité admin. Le vendeur doit seulement voir une estimation des frais de livraison.
+# Correction : KYC vide affiché à l'admin dès l'inscription
 
-Coté admin (`GestionCommandes.jsx`), le filtrage des coursiers se fait par ville mais pas par quartier/zone.
+## Problème
 
-## Changements prévus
+La colonne `statut_kyc` dans la table `sellers` a une valeur par défaut `'en_attente'`. Quand un vendeur s'inscrit (`InscriptionVendeur.jsx`), aucune valeur `statut_kyc` n'est spécifiée dans l'insert, donc le nouveau vendeur apparaît immédiatement comme "KYC en attente" dans les pages admin — alors qu'il n'a rien soumis.
 
-### 1. NouvelleCommandeVendeur.jsx — Champs ville/quartier en texte libre avec autocomplétion
+## Solution
 
-- Remplacer les deux `<Select>` (ville et quartier) par des `<Input>` avec liste de suggestions (`datalist` ou dropdown filtré).
-- Quand le vendeur tape, filtrer les villes/quartiers existants et afficher des suggestions.
-- Si la valeur tapée ne correspond à aucune entrée existante, le vendeur peut quand même soumettre (texte libre).
-- Stocker `client_ville` et `client_quartier` comme texte brut (ce qui est déjà le cas dans la table `commandes_vendeur`).
+### 1. Migration : changer la valeur par défaut de `statut_kyc`
 
-### 2. NouvelleCommandeVendeur.jsx — Estimation prix livraison au lieu du choix de coursier
+```sql
+ALTER TABLE public.sellers 
+  ALTER COLUMN statut_kyc SET DEFAULT 'non_soumis';
 
-- Supprimer complètement la sélection de coursier coté vendeur.
-- Ne plus enregistrer `coursier_id` dans la commande coté vendeur (laisser `null`, l'admin l'attribuera).
-- Supprimer la validation de stock par coursier (le vendeur ne sait pas quel coursier sera attribué).
-- Afficher à la place une estimation des frais de livraison :
-  - Si la ville ET le quartier existent dans notre base → trouver la zone de livraison correspondante → afficher la fourchette min-max des frais des coursiers couvrant cette zone.
-  - Si seule la ville existe → afficher la fourchette des frais de tous les coursiers de cette ville.
-  - Si ni la ville ni le quartier n'existent → afficher "Estimation : 1 500 FCFA" par défaut.
-- Format affiché : "Estimation livraison : 1 000 — 1 500 FCFA" (min et max).
+-- Corriger les vendeurs existants qui ont statut_kyc = 'en_attente' 
+-- mais n'ont jamais soumis de documents KYC
+UPDATE public.sellers 
+SET statut_kyc = 'non_soumis' 
+WHERE statut_kyc = 'en_attente' 
+  AND kyc_document_recto_url IS NULL 
+  AND kyc_selfie_url IS NULL 
+  AND kyc_passeport_url IS NULL;
+```
 
-### 3. NouvelleCommandeVendeur.jsx — Validation stock simplifiée
+### 2. `InscriptionVendeur.jsx` — expliciter `statut_kyc: 'non_soumis'` dans l'insert
 
-- Valider le stock global du produit (pas par coursier, puisque le coursier n'est pas encore choisi mais par la  verification du  stock existe  a l'un des coursier  dans cette ville. la validation de stock cote vendeur ce fait dons par ville.  et l'admin choisira lui meme un coursier qui a le stock.).
-- L'admin réservera le stock quand il attribuera le coursier.
+Ajouter `statut_kyc: 'non_soumis'` à l'objet inséré ligne 178, pour ne pas dépendre du défaut.
 
-### 4. GestionCommandes.jsx — Filtrage coursier par ville ET quartier/zone
+### 3. Filtres admin — exclure `non_soumis` des dossiers "en attente"
 
-- Dans `findCoursiersForCommande`, après avoir trouvé la ville :
-  - Chercher le quartier dans la table `quartiers`.
-  - Trouver quelle `zone_livraison` contient ce quartier (via `quartiers_ids`).
-  - Filtrer les coursiers dont `zones_livraison_ids` inclut cette zone.
-  - Si aucun match par quartier, fallback sur tous les coursiers de la ville.
-  - Si aucun match par ville, fallback sur tous les coursiers actifs.
+Les pages suivantes filtrent sur `statut_kyc === "en_attente"` pour afficher les dossiers à valider. Aucun changement nécessaire car `non_soumis` ≠ `en_attente`, ils n'apparaîtront plus.
 
-### 5. SelecteurLocalisation.jsx — Aucun changement nécessaire
+Pages concernées (aucune modification requise) :
+- `GestionKYC.jsx` — filtre `en_attente` ✓
+- `Layout.jsx` — badge count filtre `en_attente` ✓
+- `TableauDeBord.jsx` — dashboard filtre `en_attente` ✓
 
-Ce composant est utilisé par `FormulaireVente.jsx` (formulaire admin de vente directe), pas par le formulaire vendeur. Il reste inchangé.
+### 4. Ajouter `non_soumis` au dictionnaire `STATUTS_KYC` dans `GestionKYC.jsx`
+
+Pour que les vendeurs avec `statut_kyc = 'non_soumis'` dans la liste "traités" affichent un label lisible au lieu de `undefined`.
+
+```js
+non_soumis: { label: "Non soumis", couleur: "bg-slate-100 text-slate-600" },
+```
+
+### 5. `SellerStatusEngine.jsx` — aucun changement
+
+Le statut `kyc_required` côté `seller_status` est distinct de `statut_kyc`. Pas d'impact.
 
 ## Fichiers modifiés
 
+| Fichier | Action |
+|---------|--------|
+| Migration SQL | Changer défaut `statut_kyc` + corriger données existantes |
+| `src/pages/InscriptionVendeur.jsx` | Ajouter `statut_kyc: 'non_soumis'` à l'insert |
+| `src/pages/GestionKYC.jsx` | Ajouter entrée `non_soumis` dans `STATUTS_KYC` |
 
-| Fichier                                 | Action                                                                                    |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `src/pages/NouvelleCommandeVendeur.jsx` | Refonte ville/quartier en texte libre + estimation livraison + suppression choix coursier |
-| `src/pages/GestionCommandes.jsx`        | Filtrage coursier par quartier/zone en plus de la ville                                   |
-
-
-## Résumé fonctionnel
-
-- **Vendeur** : tape la ville et le quartier librement (avec suggestions), voit une estimation du prix de livraison (fourchette min-max), ne choisit pas de coursier mais verifie   que le stock existe bien et belle a l'un des coursier  dans cette ville. la validation de stock cote vendeur ce fait dons par ville.  et l'admin choisira lui meme un coursier qui a le stock.
-- **Admin** : lors de l'attribution, voit en priorité les coursiers dont la zone couvre le quartier du client, puis ceux de la ville, puis tous en dernier recours.
-- **Défaut** : si ville/quartier inconnus → estimation à 1 500 FCFA.
