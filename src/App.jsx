@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -21,6 +21,11 @@ const CatalogueVendeurPage = lazy(() => import('./pages/CatalogueVendeur'));
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : () => <></>;
+
+// Pages publiques qui n'ont pas besoin d'attendre l'auth
+const PUBLIC_PAGES = new Set([
+  'Connexion', 'InscriptionVendeur', 'MotDePasseOublie', 'ResetPassword', 'EnAttenteValidation'
+]);
 
 const LoadingScreen = forwardRef(function LoadingScreen(props, ref) {
   return (
@@ -52,17 +57,25 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const location = useLocation();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return <LoadingScreen />;
-  }
+  // Déterminer si la route actuelle est publique
+  const currentPath = location.pathname.replace('/', '') || mainPageKey;
+  const isPublicPage = PUBLIC_PAGES.has(currentPath);
 
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
+  // Pour les pages publiques, ne pas bloquer sur l'auth
+  if (!isPublicPage) {
+    if (isLoadingPublicSettings || isLoadingAuth) {
+      return <LoadingScreen />;
+    }
+
+    if (authError) {
+      if (authError.type === 'user_not_registered') {
+        return <UserNotRegisteredError />;
+      } else if (authError.type === 'auth_required') {
+        navigateToLogin();
+        return null;
+      }
     }
   }
 
@@ -121,11 +134,9 @@ const AppWithRouter = () => {
 
   const handleUnlock = (targetPath) => {
     setLocked(false);
-    // Navigate to the correct page based on role
     if (targetPath) {
       navigate(targetPath);
     } else {
-      // Fallback: determine from session
       const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
       const isAdmin = adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin");
       navigate(isAdmin ? "/TableauDeBord" : "/EspaceVendeur");

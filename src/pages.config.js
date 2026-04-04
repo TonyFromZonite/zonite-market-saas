@@ -4,6 +4,9 @@
 import { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
+// Import statique pour la page d'entrée (pas de lazy = affichage instantané)
+import Connexion from './pages/Connexion';
+
 const AideVendeur = lazy(() => import('./pages/AideVendeur'));
 const CatalogueVendeur = lazy(() => import('./pages/CatalogueVendeur'));
 const Categories = lazy(() => import('./pages/Categories'));
@@ -12,7 +15,6 @@ const CommandesVendeurs = lazy(() => import('./pages/CommandesVendeurs'));
 const Commissions = lazy(() => import('./pages/Commissions'));
 const ConfigurationAdminPassword = lazy(() => import('./pages/ConfigurationAdminPassword'));
 const ConfigurationApp = lazy(() => import('./pages/ConfigurationApp'));
-const Connexion = lazy(() => import('./pages/Connexion'));
 const DemandePaiement = lazy(() => import('./pages/DemandePaiement'));
 const EnAttenteValidation = lazy(() => import('./pages/EnAttenteValidation'));
 const EspaceSousAdmin = lazy(() => import('./pages/EspaceSousAdmin'));
@@ -83,3 +85,16 @@ export const pagesConfig = {
     Pages: PAGES,
     Layout: __Layout,
 };
+
+// Prefetch des pages critiques en arrière-plan
+if (typeof window !== 'undefined') {
+  const prefetch = () => {
+    import('./pages/EspaceVendeur');
+    import('./pages/InscriptionVendeur');
+  };
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(prefetch);
+  } else {
+    setTimeout(prefetch, 2000);
+  }
+}
