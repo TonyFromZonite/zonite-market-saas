@@ -19,6 +19,8 @@ const PAGES_VENDEUR = new Set([
 
 const PAGES_SANS_LAYOUT_ADMIN = new Set([
   "Connexion",
+  "MotDePasseOublie",
+  "ResetPassword",
   "EspaceSousAdmin",
   ...PAGES_VENDEUR,
 ]);
