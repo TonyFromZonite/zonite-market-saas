@@ -85,11 +85,12 @@ export default function Layout({ children, currentPageName }) {
   // Skip admin layout for vendor pages or login
   const isVendorPage = PAGES_VENDEUR.has(currentPageName) || vendeurSession;
   if (PAGES_SANS_LAYOUT_ADMIN.has(currentPageName) || vendeurSession) {
+    const showNav = isVendorPage && !PAGES_VENDEUR_SANS_NAV.has(currentPageName) && vendeurSession;
     if (isVendorPage) {
       return (
         <>
-          <div style={{ paddingBottom: 64 }}>{children}</div>
-          <VendeurBottomNav />
+          <div style={{ paddingBottom: showNav ? 64 : 0 }}>{children}</div>
+          {showNav && <VendeurBottomNav />}
         </>
       );
     }
