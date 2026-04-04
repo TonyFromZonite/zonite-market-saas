@@ -45,63 +45,91 @@ export default function GestionCommandes() {
     ? commandes
     : commandes.filter(c => c.statut === filtreStatut);
 
-  // Find coursiers matching the order's city
+  // Find coursiers matching the order's city AND quartier/zone
   const findCoursiersForCommande = async (cmd) => {
     setLoadingCoursiers(true);
     setCoursierError(null);
     setCoursiersDisponibles([]);
 
     try {
-      if (!cmd.client_ville) {
-        // No city on order — load all active coursiers
-        const { data: allCoursiers } = await supabase
+      const loadAllCoursiers = async () => {
+        const { data } = await supabase
           .from("coursiers")
-          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+          .select("id, nom, telephone, frais_livraison_defaut, ville_id, zones_livraison_ids, actif")
           .eq("actif", true);
-        setCoursiersDisponibles(allCoursiers || []);
+        return data || [];
+      };
+
+      if (!cmd.client_ville) {
+        setCoursiersDisponibles(await loadAllCoursiers());
         setCoursierError("⚠️ Aucune ville spécifiée sur la commande. Tous les coursiers sont affichés.");
         return;
       }
 
-      // Step 1: Find ville_id from city name
-      const { data: villes } = await supabase
+      // Step 1: Find ville
+      const { data: villesData } = await supabase
         .from("villes_cameroun")
         .select("id, nom")
         .ilike("nom", `%${cmd.client_ville.trim()}%`);
-
-      const ville = villes?.[0];
+      const ville = villesData?.[0];
 
       if (!ville) {
-        // City not found — show all coursiers with warning
-        const { data: allCoursiers } = await supabase
-          .from("coursiers")
-          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
-          .eq("actif", true);
-        setCoursiersDisponibles(allCoursiers || []);
+        setCoursiersDisponibles(await loadAllCoursiers());
         setCoursierError(`Ville "${cmd.client_ville}" introuvable. Tous les coursiers sont affichés.`);
         return;
       }
 
-      // Step 2: Find coursiers in that city
-      const { data: coursiers } = await supabase
+      // Step 2: Find all coursiers in this city
+      const { data: coursiersVille } = await supabase
         .from("coursiers")
-        .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
+        .select("id, nom, telephone, frais_livraison_defaut, ville_id, zones_livraison_ids, actif")
         .eq("ville_id", ville.id)
         .eq("actif", true)
         .order("frais_livraison_defaut", { ascending: true });
 
-      if (!coursiers || coursiers.length === 0) {
-        // No coursiers in city — show all with warning
-        const { data: allCoursiers } = await supabase
-          .from("coursiers")
-          .select("id, nom, telephone, frais_livraison_defaut, ville_id, actif")
-          .eq("actif", true);
-        setCoursiersDisponibles(allCoursiers || []);
+      if (!coursiersVille || coursiersVille.length === 0) {
+        setCoursiersDisponibles(await loadAllCoursiers());
         setCoursierError(`Aucun coursier actif à ${cmd.client_ville}. Tous les coursiers sont affichés.`);
         return;
       }
 
-      // Step 3: Check stock if product is set
+      // Step 3: Try to filter by quartier/zone
+      let priorityCoursiers = null;
+      if (cmd.client_quartier) {
+        // Find quartier in DB
+        const { data: quartiersData } = await supabase
+          .from("quartiers")
+          .select("id, nom, ville_id")
+          .eq("ville_id", ville.id)
+          .ilike("nom", `%${cmd.client_quartier.trim()}%`);
+        const quartier = quartiersData?.[0];
+
+        if (quartier) {
+          // Find zones containing this quartier
+          const { data: zones } = await supabase
+            .from("zones_livraison")
+            .select("id, nom, quartiers_ids")
+            .eq("ville_id", ville.id)
+            .eq("actif", true);
+
+          const matchingZoneIds = (zones || [])
+            .filter((z) => (z.quartiers_ids || []).includes(quartier.id))
+            .map((z) => z.id);
+
+          if (matchingZoneIds.length > 0) {
+            // Filter coursiers whose zones_livraison_ids overlap with matching zones
+            priorityCoursiers = coursiersVille.filter((c) =>
+              (c.zones_livraison_ids || []).some((zid) => matchingZoneIds.includes(zid))
+            );
+            if (priorityCoursiers.length === 0) priorityCoursiers = null;
+          }
+        }
+      }
+
+      // Step 4: Check stock
+      let candidateCoursiers = priorityCoursiers || coursiersVille;
+      let stockWarning = null;
+
       if (cmd.produit_id) {
         const { data: produit } = await supabase
           .from("produits")
@@ -110,31 +138,32 @@ export default function GestionCommandes() {
           .single();
 
         if (produit?.stocks_par_coursier && Array.isArray(produit.stocks_par_coursier)) {
-          const coursiersAvecStock = coursiers.filter(c => {
-            const stockInfo = produit.stocks_par_coursier.find(s => s.coursier_id === c.id);
+          const withStock = candidateCoursiers.filter((c) => {
+            const stockInfo = produit.stocks_par_coursier.find((s) => s.coursier_id === c.id);
             if (!stockInfo) return false;
-
             if (cmd.variation) {
-              const varStock = stockInfo.stock_par_variation?.find(
-                v => v.variation_key === cmd.variation
-              );
+              const varStock = stockInfo.stock_par_variation?.find((v) => v.variation_key === cmd.variation);
               return varStock && varStock.quantite >= (cmd.quantite || 1);
             }
             return stockInfo.stock_total >= (cmd.quantite || 1);
           });
 
-          if (coursiersAvecStock.length > 0) {
-            setCoursiersDisponibles(coursiersAvecStock);
-            return;
+          if (withStock.length > 0) {
+            candidateCoursiers = withStock;
+          } else {
+            stockWarning = "Aucun coursier n'a le stock suffisant.";
+            // Fall back to all city coursiers
+            candidateCoursiers = coursiersVille;
           }
-          // No stock match — show all city coursiers with warning
-          setCoursiersDisponibles(coursiers);
-          setCoursierError("Aucun coursier n'a le stock suffisant. Tous les coursiers de la ville sont affichés.");
-          return;
         }
       }
 
-      setCoursiersDisponibles(coursiers);
+      setCoursiersDisponibles(candidateCoursiers);
+      if (stockWarning) {
+        setCoursierError(stockWarning + (priorityCoursiers ? " Coursiers de la ville affichés." : ""));
+      } else if (priorityCoursiers) {
+        setCoursierError(null); // Zone-matched coursiers found
+      }
     } catch (err) {
       console.error("findCoursiers error:", err);
       setCoursierError("Erreur lors de la recherche de coursiers.");

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
 import { supabase } from "@/integrations/supabase/client";
-import { stockManager } from "@/lib/stockManager";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -21,11 +20,11 @@ export default function NouvelleCommandeVendeur() {
     client_nom: "", client_telephone: "", client_adresse: "",
     notes: "",
   });
-  const [villeId, setVilleId] = useState("");
-  const [quartierId, setQuartierId] = useState("");
+  const [villeText, setVilleText] = useState("");
+  const [quartierText, setQuartierText] = useState("");
+  const [showVilleSuggestions, setShowVilleSuggestions] = useState(false);
+  const [showQuartierSuggestions, setShowQuartierSuggestions] = useState(false);
   const [selectedVariations, setSelectedVariations] = useState({});
-  const [availableCoursiers, setAvailableCoursiers] = useState([]);
-  const [selectedCoursierId, setSelectedCoursierId] = useState("");
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState(false);
@@ -38,22 +37,13 @@ export default function NouvelleCommandeVendeur() {
     const charger = async () => {
       const session = await getVendeurSessionAsync();
       if (!session) { window.location.href = createPageUrl("Connexion"); return; }
-      
-      // Get fresh seller data
       const { data: seller } = await supabase
-        .from("sellers")
-        .select("*")
-        .eq("id", session.id)
-        .maybeSingle();
-      
+        .from("sellers").select("*").eq("id", session.id).maybeSingle();
       if (seller) {
         setCompteVendeur(seller);
       } else {
         setErreur("Compte vendeur introuvable. Veuillez vous reconnecter.");
-        return;
       }
-
-      // Pre-fill from navigation state or URL params
       if (prefilledProduct?.produit_id) {
         setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
       } else {
@@ -108,98 +98,147 @@ export default function NouvelleCommandeVendeur() {
   const modifier = (champ, val) => { setForm((p) => ({ ...p, [champ]: val })); setErreur(""); };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = produitSelectionne?.variations || [];
-  const quartiersFiltered = quartiers.filter((q) => q.ville_id === villeId);
 
-  // Build variation key from selections
+  // Build variation key
   const getVariationKey = () => {
     if (variations.length === 0) return "";
     return variations.map((v) => `${v.nom}:${selectedVariations[v.nom] || ""}`).join("|");
   };
-
   const variationKey = getVariationKey();
 
-  // Find available stock for selected variation across all coursiers
-  const getStockForVariation = (coursierId) => {
-    if (!produitSelectionne) return 0;
-    const spc = (produitSelectionne.stocks_par_coursier || []).find((s) => s.coursier_id === coursierId);
-    if (!spc) return 0;
-    if (!variationKey || variations.length === 0) return spc.stock_total || 0;
-    const sv = (spc.stock_par_variation || []).find((v) => v.variation_key === variationKey);
-    return sv?.quantite || 0;
-  };
+  // --- Ville suggestions ---
+  const villeSuggestions = useMemo(() => {
+    if (!villeText || villeText.length < 1) return [];
+    const t = villeText.toLowerCase();
+    return villes.filter((v) => v.nom.toLowerCase().includes(t)).slice(0, 8);
+  }, [villeText, villes]);
 
-  // Find coursiers when ville changes
-  useEffect(() => {
-    if (!villeId || !produitSelectionne) {
-      setAvailableCoursiers([]);
-      setSelectedCoursierId("");
-      return;
-    }
-    // Find zones in this ville
-    const villeZones = zonesLivraison.filter((z) => z.ville_id === villeId);
+  // --- Quartier suggestions (filtered by matched ville) ---
+  const matchedVille = useMemo(() => {
+    if (!villeText) return null;
+    return villes.find((v) => v.nom.toLowerCase() === villeText.toLowerCase().trim());
+  }, [villeText, villes]);
+
+  const quartierSuggestions = useMemo(() => {
+    if (!quartierText || quartierText.length < 1) return [];
+    const t = quartierText.toLowerCase();
+    const filtered = matchedVille
+      ? quartiers.filter((q) => q.ville_id === matchedVille.id)
+      : quartiers;
+    return filtered.filter((q) => q.nom.toLowerCase().includes(t)).slice(0, 8);
+  }, [quartierText, quartiers, matchedVille]);
+
+  // --- Check stock exists in this city ---
+  const stockInCity = useMemo(() => {
+    if (!produitSelectionne || !villeText) return { available: false, total: 0 };
+    if (!matchedVille) return { available: false, total: 0 };
+
+    const villeZones = zonesLivraison.filter((z) => z.ville_id === matchedVille.id);
     const villeZoneIds = villeZones.map((z) => z.id);
-    // Find coursiers covering these zones AND having stock
-    const matching = coursiers.filter((c) => {
-      const coversZone = (c.zones_livraison_ids || []).some((zid) => villeZoneIds.includes(zid));
-      if (!coversZone) return false;
-      const stock = getStockForVariation(c.id);
-      return stock > 0;
-    });
-    // Sort by cheapest first
-    const sorted = [...matching].sort((a, b) => (a.frais_livraison_defaut || 0) - (b.frais_livraison_defaut || 0));
-    
-    // If no zone-matched coursiers have stock, show ALL active coursiers with stock
-    if (sorted.length === 0) {
-      const allWithStock = coursiers.filter((c) => getStockForVariation(c.id) > 0)
-        .sort((a, b) => (a.frais_livraison_defaut || 0) - (b.frais_livraison_defaut || 0));
-      setAvailableCoursiers(allWithStock);
-      if (allWithStock.length > 0) setSelectedCoursierId(allWithStock[0].id);
-      else setSelectedCoursierId("");
-    } else {
-      setAvailableCoursiers(sorted);
-      // Auto-select cheapest
-      setSelectedCoursierId(sorted[0].id);
-    }
-  }, [villeId, produitSelectionne?.id, variationKey]);
 
-  const selectedCoursier = coursiers.find((c) => c.id === selectedCoursierId);
-  const stockDisponible = selectedCoursierId ? getStockForVariation(selectedCoursierId) : 0;
+    // Find coursiers covering these zones
+    const coursiersInVille = coursiers.filter((c) =>
+      (c.zones_livraison_ids || []).some((zid) => villeZoneIds.includes(zid))
+    );
+
+    // Also include coursiers directly in this ville (via ville_id)
+    const coursiersById = coursiers.filter((c) => c.ville_id === matchedVille.id);
+    const allCoursierIds = new Set([...coursiersInVille.map(c => c.id), ...coursiersById.map(c => c.id)]);
+
+    const spc = produitSelectionne.stocks_par_coursier || [];
+    let totalStock = 0;
+    for (const s of spc) {
+      if (!allCoursierIds.has(s.coursier_id)) continue;
+      if (variationKey && variations.length > 0) {
+        const sv = (s.stock_par_variation || []).find((v) => v.variation_key === variationKey);
+        totalStock += sv?.quantite || 0;
+      } else {
+        totalStock += s.stock_total || 0;
+      }
+    }
+    return { available: totalStock > 0, total: totalStock };
+  }, [produitSelectionne, matchedVille, coursiers, zonesLivraison, variationKey]);
+
+  // --- Delivery fee estimation ---
+  const estimationLivraison = useMemo(() => {
+    if (!villeText.trim()) return null;
+
+    if (!matchedVille) {
+      return { min: 1500, max: 1500, unknown: true };
+    }
+
+    // Find zones in this ville
+    const villeZones = zonesLivraison.filter((z) => z.ville_id === matchedVille.id);
+    const villeZoneIds = villeZones.map((z) => z.id);
+
+    // Find matched quartier
+    const matchedQuartier = quartierText.trim()
+      ? quartiers.find((q) => q.nom.toLowerCase() === quartierText.toLowerCase().trim() && q.ville_id === matchedVille.id)
+      : null;
+
+    let relevantZoneIds = villeZoneIds;
+    if (matchedQuartier) {
+      // Find zones containing this quartier
+      const zonesWithQuartier = villeZones.filter((z) =>
+        (z.quartiers_ids || []).includes(matchedQuartier.id)
+      );
+      if (zonesWithQuartier.length > 0) {
+        relevantZoneIds = zonesWithQuartier.map((z) => z.id);
+      }
+    }
+
+    // Find coursiers covering these zones
+    const matchingCoursiers = coursiers.filter((c) =>
+      (c.zones_livraison_ids || []).some((zid) => relevantZoneIds.includes(zid))
+    );
+
+    // Also include coursiers by ville_id
+    const coursiersById = coursiers.filter((c) => c.ville_id === matchedVille.id);
+    const all = [...matchingCoursiers, ...coursiersById];
+    const unique = Array.from(new Map(all.map(c => [c.id, c])).values());
+
+    if (unique.length === 0) {
+      return { min: 1500, max: 1500, unknown: true };
+    }
+
+    const fees = unique.map((c) => c.frais_livraison_defaut || 0).filter(f => f > 0);
+    if (fees.length === 0) return { min: 0, max: 0, unknown: false };
+
+    return {
+      min: Math.min(...fees),
+      max: Math.max(...fees),
+      unknown: false,
+    };
+  }, [villeText, quartierText, matchedVille, coursiers, zonesLivraison, quartiers]);
+
   const qte = parseInt(form.quantite) || 1;
   const prixGros = produitSelectionne?.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
   const commission = Math.max(0, (prixFinal - prixGros) * qte);
-  const fraisLivraison = selectedCoursier?.frais_livraison_defaut || 0;
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
-  const villeName = villes.find((v) => v.id === villeId)?.nom || "";
-  const quartierName = quartiers.find((q) => q.id === quartierId)?.nom || "";
 
   const soumettre = async () => {
     if (!compteVendeur) return setErreur("Compte vendeur non chargé.");
     if (!form.produit_id) return setErreur("Sélectionnez un produit.");
     if (variations.length > 0 && Object.values(selectedVariations).some((v) => !v)) return setErreur("Sélectionnez toutes les variations.");
-    if (!villeId) return setErreur("Sélectionnez une ville.");
-    if (!selectedCoursierId) return setErreur("Aucun coursier disponible pour cette zone.");
+    if (!villeText.trim()) return setErreur("Renseignez la ville du client.");
     if (qte < 1) return setErreur("La quantité doit être au moins 1.");
-    if (qte > stockDisponible) return setErreur(`Stock insuffisant. Disponible: ${stockDisponible}`);
     if (!prixFinal || prixFinal < prixGros) return setErreur(`Le prix final doit être ≥ ${formater(prixGros)}`);
     if (!form.client_nom || !form.client_telephone) return setErreur("Renseignez les informations du client.");
+
+    // Validate stock exists in city (if ville is known)
+    if (matchedVille && !stockInCity.available) {
+      return setErreur("Stock insuffisant dans cette ville. Aucun coursier n'a du stock disponible.");
+    }
+    if (matchedVille && stockInCity.total < qte) {
+      return setErreur(`Stock insuffisant dans cette ville. Disponible: ${stockInCity.total} unité(s).`);
+    }
 
     setEnCours(true);
     setErreur("");
 
     try {
-      // 1. Validate stock BEFORE creating order
-      const availableStock = await stockManager.getVariationStock(
-        form.produit_id, selectedCoursierId, variationKey || null
-      );
-      if (availableStock < qte) {
-        setErreur(`Stock insuffisant. Disponible: ${availableStock} unité(s) pour cette variation dans cette zone.`);
-        setEnCours(false);
-        return;
-      }
-
       const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
-      // 2. Create order record
       const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
         vendeur_id: compteVendeur.id,
         vendeur_email: compteVendeur.email,
@@ -211,13 +250,13 @@ export default function NouvelleCommandeVendeur() {
         prix_unitaire: prixGros,
         prix_final_client: prixFinal,
         montant_total: prixFinal * qte,
-        frais_livraison: fraisLivraison,
+        frais_livraison: estimationLivraison ? Math.round((estimationLivraison.min + estimationLivraison.max) / 2) : 1500,
         livraison_incluse: false,
-        coursier_id: selectedCoursierId,
+        coursier_id: null,
         client_nom: form.client_nom,
         client_telephone: form.client_telephone,
-        client_ville: villeName,
-        client_quartier: quartierName,
+        client_ville: villeText.trim(),
+        client_quartier: quartierText.trim() || null,
         client_adresse: form.client_adresse,
         notes: form.notes,
         reference_commande: ref,
@@ -228,24 +267,10 @@ export default function NouvelleCommandeVendeur() {
 
       if (orderError) throw orderError;
 
-      // 3. RESERVE stock immediately via stockManager
-      await stockManager.reserveStock(
-        form.produit_id,
-        selectedCoursierId,
-        variationKey || null,
-        qte,
-        newOrder.id
-      );
-
-      // 4. Mark order stock as reserved
-      await supabase.from("commandes_vendeur")
-        .update({ stock_reserve: true })
-        .eq("id", newOrder.id);
-
-      // 5. Admin notification
+      // Admin notification
       await supabase.from("notifications_admin").insert({
         titre: "🛒 Nouvelle commande",
-        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey || "standard"}) pour ${form.client_nom} à ${villeName}`,
+        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey || "standard"}) pour ${form.client_nom} à ${villeText.trim()}`,
         type: "commande",
         vendeur_email: compteVendeur.email,
         reference_id: newOrder.id,
@@ -271,9 +296,9 @@ export default function NouvelleCommandeVendeur() {
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-lg">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-slate-900 mb-2">Commande envoyée !</h2>
-          <p className="text-sm text-slate-500 mb-6">Votre commande a été transmise à l'équipe ZONITE.</p>
+          <p className="text-sm text-slate-500 mb-6">Votre commande a été transmise à l'équipe ZONITE. Un coursier sera attribué par l'administration.</p>
           <div className="space-y-3">
-            <Button onClick={() => { setSucces(false); setForm((f) => ({ ...f, client_nom: "", client_telephone: "", client_adresse: "", notes: "" })); setSelectedVariations({}); setVilleId(""); setQuartierId(""); }}
+            <Button onClick={() => { setSucces(false); setForm((f) => ({ ...f, client_nom: "", client_telephone: "", client_adresse: "", notes: "" })); setSelectedVariations({}); setVilleText(""); setQuartierText(""); }}
               className="w-full bg-[#1a1f5e] hover:bg-[#141952]">Nouvelle commande</Button>
             <Link to={createPageUrl("MesCommandesVendeur")}>
               <Button variant="outline" className="w-full">Voir mes commandes</Button>
@@ -340,7 +365,7 @@ export default function NouvelleCommandeVendeur() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Quantité *</Label>
-              <Input type="number" min="1" max={stockDisponible || 999} value={form.quantite} onChange={(e) => modifier("quantite", e.target.value)} />
+              <Input type="number" min="1" value={form.quantite} onChange={(e) => modifier("quantite", e.target.value)} />
             </div>
             <div className="space-y-1">
               <Label>Prix final client (FCFA) *</Label>
@@ -360,58 +385,89 @@ export default function NouvelleCommandeVendeur() {
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold text-slate-900 text-sm">Livraison</h2>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <Label>Ville *</Label>
-              <Select value={villeId} onValueChange={(v) => { setVilleId(v); setQuartierId(""); }}>
-                <SelectTrigger><SelectValue placeholder="Ville" /></SelectTrigger>
-                <SelectContent>
-                  {villes.map((v) => <SelectItem key={v.id} value={v.id}>{v.nom}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                value={villeText}
+                onChange={(e) => { setVilleText(e.target.value); setShowVilleSuggestions(true); setErreur(""); }}
+                onFocus={() => setShowVilleSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowVilleSuggestions(false), 200)}
+                placeholder="Tapez une ville..."
+              />
+              {showVilleSuggestions && villeSuggestions.length > 0 && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {villeSuggestions.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setVilleText(v.nom); setShowVilleSuggestions(false); }}
+                    >
+                      {v.nom}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <Label>Quartier</Label>
-              <Select value={quartierId} onValueChange={setQuartierId} disabled={!villeId}>
-                <SelectTrigger><SelectValue placeholder="Quartier" /></SelectTrigger>
-                <SelectContent>
-                  {quartiersFiltered.map((q) => <SelectItem key={q.id} value={q.id}>{q.nom}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                value={quartierText}
+                onChange={(e) => { setQuartierText(e.target.value); setShowQuartierSuggestions(true); }}
+                onFocus={() => setShowQuartierSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowQuartierSuggestions(false), 200)}
+                placeholder="Tapez un quartier..."
+              />
+              {showQuartierSuggestions && quartierSuggestions.length > 0 && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {quartierSuggestions.map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { setQuartierText(q.nom); setShowQuartierSuggestions(false); }}
+                    >
+                      {q.nom}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Coursier auto-selection */}
-          {villeId && produitSelectionne && (
-            <div className="space-y-2">
-              {availableCoursiers.length === 0 ? (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-                  ❌ Aucun coursier disponible avec du stock pour cette zone.
-                </div>
-              ) : availableCoursiers.length === 1 ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-emerald-600" />
-                    <span className="font-medium text-emerald-800">Coursier: {availableCoursiers[0].nom}</span>
-                  </div>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Stock: {getStockForVariation(availableCoursiers[0].id)} | Frais: {formater(availableCoursiers[0].frais_livraison_defaut)}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <Label>Coursier disponible *</Label>
-                  <Select value={selectedCoursierId} onValueChange={setSelectedCoursierId}>
-                    <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                    <SelectContent>
-                      {availableCoursiers.map((c, idx) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {idx === 0 ? "⭐ " : ""}{c.nom} — Stock: {getStockForVariation(c.id)} | {formater(c.frais_livraison_defaut)}{idx === 0 ? " (Moins cher)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+          {/* Estimation livraison */}
+          {villeText.trim() && estimationLivraison && (
+            <div className={`rounded-lg p-3 text-sm flex items-center gap-2 ${estimationLivraison.unknown ? "bg-amber-50 border border-amber-200" : "bg-blue-50 border border-blue-200"}`}>
+              <Truck className="w-4 h-4 flex-shrink-0" />
+              <div>
+                <p className="font-medium">
+                  {estimationLivraison.unknown
+                    ? "Estimation livraison : 1 500 FCFA (zone non référencée)"
+                    : estimationLivraison.min === estimationLivraison.max
+                      ? `Estimation livraison : ${formater(estimationLivraison.min)}`
+                      : `Estimation livraison : ${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`
+                  }
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">Le prix final sera confirmé par l'admin lors de l'attribution du coursier.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Stock availability in city */}
+          {villeText.trim() && produitSelectionne && matchedVille && (
+            <div className={`rounded-lg p-3 text-sm ${stockInCity.available ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+              {stockInCity.available
+                ? `✅ Stock disponible dans cette ville : ${stockInCity.total} unité(s)`
+                : "❌ Aucun stock disponible dans cette ville pour ce produit/variation."
+              }
+            </div>
+          )}
+
+          {villeText.trim() && produitSelectionne && !matchedVille && (
+            <div className="rounded-lg p-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
+              ⚠️ Ville non référencée — la vérification du stock sera faite par l'admin.
             </div>
           )}
         </div>
@@ -428,7 +484,7 @@ export default function NouvelleCommandeVendeur() {
         </div>
 
         {/* Summary */}
-        {produitSelectionne && selectedCoursierId && prixFinal > 0 && (
+        {produitSelectionne && prixFinal > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-[#1a1f5e]">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">📋 Résumé de la commande</h2>
             <div className="space-y-1 text-sm">
@@ -436,9 +492,15 @@ export default function NouvelleCommandeVendeur() {
               <p>Quantité: <strong>{qte}</strong></p>
               <p>Prix unitaire: <strong>{formater(prixFinal)}</strong></p>
               <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
-              <p>Livraison: <strong>{villeName}{quartierName ? `, ${quartierName}` : ""}</strong></p>
-              <p>Coursier: <strong>{selectedCoursier?.nom}</strong></p>
-              <p>Frais livraison: <strong>{formater(fraisLivraison)}</strong></p>
+              <p>Livraison: <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
+              {estimationLivraison && (
+                <p>Frais livraison (estimation): <strong>
+                  {estimationLivraison.min === estimationLivraison.max
+                    ? formater(estimationLivraison.min)
+                    : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
+                </strong></p>
+              )}
+              <p className="text-xs text-slate-400">Le coursier sera attribué par l'administration.</p>
             </div>
           </div>
         )}
