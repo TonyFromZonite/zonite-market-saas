@@ -23,8 +23,9 @@ describe("Audit 18 — Onboarding vendeur", () => {
 
   it("18.4 getRequiredModal retourne le bon modal par statut", () => {
     expect(getRequiredModal(SELLER_STATUSES.PENDING_VERIFICATION)).toBe("email_verification");
-    expect(getRequiredModal(SELLER_STATUSES.KYC_REQUIRED)).toBe("kyc_submission");
-    expect(getRequiredModal(SELLER_STATUSES.KYC_PENDING)).toBe("kyc_pending");
+    // KYC modals removed from auto-show — KYC only checked at payment request
+    expect(getRequiredModal(SELLER_STATUSES.KYC_REQUIRED)).toBeNull();
+    expect(getRequiredModal(SELLER_STATUSES.KYC_PENDING)).toBeNull();
   });
 
   it("18.5 active_seller n'a pas de modal requis", () => {

@@ -97,7 +97,7 @@ export default function GestionKYC() {
   if (isLoading) return <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>;
 
   const enAttente = comptes.filter(c => c.statut_kyc === "en_attente");
-  const traites = comptes.filter(c => c.statut_kyc !== "en_attente");
+  const traites = comptes.filter(c => c.statut_kyc !== "en_attente" && c.statut_kyc !== "non_soumis");
 
   return (
     <PullToRefresh onRefresh={() => queryClient.invalidateQueries()}>
