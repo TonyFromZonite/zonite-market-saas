@@ -1,50 +1,60 @@
+# Plan : Refonte du formulaire commande vendeur + filtrage coursier admin
 
-Objectif: rétablir l’affichage des données admin sur le site publié en corrigeant le décalage entre session locale, rôle backend et moment où les requêtes démarrent.
+## Contexte
 
-Constat probable
-- Les logs montrent que la connexion réussit bien, donc le problème n’est probablement pas le mot de passe.
-- Les règles d’accès backend lisent uniquement `user_roles` via `has_role()` / `is_admin_or_sous_admin()`.
-- Or le login admin dans `src/pages/Connexion.jsx` fait encore partiellement confiance à `user_metadata.role` et au `localStorage`. Résultat possible : l’utilisateur entre dans l’interface admin, mais le backend ne le considère pas comme admin, donc les requêtes renvoient 0 ligne.
-- En plus, plusieurs pages admin lancent leurs requêtes trop tôt, avant que l’auth soit totalement restaurée, puis convertissent silencieusement les erreurs en tableaux vides. En production, ce cas est plus visible après un rechargement froid.
+Actuellement, dans `NouvelleCommandeVendeur.jsx`, ville et quartier sont des `<Select>` (listes déroulantes). Le vendeur voit et choisit un coursier spécifique. Or, l'attribution du coursier est une responsabilité admin. Le vendeur doit seulement voir une estimation des frais de livraison.
 
-Plan d’implémentation
-1. Fiabiliser l’état d’authentification global
-- Mettre à jour `src/lib/AuthContext.jsx` pour initialiser l’app avec `supabase.auth.getSession()` au lieu de dépendre seulement de `getUser()`.
-- Exposer un vrai drapeau `isAuthReady`.
-- Garder `onAuthStateChange` uniquement pour la synchro ensuite, sans `await` dans le callback.
+Coté admin (`GestionCommandes.jsx`), le filtrage des coursiers se fait par ville mais pas par quartier/zone.
 
-2. Faire de `user_roles` la seule source de vérité pour l’admin
-- Modifier `src/pages/Connexion.jsx` pour toujours relire `user_roles` en mode admin, même si `user_metadata.role` contient déjà `admin`.
-- Refuser l’accès admin si aucun rôle backend `admin` ou `sous_admin` n’est trouvé.
-- Pour un sous-admin, vérifier aussi le statut `actif` avant de créer la session locale.
+## Changements prévus
 
-3. Bloquer les requêtes admin tant que l’auth n’est pas prête
-- Ajouter un helper/hook du type `useAdminAccess` basé sur `isAuthReady` + rôle backend.
-- Brancher `enabled: isAuthReady && isAdminOrSousAdmin` sur les pages critiques : `TableauDeBord`, `Vendeurs`, `Produits`, `Commandes`, `SupportAdmin`, `GestionAdmins`, `ConfigurationApp`, `NotificationCenter`, `useSousAdminPermissions`.
+### 1. NouvelleCommandeVendeur.jsx — Champs ville/quartier en texte libre avec autocomplétion
 
-4. Ne plus masquer les erreurs d’autorisation
-- Adapter `src/lib/supabaseHelpers.js` pour ne plus transformer silencieusement les erreurs RLS/auth en `[]` sur les données protégées.
-- Afficher un état explicite du type “session expirée” ou “droits admin introuvables” au lieu d’une page vide.
+- Remplacer les deux `<Select>` (ville et quartier) par des `<Input>` avec liste de suggestions (`datalist` ou dropdown filtré).
+- Quand le vendeur tape, filtrer les villes/quartiers existants et afficher des suggestions.
+- Si la valeur tapée ne correspond à aucune entrée existante, le vendeur peut quand même soumettre (texte libre).
+- Stocker `client_ville` et `client_quartier` comme texte brut (ce qui est déjà le cas dans la table `commandes_vendeur`).
 
-5. Forcer un refetch propre après reconnexion
-- Invalider React Query et les caches locaux quand la session devient prête.
-- Ajuster les requêtes protégées pour refetch après montage/reconnexion afin qu’un premier fetch trop tôt ne bloque pas durablement l’interface sur des données vides.
+### 2. NouvelleCommandeVendeur.jsx — Estimation prix livraison au lieu du choix de coursier
 
-6. Nettoyer les incohérences de session
-- Unifier l’usage de `src/components/useSessionGuard.jsx` et supprimer/aligner le doublon `src/components/useSessionGuard.tsx` qui utilise `sessionStorage`.
-- Centraliser la déconnexion pour vider les sessions locales et fermer aussi la session backend.
+- Supprimer complètement la sélection de coursier coté vendeur.
+- Ne plus enregistrer `coursier_id` dans la commande coté vendeur (laisser `null`, l'admin l'attribuera).
+- Supprimer la validation de stock par coursier (le vendeur ne sait pas quel coursier sera attribué).
+- Afficher à la place une estimation des frais de livraison :
+  - Si la ville ET le quartier existent dans notre base → trouver la zone de livraison correspondante → afficher la fourchette min-max des frais des coursiers couvrant cette zone.
+  - Si seule la ville existe → afficher la fourchette des frais de tous les coursiers de cette ville.
+  - Si ni la ville ni le quartier n'existent → afficher "Estimation : 1 500 FCFA" par défaut.
+- Format affiché : "Estimation livraison : 1 000 — 1 500 FCFA" (min et max).
 
-7. Vérification backend ciblée
-- Contrôler si le compte admin de production possède bien une ligne `user_roles` avec `role = admin`.
-- Si elle manque, prévoir une réparation sûre de ce rôle côté backend, sinon toutes les politiques RLS continueront à renvoyer zéro donnée même si l’interface laisse entrer l’utilisateur.
+### 3. NouvelleCommandeVendeur.jsx — Validation stock simplifiée
 
-Validation prévue
-- Connexion admin sur le site publié.
-- Recharge complète de `/TableauDeBord`.
-- Vérification de `Vendeurs`, `Produits`, `SupportAdmin` et `ConfigurationApp`.
-- Test sous-admin pour confirmer que les permissions modulaires restent correctes.
-- Test session expirée pour vérifier la redirection propre vers `/Connexion` avec message clair.
+- Valider le stock global du produit (pas par coursier, puisque le coursier n'est pas encore choisi mais par la  verification du  stock existe  a l'un des coursier  dans cette ville. la validation de stock cote vendeur ce fait dons par ville.  et l'admin choisira lui meme un coursier qui a le stock.).
+- L'admin réservera le stock quand il attribuera le coursier.
 
-Détails techniques
-- Fichiers principaux : `src/lib/AuthContext.jsx`, `src/pages/Connexion.jsx`, `src/lib/supabaseHelpers.js`, `src/lib/query-client.js`, `src/components/useSousAdminPermissions.jsx`, `src/pages/TableauDeBord.jsx`, `src/pages/Vendeurs.jsx`, `src/pages/Produits.jsx`, `src/pages/Commandes.jsx`, `src/pages/SupportAdmin.jsx`, `src/pages/GestionAdmins.jsx`, `src/pages/ConfigurationApp.jsx`.
-- Point clé : le stockage local seul ne donne aucun droit réel ; seules les règles backend basées sur `auth.uid()` + `user_roles` peuvent autoriser la lecture des données admin.
+### 4. GestionCommandes.jsx — Filtrage coursier par ville ET quartier/zone
+
+- Dans `findCoursiersForCommande`, après avoir trouvé la ville :
+  - Chercher le quartier dans la table `quartiers`.
+  - Trouver quelle `zone_livraison` contient ce quartier (via `quartiers_ids`).
+  - Filtrer les coursiers dont `zones_livraison_ids` inclut cette zone.
+  - Si aucun match par quartier, fallback sur tous les coursiers de la ville.
+  - Si aucun match par ville, fallback sur tous les coursiers actifs.
+
+### 5. SelecteurLocalisation.jsx — Aucun changement nécessaire
+
+Ce composant est utilisé par `FormulaireVente.jsx` (formulaire admin de vente directe), pas par le formulaire vendeur. Il reste inchangé.
+
+## Fichiers modifiés
+
+
+| Fichier                                 | Action                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/pages/NouvelleCommandeVendeur.jsx` | Refonte ville/quartier en texte libre + estimation livraison + suppression choix coursier |
+| `src/pages/GestionCommandes.jsx`        | Filtrage coursier par quartier/zone en plus de la ville                                   |
+
+
+## Résumé fonctionnel
+
+- **Vendeur** : tape la ville et le quartier librement (avec suggestions), voit une estimation du prix de livraison (fourchette min-max), ne choisit pas de coursier mais verifie   que le stock existe bien et belle a l'un des coursier  dans cette ville. la validation de stock cote vendeur ce fait dons par ville.  et l'admin choisira lui meme un coursier qui a le stock.
+- **Admin** : lors de l'attribution, voit en priorité les coursiers dont la zone couvre le quartier du client, puis ceux de la ville, puis tous en dernier recours.
+- **Défaut** : si ville/quartier inconnus → estimation à 1 500 FCFA.
