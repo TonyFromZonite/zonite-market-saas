@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { notifSystem } from "@/lib/notificationSystem";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveSession } from "@/components/useSessionGuard";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function NotificationManager() {
+const NotificationManager = forwardRef(function NotificationManager(props, ref) {
   const [toast, setToast] = useState(null);
   const queryClient = useQueryClient();
 
