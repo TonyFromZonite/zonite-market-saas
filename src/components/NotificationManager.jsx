@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import { notifSystem } from "@/lib/notificationSystem";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveSession } from "@/components/useSessionGuard";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function NotificationManager() {
+const NotificationManager = forwardRef(function NotificationManager(props, ref) {
   const [toast, setToast] = useState(null);
   const queryClient = useQueryClient();
 
@@ -121,6 +121,7 @@ export default function NotificationManager() {
 
   return (
     <div
+      ref={ref}
       onClick={() => setToast(null)}
       className="fixed top-3 left-1/2 -translate-x-1/2 z-[9998] w-[calc(100%-2rem)] max-w-[400px] rounded-xl p-3 flex items-center gap-3 cursor-pointer animate-in slide-in-from-top-2"
       style={{
@@ -137,4 +138,6 @@ export default function NotificationManager() {
       <span className="text-[10px] text-white/30 whitespace-nowrap">maintenant</span>
     </div>
   );
-}
+});
+
+export default NotificationManager;
