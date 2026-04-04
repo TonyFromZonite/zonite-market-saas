@@ -121,6 +121,7 @@ const NotificationManager = forwardRef(function NotificationManager(props, ref) 
 
   return (
     <div
+      ref={ref}
       onClick={() => setToast(null)}
       className="fixed top-3 left-1/2 -translate-x-1/2 z-[9998] w-[calc(100%-2rem)] max-w-[400px] rounded-xl p-3 flex items-center gap-3 cursor-pointer animate-in slide-in-from-top-2"
       style={{
@@ -137,4 +138,6 @@ const NotificationManager = forwardRef(function NotificationManager(props, ref) 
       <span className="text-[10px] text-white/30 whitespace-nowrap">maintenant</span>
     </div>
   );
-}
+});
+
+export default NotificationManager;
