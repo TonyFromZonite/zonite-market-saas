@@ -1,32 +1,26 @@
 
 
-# Correction des warnings React (refs + Router v7 flags)
+# Fix : Wizard de bienvenue qui réapparaît après reconnexion
 
-## Warnings identifies
+## Cause racine
 
-1. **`NotificationManager` ref warning** : `AppWithRouter` passe implicitement un ref a `NotificationManager` qui est un composant fonction sans `forwardRef`.
-2. **`TikTokIcon` ref warning** : Dans `Connexion.jsx`, le composant SVG `TikTokIcon` recoit un ref (probablement via un wrapper `<a>` ou parent) sans `forwardRef`.
-3. **React Router v7 future flags** : Warnings `v7_startTransition` et `v7_relativeSplatPath` emis par `BrowserRouter`.
+Dans `src/components/useSessionGuard.jsx`, la fonction `getVendeurSessionAsync` reconstruit la session vendeur depuis la base de données mais **oublie d'inclure `wizard_completed`** dans l'objet session (lignes 81-92). Quand le vendeur se reconnecte, `session.wizard_completed` est `undefined` (falsy), et le wizard se réaffiche.
+
+De plus, dans `WelcomeWizard.jsx`, l'update DB est dans un `try/catch` vide — si l'écriture échoue silencieusement, la valeur reste `false` en base.
 
 ## Corrections
 
-### 1. `NotificationManager` — ajouter `forwardRef`
-**Fichier** : `src/components/NotificationManager.jsx`
-- Wrapper le composant avec `React.forwardRef` pour accepter silencieusement le ref sans erreur.
+### 1. Ajouter `wizard_completed` à la session reconstruite
+**Fichier** : `src/components/useSessionGuard.jsx`
+- Ajouter `wizard_completed: seller.wizard_completed || false` dans l'objet session (après `solde_commission`, ligne 92).
 
-### 2. `TikTokIcon` — ajouter `forwardRef`
-**Fichier** : `src/pages/Connexion.jsx`
-- Wrapper `TikTokIcon` avec `React.forwardRef` et propager le ref sur le `<svg>`.
-
-### 3. React Router v7 future flags
-**Fichier** : `src/App.jsx`
-- Ajouter les props `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}` sur `<BrowserRouter>`.
-
-## Fichiers modifies
+### 2. Fiabiliser l'écriture DB dans le wizard
+**Fichier** : `src/components/vendor/WelcomeWizard.jsx`
+- Vérifier le résultat de l'update et logger l'erreur au lieu du `catch {}` vide.
+- Utiliser aussi `seller.user_id` comme fallback pour le filtre si `seller.id` est absent.
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/NotificationManager.jsx` | `forwardRef` wrapper |
-| `src/pages/Connexion.jsx` | `forwardRef` sur `TikTokIcon` |
-| `src/App.jsx` | Future flags sur `BrowserRouter` |
+| `src/components/useSessionGuard.jsx` | Ajouter `wizard_completed` à la session |
+| `src/components/vendor/WelcomeWizard.jsx` | Logger les erreurs d'update DB |
 
