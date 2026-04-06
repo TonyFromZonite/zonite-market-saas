@@ -1,30 +1,28 @@
 
 
-# Fix : le lien "Mot de passe oublié" ne fonctionne pas depuis l'écran de verrouillage
+# Fix : Masquer la barre de navigation vendeur sur la page Mot de passe oublié
 
-## Problème identifié
+## Problème
 
-Quand l'utilisateur clique sur "Mot de passe oublié ?", `window.location.href = "/MotDePasseOublie"` recharge la page. Au rechargement, `AppWithRouter` détecte une session + biométrie activée dans localStorage → remet `locked = true` → réaffiche l'écran de verrouillage au lieu de la page mot de passe oublié.
-
-C'est une boucle : lock → clic → reload → lock → même écran.
+Quand le vendeur arrive sur `/MotDePasseOublie` depuis l'écran de verrouillage, sa session vendeur est encore active. Le Layout détecte `vendeurSession` → considère la page comme une page vendeur → affiche la barre de navigation du bas (Accueil, Commandes, etc.) car `MotDePasseOublie` n'est pas dans la liste des pages vendeur sans navigation.
 
 ## Solution
 
-**Fichier** : `src/components/AppLockScreen.jsx`
+**Fichier** : `src/Layout.jsx`
 
-Au lieu de `window.location.href`, appeler `onUnlock("/MotDePasseOublie")` qui :
-1. Met `locked = false` dans `AppWithRouter`
-2. Navigue vers `/MotDePasseOublie` via React Router
+Ajouter `"MotDePasseOublie"` et `"ResetPassword"` à la liste `PAGES_VENDEUR_SANS_NAV` (ligne 9-11). Ces pages ne doivent jamais afficher la barre de navigation vendeur.
 
-Le handler `onUnlock` dans `App.jsx` (ligne 135) accepte déjà un `targetPath` et fait exactement ça.
-
-Changement concret — ligne 264 :
-```jsx
+```js
 // Avant
-onClick={() => { window.location.href = "/MotDePasseOublie"; }}
+const PAGES_VENDEUR_SANS_NAV = new Set([
+  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
+]);
 
-// Après  
-onClick={() => { onUnlock("/MotDePasseOublie"); }}
+// Après
+const PAGES_VENDEUR_SANS_NAV = new Set([
+  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
+  "MotDePasseOublie", "ResetPassword",
+]);
 ```
 
 Aucun autre fichier à modifier.
