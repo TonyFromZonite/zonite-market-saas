@@ -90,6 +90,7 @@ export async function getVendeurSessionAsync() {
       catalogue_debloque: seller.catalogue_debloque,
       training_completed: seller.training_completed,
       solde_commission: seller.solde_commission,
+      wizard_completed: seller.wizard_completed || false,
     };
 
     localStorage.setItem("vendeur_session", JSON.stringify(session));

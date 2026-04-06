@@ -8,8 +8,13 @@ export default function WelcomeWizard({ seller, onComplete }) {
 
   const completeWizard = async () => {
     try {
-      await supabase.from("sellers").update({ wizard_completed: true }).eq("id", seller.id);
-    } catch {}
+      const filter = seller.id || seller.user_id;
+      const col = seller.id ? "id" : "user_id";
+      const { error } = await supabase.from("sellers").update({ wizard_completed: true }).eq(col, filter);
+      if (error) console.error("WelcomeWizard: échec update wizard_completed", error);
+    } catch (err) {
+      console.error("WelcomeWizard: exception update wizard_completed", err);
+    }
     const session = JSON.parse(localStorage.getItem("vendeur_session") || "{}");
     localStorage.setItem("vendeur_session", JSON.stringify({ ...session, wizard_completed: true }));
     onComplete();
