@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import BadgeVendeur from "./BadgeVendeur";
 
 export default function ClassementHebdo({ topVendeurs, currentVendeurId }) {
