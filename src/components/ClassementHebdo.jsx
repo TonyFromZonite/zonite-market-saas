@@ -64,6 +64,14 @@ export default function ClassementHebdo({ topVendeurs, currentVendeurId }) {
           </div>
         );
       })}
+
+      {/* Encouragement message if current vendor is not in the list */}
+      {currentVendeurId && !top10.some(v => v.vendeur_id === currentVendeurId) && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 mt-2 text-center">
+          <p className="text-sm font-semibold text-blue-800">💪 Tu n'es pas encore dans le top 10</p>
+          <p className="text-xs text-blue-600 mt-1">Continue tes ventes pour apparaître dans le classement et gagner des prix !</p>
+        </div>
+      )}
     </div>
   );
 }
