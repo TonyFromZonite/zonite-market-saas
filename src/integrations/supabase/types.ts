@@ -1588,6 +1588,14 @@ export type Database = {
       }
       get_seller_id_for_user: { Args: { _user_id: string }; Returns: string }
       get_seller_role: { Args: { _user_id: string }; Returns: string }
+      get_top_vendeurs: {
+        Args: { _since: string }
+        Returns: {
+          full_name: string
+          total: number
+          vendeur_id: string
+        }[]
+      }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_admin_or_sous_admin: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {

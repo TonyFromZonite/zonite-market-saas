@@ -48,7 +48,7 @@ export default function ClassementHebdo({ topVendeurs, currentVendeurId }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-slate-900 truncate">
-                {v.full_name || v.email?.split('@')[0] || 'Vendeur'}
+                {v.full_name || 'Vendeur'}
                 {isCurrent && ' ⭐'}
               </p>
               <p className="text-xs text-slate-500">CA : {formater(v.total)}</p>
