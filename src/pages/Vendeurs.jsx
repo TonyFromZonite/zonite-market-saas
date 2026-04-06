@@ -124,15 +124,68 @@ function ListeVendeurs() {
 
   const vendeursFiltres = (vendeurs || []).filter((v) => `${v.full_name || v.nom_complet || ''} ${v.email || ''} ${v.telephone || ''}`.toLowerCase().includes(recherche.toLowerCase()));
 
+  const stats = useMemo(() => {
+    const now = new Date();
+    let dateMin = null;
+    if (periode === "1m") dateMin = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    else if (periode === "6m") dateMin = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    else if (periode === "1a") dateMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+
+    const filtres = dateMin
+      ? vendeurs.filter((v) => new Date(v.created_at) >= dateMin)
+      : vendeurs;
+
+    const actifs = filtres.filter((v) => v.seller_status === "active_seller").length;
+    return { total: filtres.length, actifs, inactifs: filtres.length - actifs };
+  }, [vendeurs, periode]);
+
+  const periodes = [
+    { key: "1m", label: "1 mois" },
+    { key: "6m", label: "6 mois" },
+    { key: "1a", label: "1 an" },
+    { key: "global", label: "Global" },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Rechercher un vendeur..." value={recherche} onChange={(e) => setRecherche(e.target.value)} className="pl-9" />
         </div>
-
       </div>
+
+      {/* Statistiques vendeurs */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {periodes.map((p) => (
+            <Button
+              key={p.key}
+              size="sm"
+              variant={periode === p.key ? "default" : "outline"}
+              onClick={() => setPeriode(p.key)}
+              className={`text-xs h-7 px-3 ${periode === p.key ? "bg-primary text-primary-foreground" : ""}`}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card rounded-xl border p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600"><Users className="w-5 h-5" /></div>
+            <div><p className="text-2xl font-bold text-foreground">{stats.total}</p><p className="text-xs text-muted-foreground">Total vendeurs</p></div>
+          </div>
+          <div className="bg-card rounded-xl border p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600"><CheckCircle2 className="w-5 h-5" /></div>
+            <div><p className="text-2xl font-bold text-emerald-600">{stats.actifs}</p><p className="text-xs text-muted-foreground">Actifs</p></div>
+          </div>
+          <div className="bg-card rounded-xl border p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-red-50 text-red-600"><XCircle className="w-5 h-5" /></div>
+            <div><p className="text-2xl font-bold text-red-600">{stats.inactifs}</p><p className="text-xs text-muted-foreground">Inactifs</p></div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
