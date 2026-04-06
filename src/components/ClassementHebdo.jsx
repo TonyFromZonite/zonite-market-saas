@@ -67,9 +67,13 @@ export default function ClassementHebdo({ topVendeurs, currentVendeurId }) {
 
       {/* Encouragement message if current vendor is not in the list */}
       {currentVendeurId && !top10.some(v => v.vendeur_id === currentVendeurId) && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 mt-2 text-center">
-          <p className="text-sm font-semibold text-blue-800">💪 Tu n'es pas encore dans le top 10</p>
-          <p className="text-xs text-blue-600 mt-1">Continue tes ventes pour apparaître dans le classement et gagner des prix !</p>
+        <div className="animate-fade-in bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 rounded-xl p-4 mt-3 text-center shadow-sm hover-scale">
+          <div className="text-2xl mb-1 animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]">💪🔥</div>
+          <p className="text-sm font-bold text-blue-800">Tu n'es pas encore dans le top 10</p>
+          <p className="text-xs text-blue-600 mt-1">Chaque vente te rapproche du classement et des prix hebdomadaires !</p>
+          <div className="mt-2 inline-block bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full">
+            🚀 Lance-toi !
+          </div>
         </div>
       )}
     </div>
