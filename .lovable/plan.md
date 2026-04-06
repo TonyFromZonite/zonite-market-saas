@@ -1,15 +1,16 @@
 
 
-# Afficher la periode selectionnee dans les labels Actifs/Inactifs
+# Ajouter le lien "Mot de passe oublié" sur l'écran de verrouillage
 
 ## Modification
 
-**Fichier** : `src/pages/Vendeurs.jsx`
+**Fichier** : `src/components/AppLockScreen.jsx`
 
-Ajouter le nom de la periode dans le titre des cartes Actifs et Inactifs pour confirmer visuellement le filtre actif.
+Quand le mot de passe est incorrect (`passError` non vide), afficher en dessous du message d'erreur un lien "Mot de passe oublié ?" qui redirige vers `/MotDePasseOublie` (même destination que sur la page de connexion).
 
-- "Actifs" → "Actifs (1 mois)" / "Actifs (6 mois)" / "Actifs (1 an)" / "Actifs (global)"
-- "Inactifs" → "Inactifs (1 mois)" / etc.
+## Détails techniques
 
-Implementation : creer un map `{ "1m": "1 mois", "6m": "6 mois", "1a": "1 an", "global": "global" }` et concatener au titre des deux cartes.
+1. Après le bloc `{passError && ...}` (ligne ~262), ajouter un texte + lien visible uniquement quand `passError` est non vide
+2. Le lien fait `window.location.href = "/MotDePasseOublie"` (on quitte l'écran de verrouillage)
+3. Style : texte petit, couleur blanche/dorée, discret mais cliquable
 
