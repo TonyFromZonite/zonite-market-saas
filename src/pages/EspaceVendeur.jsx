@@ -257,8 +257,7 @@ export default function EspaceVendeur() {
       return data ? [data] : [];
     },
     enabled: !!compteVendeur?.id,
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
@@ -295,8 +294,7 @@ export default function EspaceVendeur() {
       };
     },
     enabled: !!compteVendeur?.id,
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
 

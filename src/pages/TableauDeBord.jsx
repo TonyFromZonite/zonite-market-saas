@@ -149,7 +149,7 @@ function DashboardSousAdmin({ sousAdmin, isLoadingPermissions = false }) {
 }
 
 function DashboardAdmin() {
-  const REFRESH = 60 * 1000;
+  const REFRESH = 120 * 1000;
   const queryClient = useQueryClient();
   const { isReady } = useAdminAccess();
 
