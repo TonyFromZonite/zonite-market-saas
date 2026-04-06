@@ -258,7 +258,15 @@ export default function AppLockScreen({ onUnlock }) {
             </div>
 
             {passError && (
-              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">❌ {passError}</p>
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">❌ {passError}</p>
+                <button
+                  onClick={() => { window.location.href = "/MotDePasseOublie"; }}
+                  className="text-[11px] text-[#F5C518]/70 hover:text-[#F5C518] underline underline-offset-2 transition-colors"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
             )}
 
             <button
