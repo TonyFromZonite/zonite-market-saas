@@ -1,29 +1,15 @@
 
 
-# Clarifier la carte "Total vendeurs" comme métrique globale
-
-## Constat actuel
-
-La carte "Total vendeurs" affiche déjà `vendeurs.length` (tous les vendeurs, sans filtre de période). Mais visuellement, elle est dans le même groupe que Actifs/Inactifs, ce qui peut donner l'impression qu'elle est aussi filtrée par période.
+# Afficher la periode selectionnee dans les labels Actifs/Inactifs
 
 ## Modification
 
 **Fichier** : `src/pages/Vendeurs.jsx`
 
-1. Séparer visuellement la carte "Total vendeurs" des cartes Actifs/Inactifs :
-   - Afficher la carte **Total vendeurs** en haut, pleine largeur, avec le label "Total vendeurs (global)" pour clarifier qu'elle ne dépend pas de la période
-   - En dessous, le sélecteur de période + les 2 cartes Actifs/Inactifs en grille 2 colonnes
+Ajouter le nom de la periode dans le titre des cartes Actifs et Inactifs pour confirmer visuellement le filtre actif.
 
-2. Le total reste `vendeurs.length` (inchangé), actifs et inactifs restent basés sur la table `ventes` filtrée par période (inchangé)
+- "Actifs" → "Actifs (1 mois)" / "Actifs (6 mois)" / "Actifs (1 an)" / "Actifs (global)"
+- "Inactifs" → "Inactifs (1 mois)" / etc.
 
-Résultat visuel :
-```text
-┌──────────────────────────────────────┐
-│  👥 Total vendeurs (global) : 42     │
-└──────────────────────────────────────┘
-  [1 mois] [6 mois] [1 an] [Global]
-┌─────────────────┐ ┌─────────────────┐
-│ ✅ Actifs : 12   │ │ ❌ Inactifs : 30 │
-└─────────────────┘ └─────────────────┘
-```
+Implementation : creer un map `{ "1m": "1 mois", "6m": "6 mois", "1a": "1 an", "global": "global" }` et concatener au titre des deux cartes.
 
