@@ -336,30 +336,15 @@ export default function EspaceVendeur() {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
 
       const [topWeek, topMonth, topYear] = await Promise.all([
-        supabase.from('ventes').select('vendeur_id, vendeur_email, montant_total').gte('created_at', startOfWeek.toISOString()),
-        supabase.from('ventes').select('vendeur_id, vendeur_email, montant_total').gte('created_at', startOfMonth.toISOString()),
-        supabase.from('ventes').select('vendeur_id, vendeur_email, montant_total').gte('created_at', startOfYear.toISOString()),
+        supabase.rpc('get_top_vendeurs', { _since: startOfWeek.toISOString() }),
+        supabase.rpc('get_top_vendeurs', { _since: startOfMonth.toISOString() }),
+        supabase.rpc('get_top_vendeurs', { _since: startOfYear.toISOString() }),
       ]);
 
-      // Fetch seller names
-      const vendeurIds = [...new Set([...(topWeek.data || []), ...(topMonth.data || []), ...(topYear.data || [])].map(v => v.vendeur_id))];
-      const { data: sellers } = await supabase.from('sellers').select('id, full_name').in('id', vendeurIds);
-      const sellerMap = {};
-      (sellers || []).forEach(s => { sellerMap[s.id] = s.full_name; });
-
-      const groupByVendeur = (ventes) => {
-        const map = {};
-        (ventes || []).forEach(v => {
-          if (!map[v.vendeur_id]) map[v.vendeur_id] = { vendeur_id: v.vendeur_id, email: v.vendeur_email, full_name: sellerMap[v.vendeur_id] || null, total: 0 };
-          map[v.vendeur_id].total += v.montant_total;
-        });
-        return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
-      };
-
       return {
-        topWeek: groupByVendeur(topWeek.data),
-        topMonth: groupByVendeur(topMonth.data),
-        topYear: groupByVendeur(topYear.data),
+        topWeek: topWeek.data || [],
+        topMonth: topMonth.data || [],
+        topYear: topYear.data || [],
       };
     },
     enabled: !!compteVendeur?.id && loadTopVendeurs,
