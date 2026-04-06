@@ -72,9 +72,9 @@ export default function ClassementHebdo({ topVendeurs, currentVendeurId }) {
           <div className="text-2xl mb-1 animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]">💪🔥</div>
           <p className="text-sm font-bold text-blue-800">Tu n'es pas encore dans le top 10</p>
           <p className="text-xs text-blue-600 mt-1">Chaque vente te rapproche du classement et des prix hebdomadaires !</p>
-          <div className="mt-2 inline-block bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full">
-            🚀 Lance-toi !
-          </div>
+          <Link to="/CatalogueVendeur" className="mt-2 inline-block bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full hover-scale shadow-sm">
+            🚀 Voir le catalogue
+          </Link>
         </div>
       )}
     </div>
