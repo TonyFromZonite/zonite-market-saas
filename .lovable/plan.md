@@ -1,71 +1,37 @@
 
 
-# Fix : Le classement vendeurs ne montre rien pour un nouveau vendeur
+# Fix : Lenteur de l'application depuis les dernières modifications
 
-## Problème identifié
+## Diagnostic
 
-La table `ventes` a une politique RLS qui restreint chaque vendeur à ne voir **que ses propres ventes** :
-```
-"Sellers view own ventes" → vendeur_id = get_seller_id_for_user(auth.uid())
-```
+L'app n'est pas "lente" à cause d'un bug unique, mais d'une accumulation de requêtes excessives :
 
-La requête du classement (top vendeurs) essaie de charger **toutes les ventes de tous les vendeurs** pour construire le ranking. Mais grâce au RLS, un vendeur ne reçoit que ses propres données. Résultat : un nouveau vendeur avec 0 ventes voit un classement totalement vide.
+1. **TableauDeBord** : 7 queries avec `refetchInterval` de 30-60s, chacune rechargeant des centaines de lignes
+2. **EspaceVendeur** : 2 queries avec `refetchInterval: 60s` + 2 abonnements Realtime + le `useCachedQuery` custom (double couche de cache par-dessus React Query)
+3. **NotificationManager** : polling HEAD + GET toutes les ~75s sur `notifications_admin`
+4. **Double cache** : `useCachedQuery` (CacheManager) fait du cache localStorage en plus de React Query qui cache déjà en mémoire — les deux se marchent dessus
 
-Les stats personnelles (CA semaine, mois) affichent correctement "0 FCFA" — c'est normal pour un nouveau vendeur sans ventes.
+## Solution — Réduire les requêtes sans changer l'UX
 
-## Solution
+### Fichier 1 : `src/pages/TableauDeBord.jsx`
 
-Créer une **fonction base de données `SECURITY DEFINER`** qui calcule le classement agrégé sans exposer les données individuelles des ventes.
+- Augmenter `REFRESH` de 60s a **120s** (2 min)
+- Les 2 queries `candidatures` et `kyc` passent de 30s a **120s** aussi
+- Ajouter `staleTime: 60 * 1000` aux queries candidatures/kyc (éviter re-fetch immédiat au focus)
 
-### Étape 1 — Migration : créer la fonction `get_top_vendeurs`
+### Fichier 2 : `src/pages/EspaceVendeur.jsx`
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_top_vendeurs(_since timestamptz)
-RETURNS TABLE(vendeur_id uuid, full_name text, total numeric)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT v.vendeur_id, s.full_name, SUM(v.montant_total) AS total
-  FROM public.ventes v
-  JOIN public.sellers s ON s.id = v.vendeur_id
-  WHERE v.created_at >= _since
-  GROUP BY v.vendeur_id, s.full_name
-  ORDER BY total DESC
-  LIMIT 10;
-$$;
-```
+- Supprimer `refetchInterval: 60 * 1000` des queries `COMPTE_VENDEUR_FRESH` et `vendeur_stats` — les abonnements Realtime gèrent déjà le rafraîchissement en temps réel via `invalidateQueries`
+- Le polling + Realtime en même temps est redondant et double le nombre de requêtes
 
-Cette fonction s'exécute avec les droits du propriétaire (bypass RLS) et retourne uniquement des données agrégées (nom + total CA) — pas de données sensibles.
+### Fichier 3 : `src/components/NotificationManager.jsx`
 
-### Étape 2 — Modifier `EspaceVendeur.jsx`
+- La fonction `checkMissedNotifications` fait une requête GET complète à chaque retour d'onglet. Ajouter un debounce de 30s pour éviter les rafales quand l'utilisateur alterne rapidement entre onglets.
 
-Remplacer les 3 requêtes directes sur `ventes` dans la section "Top vendeurs" par 3 appels RPC :
+## Résumé de l'impact
 
-```js
-const [topWeek, topMonth, topYear] = await Promise.all([
-  supabase.rpc('get_top_vendeurs', { _since: startOfWeek.toISOString() }),
-  supabase.rpc('get_top_vendeurs', { _since: startOfMonth.toISOString() }),
-  supabase.rpc('get_top_vendeurs', { _since: startOfYear.toISOString() }),
-]);
+- **Avant** : ~15-20 requêtes/minute en arrière-plan
+- **Après** : ~5-8 requêtes/minute, sans perte de réactivité (Realtime couvre les mises à jour critiques)
 
-return {
-  topWeek: topWeek.data || [],
-  topMonth: topMonth.data || [],
-  topYear: topYear.data || [],
-};
-```
-
-Plus besoin de fetch les sellers séparément ni de grouper côté client — la fonction fait tout.
-
-### Étape 3 — Adapter `ClassementHebdo.jsx`
-
-Le composant reçoit déjà `topVendeurs` avec des objets `{ vendeur_id, full_name, total }`. Seul changement mineur : la propriété `email` n'existera plus, mais le composant utilise déjà `v.full_name` en priorité (ligne 51), donc rien à changer sauf retirer le fallback `v.email?.split('@')[0]`.
-
-## Résumé des fichiers modifiés
-
-1. **Migration SQL** — nouvelle fonction `get_top_vendeurs`
-2. **`src/pages/EspaceVendeur.jsx`** — remplacer les requêtes directes par `supabase.rpc('get_top_vendeurs', ...)`
-3. **`src/components/ClassementHebdo.jsx`** — retirer le fallback email (optionnel, mineur)
+Aucune modification de la base de données, aucun changement d'UX.
 
