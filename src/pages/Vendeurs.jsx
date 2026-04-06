@@ -57,6 +57,16 @@ function ListeVendeurs() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: ventes = [] } = useQuery({
+    queryKey: ["ventes_stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("ventes").select("vendeur_id, created_at");
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
   const modifier = (champ, valeur) => {
     setForm((p) => ({ ...p, [champ]: valeur }));
   };
