@@ -1,29 +1,34 @@
 
 
-# Fix : Masquer la barre de navigation vendeur sur la page Mot de passe oublié
+# Fix : Flash de la page Connexion avant l'affichage de Mot de passe oublié
 
 ## Problème
 
-Quand le vendeur arrive sur `/MotDePasseOublie` depuis l'écran de verrouillage, sa session vendeur est encore active. Le Layout détecte `vendeurSession` → considère la page comme une page vendeur → affiche la barre de navigation du bas (Accueil, Commandes, etc.) car `MotDePasseOublie` n'est pas dans la liste des pages vendeur sans navigation.
+Quand `onUnlock("/MotDePasseOublie")` est appelé, deux choses se passent :
+1. `locked = false` → `AuthenticatedApp` se rend immédiatement
+2. `navigate("/MotDePasseOublie")` → la navigation se fait au prochain cycle de rendu
+
+Entre les deux, l'app affiche brièvement la route actuelle (qui peut déclencher un affichage de la page Connexion ou de la route par défaut) avant que la navigation vers `/MotDePasseOublie` ne prenne effet.
 
 ## Solution
 
-**Fichier** : `src/Layout.jsx`
+**Fichier** : `src/App.jsx`
 
-Ajouter `"MotDePasseOublie"` et `"ResetPassword"` à la liste `PAGES_VENDEUR_SANS_NAV` (ligne 9-11). Ces pages ne doivent jamais afficher la barre de navigation vendeur.
+Modifier `handleUnlock` pour naviguer **avant** de débloquer, afin que quand le composant se rend, l'URL soit déjà correcte :
 
 ```js
-// Avant
-const PAGES_VENDEUR_SANS_NAV = new Set([
-  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
-]);
-
-// Après
-const PAGES_VENDEUR_SANS_NAV = new Set([
-  "InscriptionVendeur", "EnAttenteValidation", "Connexion",
-  "MotDePasseOublie", "ResetPassword",
-]);
+const handleUnlock = (targetPath) => {
+  if (targetPath) {
+    navigate(targetPath, { replace: true });
+  } else {
+    const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
+    const isAdmin = adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin");
+    navigate(isAdmin ? "/TableauDeBord" : "/EspaceVendeur", { replace: true });
+  }
+  // Débloquer après la navigation pour que l'URL soit déjà à jour
+  setLocked(false);
+};
 ```
 
-Aucun autre fichier à modifier.
+L'idée : `navigate()` met à jour l'URL dans le même tick synchrone. Quand `setLocked(false)` déclenche le re-render, `location.pathname` est déjà `/MotDePasseOublie` → page publique → pas de flash de Connexion.
 
