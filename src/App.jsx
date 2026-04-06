@@ -133,14 +133,14 @@ const AppWithRouter = () => {
   }, []);
 
   const handleUnlock = (targetPath) => {
-    setLocked(false);
     if (targetPath) {
-      navigate(targetPath);
+      navigate(targetPath, { replace: true });
     } else {
       const adminSession = JSON.parse(localStorage.getItem("admin_session") || "{}");
       const isAdmin = adminSession?.email && (adminSession?.role === "admin" || adminSession?.role === "sous_admin");
-      navigate(isAdmin ? "/TableauDeBord" : "/EspaceVendeur");
+      navigate(isAdmin ? "/TableauDeBord" : "/EspaceVendeur", { replace: true });
     }
+    setLocked(false);
   };
 
   if (locked) {
