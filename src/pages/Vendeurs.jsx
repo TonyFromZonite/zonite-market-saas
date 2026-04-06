@@ -57,6 +57,16 @@ function ListeVendeurs() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: ventes = [] } = useQuery({
+    queryKey: ["ventes_stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("ventes").select("vendeur_id, created_at");
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
   const modifier = (champ, valeur) => {
     setForm((p) => ({ ...p, [champ]: valeur }));
   };
@@ -122,19 +132,21 @@ function ListeVendeurs() {
   };
 
   const stats = useMemo(() => {
+    const total = vendeurs.length;
     const now = new Date();
     let dateMin = null;
     if (periode === "1m") dateMin = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
     else if (periode === "6m") dateMin = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
     else if (periode === "1a") dateMin = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
 
-    const filtres = dateMin
-      ? vendeurs.filter((v) => new Date(v.created_at) >= dateMin)
-      : vendeurs;
+    const ventesFiltrees = dateMin
+      ? ventes.filter((v) => new Date(v.created_at) >= dateMin)
+      : ventes;
 
-    const actifs = filtres.filter((v) => v.seller_status === "active_seller").length;
-    return { total: filtres.length, actifs, inactifs: filtres.length - actifs };
-  }, [vendeurs, periode]);
+    const vendeursActifsSet = new Set(ventesFiltrees.map((v) => v.vendeur_id));
+    const actifs = vendeursActifsSet.size;
+    return { total, actifs, inactifs: total - actifs };
+  }, [vendeurs, ventes, periode]);
 
   const periodes = [
     { key: "1m", label: "1 mois" },
