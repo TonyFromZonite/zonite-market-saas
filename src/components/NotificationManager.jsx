@@ -20,8 +20,13 @@ const NotificationManager = forwardRef(function NotificationManager(props, ref) 
 
     initNotifications();
 
+    let lastVisibilityCheck = 0;
+    const VISIBILITY_DEBOUNCE = 30 * 1000;
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible") {
+        const now = Date.now();
+        if (now - lastVisibilityCheck < VISIBILITY_DEBOUNCE) return;
+        lastVisibilityCheck = now;
         await restoreBadgeFromDB();
         await checkMissedNotifications();
       }
