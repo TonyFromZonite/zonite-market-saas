@@ -34,6 +34,7 @@ const formaterDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "
 
 // ─── Sous-composant : Liste Vendeurs ────────────────────────────────────────
 function ListeVendeurs() {
+  const [recherche, setRecherche] = useState("");
   const [periode, setPeriode] = useState("global");
   const [dialogOuvert, setDialogOuvert] = useState(false);
   const [vendeurEdite, setVendeurEdite] = useState(null);
