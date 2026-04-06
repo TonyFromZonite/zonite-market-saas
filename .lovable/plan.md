@@ -1,32 +1,34 @@
 
 
-# Ajouter les statistiques vendeurs avec filtre par periode
+# Corriger les statistiques vendeurs (actifs/inactifs par livraisons)
 
-## Ce qui sera fait
+## Problemes
 
-Apres la barre de recherche dans `ListeVendeurs`, ajouter une section avec :
-- Un selecteur de periode : **1 mois**, **6 mois**, **1 an**, **Global**
-- 3 cartes statistiques :
-  - **Total vendeurs** (inscrits dans la periode)
-  - **Vendeurs actifs** (`seller_status === "active_seller"` et `created_at` dans la periode)
-  - **Vendeurs inactifs** (tous les autres statuts dans la periode)
+1. **Logique actif/inactif incorrecte** : Actuellement basee sur `seller_status === "active_seller"` et filtree par `created_at` du vendeur. La bonne logique : un vendeur est **actif** dans une periode s'il a au moins une vente (livraison validee) dans cette periode.
 
-## Fichier modifie
+2. **Total vendeurs filtre par date d'inscription** : Le total ne devrait pas etre filtre par date d'inscription. Il faut montrer le total global de vendeurs, puis parmi eux combien sont actifs/inactifs selon les livraisons dans la periode.
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/Vendeurs.jsx` | Ajouter filtre periode + 3 cartes stats entre la recherche (ligne 135) et le tableau (ligne 136) |
+3. **Liste vendeurs vide** : Les requetes reseau retournent `[]` — probablement un probleme de donnees ou de session admin. A verifier apres le fix.
+
+## Nouvelle logique
+
+- **Total** : tous les vendeurs inscrits (pas de filtre periode)
+- **Actif** : vendeur avec au moins 1 enregistrement dans la table `ventes` dont `created_at` est dans la periode selectionnee
+- **Inactif** : Total - Actifs
+
+## Modifications
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/pages/Vendeurs.jsx` | Ajouter une requete `ventes` (vendeur_id + created_at), recalculer les stats basees sur les livraisons |
 
 ## Implementation
 
-Dans `ListeVendeurs`, apres le champ de recherche :
-
-1. Ajouter un state `periode` (`"1m"`, `"6m"`, `"1a"`, `"global"`)
-2. Calculer a partir du tableau `vendeurs` deja charge (pas de requete supplementaire) :
-   - Filtrer par `created_at` selon la periode selectionnee
-   - Compter les actifs (`seller_status === "active_seller"`) et inactifs (le reste)
-3. Afficher 3 cartes avec icones : Total (Users), Actifs (CheckCircle2 vert), Inactifs (XCircle rouge)
-4. Le selecteur de periode sera un groupe de boutons compacts (toggle style)
-
-Les donnees sont calculees cote client a partir des vendeurs deja recuperes — aucune requete supplementaire.
+1. Ajouter une query React Query pour recuperer les ventes : `select("vendeur_id, created_at")` depuis la table `ventes`
+2. Dans le `useMemo` stats :
+   - `total` = nombre total de vendeurs (sans filtre periode)
+   - Filtrer les ventes par `created_at >= dateMin`
+   - Extraire les `vendeur_id` uniques ayant des ventes dans la periode → actifs
+   - `inactifs` = total - actifs
+3. Le tableau vendeurs continue d'afficher tous les vendeurs (pas de filtre par periode sur la liste)
 
