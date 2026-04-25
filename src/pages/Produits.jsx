@@ -180,8 +180,7 @@ export default function Produits() {
     }
   };
 
-
-    const matchRecherche = `${p.nom} ${p.reference || ""}`.toLowerCase().includes(recherche.toLowerCase());
+  const produitsFiltres = produits.filter((p) => {
     const matchCat = filtreCategorie === "all" || p.categorie_id === filtreCategorie;
     return matchRecherche && matchCat;
   });
