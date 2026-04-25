@@ -166,7 +166,21 @@ export default function Produits() {
     }
   };
 
-  const produitsFiltres = produits.filter((p) => {
+  const reactiver = async (produit) => {
+    setEnCours(true);
+    try {
+      const { error } = await supabase.from("produits").update({ actif: true }).eq("id", produit.id);
+      if (error) throw error;
+      toast({ title: "Produit réactivé", description: `"${produit.nom}" est de nouveau visible dans le catalogue.` });
+      queryClient.invalidateQueries({ queryKey: ["produits"] });
+    } catch (err) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setEnCours(false);
+    }
+  };
+
+
     const matchRecherche = `${p.nom} ${p.reference || ""}`.toLowerCase().includes(recherche.toLowerCase());
     const matchCat = filtreCategorie === "all" || p.categorie_id === filtreCategorie;
     return matchRecherche && matchCat;
