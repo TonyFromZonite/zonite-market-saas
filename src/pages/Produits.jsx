@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, Trash2, Package, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, Loader2, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CategoriesTab from "@/components/produits/CategoriesTab";
 import RetoursTab from "@/components/produits/RetoursTab";
@@ -269,8 +269,12 @@ export default function Produits() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => ouvrir(p)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => setConfirmSuppression(p)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => ouvrir(p)} title="Modifier"><Pencil className="w-4 h-4 text-slate-500" /></Button>
+                            {p.actif ? (
+                              <Button variant="ghost" size="icon" onClick={() => setConfirmSuppression(p)} title="Supprimer"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" onClick={() => reactiver(p)} title="Réactiver" disabled={enCours}><RotateCcw className="w-4 h-4 text-emerald-600" /></Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
