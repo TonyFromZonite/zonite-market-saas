@@ -167,11 +167,33 @@ export default function Produits() {
   };
 
   const reactiver = async (produit) => {
+    if (produit.actif) {
+      toast({
+        title: "Aucune modification",
+        description: `"${produit.nom}" est déjà actif dans le catalogue.`,
+      });
+      return;
+    }
     setEnCours(true);
     try {
-      const { error } = await supabase.from("produits").update({ actif: true }).eq("id", produit.id);
+      const { data, error } = await supabase
+        .from("produits")
+        .update({ actif: true })
+        .eq("id", produit.id)
+        .select("id, actif");
       if (error) throw error;
-      toast({ title: "Produit réactivé", description: `"${produit.nom}" est de nouveau visible dans le catalogue.` });
+      if (!data || data.length === 0) {
+        toast({
+          title: "Aucune modification",
+          description: "Le produit n'a pas pu être réactivé (introuvable ou permissions insuffisantes).",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "✅ Produit réactivé",
+        description: `"${produit.nom}" est de nouveau visible dans le catalogue.`,
+      });
       queryClient.invalidateQueries({ queryKey: ["produits"] });
     } catch (err) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
