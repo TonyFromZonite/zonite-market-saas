@@ -1,37 +1,39 @@
+# Fix : Impossible de supprimer le produit "Ventilateur de poche" (VP001)
 
+## Cause identifiée
 
-# Fix : Lenteur de l'application depuis les dernières modifications
+Le produit `VP001` (id `29b9e51d-...`) est référencé dans :
+- **8 ventes**
+- **16 commandes vendeur**
+- **20 mouvements de stock**
 
-## Diagnostic
+La requête `DELETE FROM produits WHERE id = ...` échoue (ou le toast d'erreur est peu visible) car supprimer le produit casserait l'historique comptable. C'est une protection saine — on ne doit jamais supprimer un produit qui a généré des ventes.
 
-L'app n'est pas "lente" à cause d'un bug unique, mais d'une accumulation de requêtes excessives :
+## Solution — Soft delete intelligent
 
-1. **TableauDeBord** : 7 queries avec `refetchInterval` de 30-60s, chacune rechargeant des centaines de lignes
-2. **EspaceVendeur** : 2 queries avec `refetchInterval: 60s` + 2 abonnements Realtime + le `useCachedQuery` custom (double couche de cache par-dessus React Query)
-3. **NotificationManager** : polling HEAD + GET toutes les ~75s sur `notifications_admin`
-4. **Double cache** : `useCachedQuery` (CacheManager) fait du cache localStorage en plus de React Query qui cache déjà en mémoire — les deux se marchent dessus
+### Fichier modifié : `src/pages/Produits.jsx` (fonction `supprimer`, lignes 129-142)
 
-## Solution — Réduire les requêtes sans changer l'UX
+Nouvelle logique :
 
-### Fichier 1 : `src/pages/TableauDeBord.jsx`
+1. **Avant de supprimer**, on vérifie via 2 requêtes `count` (`ventes`, `commandes_vendeur`) si le produit a un historique.
+2. **Si historique = 0** → vraie suppression `DELETE` (produit jamais utilisé, ex. erreur de saisie).
+3. **Si historique > 0** → on fait `UPDATE produits SET actif = false` à la place. Le produit disparaît du catalogue vendeur mais reste accessible pour l'historique.
+4. **Toast clair** dans chaque cas :
+   - Suppression réelle : *"Produit supprimé définitivement"*
+   - Désactivation : *"Ce produit a un historique de ventes. Il a été désactivé (masqué du catalogue) pour préserver les données comptables."*
+5. **Améliorer la gestion d'erreur** : afficher `err.message` complet (le code actuel le fait déjà, mais on s'assure que l'erreur Supabase remonte bien).
 
-- Augmenter `REFRESH` de 60s a **120s** (2 min)
-- Les 2 queries `candidatures` et `kyc` passent de 30s a **120s** aussi
-- Ajouter `staleTime: 60 * 1000` aux queries candidatures/kyc (éviter re-fetch immédiat au focus)
+### Bonus UX (optionnel, à valider)
 
-### Fichier 2 : `src/pages/EspaceVendeur.jsx`
+- Dans la liste des produits, ajouter un petit badge gris "Désactivé" sur les produits avec `actif = false`.
+- Permettre la **réactivation** depuis le bouton d'édition (toggle `actif`).
 
-- Supprimer `refetchInterval: 60 * 1000` des queries `COMPTE_VENDEUR_FRESH` et `vendeur_stats` — les abonnements Realtime gèrent déjà le rafraîchissement en temps réel via `invalidateQueries`
-- Le polling + Realtime en même temps est redondant et double le nombre de requêtes
+## Aucune modification de la base de données nécessaire
 
-### Fichier 3 : `src/components/NotificationManager.jsx`
+La colonne `actif` existe déjà sur la table `produits` (default `true`). Aucun migration SQL.
 
-- La fonction `checkMissedNotifications` fait une requête GET complète à chaque retour d'onglet. Ajouter un debounce de 30s pour éviter les rafales quand l'utilisateur alterne rapidement entre onglets.
+## Résumé
 
-## Résumé de l'impact
-
-- **Avant** : ~15-20 requêtes/minute en arrière-plan
-- **Après** : ~5-8 requêtes/minute, sans perte de réactivité (Realtime couvre les mises à jour critiques)
-
-Aucune modification de la base de données, aucun changement d'UX.
-
+| Avant | Après |
+|---|---|
+| Clic sur Supprimer → erreur silencieuse, le produit reste | Clic sur Supprimer → produit désactivé (si historique) ou supprimé (si vierge) avec message clair |

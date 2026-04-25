@@ -129,13 +129,38 @@ export default function Produits() {
   const supprimer = async (produit) => {
     setEnCours(true);
     try {
-      const { error } = await supabase.from("produits").delete().eq("id", produit.id);
-      if (error) throw error;
-      toast({ title: "Produit supprimé" });
+      // Vérifier si le produit a un historique (ventes ou commandes)
+      const [ventesRes, commandesRes, mouvementsRes] = await Promise.all([
+        supabase.from("ventes").select("id", { count: "exact", head: true }).eq("produit_id", produit.id),
+        supabase.from("commandes_vendeur").select("id", { count: "exact", head: true }).eq("produit_id", produit.id),
+        supabase.from("mouvements_stock").select("id", { count: "exact", head: true }).eq("produit_id", produit.id),
+      ]);
+
+      const totalRefs = (ventesRes.count || 0) + (commandesRes.count || 0) + (mouvementsRes.count || 0);
+
+      if (totalRefs > 0) {
+        // Soft delete : désactiver pour préserver l'historique
+        const { error } = await supabase.from("produits").update({ actif: false }).eq("id", produit.id);
+        if (error) throw error;
+        toast({
+          title: "Produit désactivé",
+          description: `Ce produit a un historique (${ventesRes.count || 0} vente(s), ${commandesRes.count || 0} commande(s)). Il a été masqué du catalogue pour préserver les données comptables.`,
+        });
+      } else {
+        // Suppression réelle : aucun historique
+        const { error } = await supabase.from("produits").delete().eq("id", produit.id);
+        if (error) throw error;
+        toast({ title: "Produit supprimé définitivement" });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["produits"] });
       setConfirmSuppression(null);
     } catch (err) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      toast({
+        title: "Erreur de suppression",
+        description: err.message || "Impossible de supprimer ce produit",
+        variant: "destructive",
+      });
     } finally {
       setEnCours(false);
     }
