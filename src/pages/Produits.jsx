@@ -203,6 +203,9 @@ export default function Produits() {
   };
 
   const produitsFiltres = produits.filter((p) => {
+    const matchRecherche = `${p.nom} ${p.reference || ""}`
+      .toLowerCase()
+      .includes(recherche.toLowerCase());
     const matchCat = filtreCategorie === "all" || p.categorie_id === filtreCategorie;
     return matchRecherche && matchCat;
   });
