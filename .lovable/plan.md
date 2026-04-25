@@ -1,39 +1,41 @@
-# Fix : Impossible de supprimer le produit "Ventilateur de poche" (VP001)
+# Vérification avant publication
 
-## Cause identifiée
+## ✅ Ce qui fonctionne
+- **Build de production** : réussi en ~15s, tous les bundles générés.
+- **Authentification admin, sessions, notifications, dashboard** : requêtes 200, comportement nominal d'après les logs réseau.
+- **Logique soft-delete + réactivation** des produits : code correct (vérification de l'historique sur `ventes`, `commandes_vendeur`, `mouvements_stock`, désactivation si refs > 0, sinon suppression réelle).
 
-Le produit `VP001` (id `29b9e51d-...`) est référencé dans :
-- **8 ventes**
-- **16 commandes vendeur**
-- **20 mouvements de stock**
+## ❌ Bug bloquant détecté — à corriger avant de publier
 
-La requête `DELETE FROM produits WHERE id = ...` échoue (ou le toast d'erreur est peu visible) car supprimer le produit casserait l'historique comptable. C'est une protection saine — on ne doit jamais supprimer un produit qui a généré des ventes.
+**Fichier** : `src/pages/Produits.jsx`, lignes 205-208
 
-## Solution — Soft delete intelligent
+```js
+const produitsFiltres = produits.filter((p) => {
+  const matchCat = filtreCategorie === "all" || p.categorie_id === filtreCategorie;
+  return matchRecherche && matchCat;   // ← matchRecherche n'existe pas
+});
+```
 
-### Fichier modifié : `src/pages/Produits.jsx` (fonction `supprimer`, lignes 129-142)
+La variable `matchRecherche` est utilisée mais **jamais définie**. Elle a été perdue lors de la correction précédente du build. Conséquence en production : `ReferenceError: matchRecherche is not defined` → **la page Produits crashe** dès l'ouverture de l'onglet "Produits".
 
-Nouvelle logique :
+## Correction (1 ligne à ajouter)
 
-1. **Avant de supprimer**, on vérifie via 2 requêtes `count` (`ventes`, `commandes_vendeur`) si le produit a un historique.
-2. **Si historique = 0** → vraie suppression `DELETE` (produit jamais utilisé, ex. erreur de saisie).
-3. **Si historique > 0** → on fait `UPDATE produits SET actif = false` à la place. Le produit disparaît du catalogue vendeur mais reste accessible pour l'historique.
-4. **Toast clair** dans chaque cas :
-   - Suppression réelle : *"Produit supprimé définitivement"*
-   - Désactivation : *"Ce produit a un historique de ventes. Il a été désactivé (masqué du catalogue) pour préserver les données comptables."*
-5. **Améliorer la gestion d'erreur** : afficher `err.message` complet (le code actuel le fait déjà, mais on s'assure que l'erreur Supabase remonte bien).
+Restaurer le calcul de `matchRecherche` à partir de l'état `recherche` déjà présent dans le composant :
 
-### Bonus UX (optionnel, à valider)
+```js
+const produitsFiltres = produits.filter((p) => {
+  const matchRecherche = `${p.nom} ${p.reference || ""}`
+    .toLowerCase()
+    .includes(recherche.toLowerCase());
+  const matchCat = filtreCategorie === "all" || p.categorie_id === filtreCategorie;
+  return matchRecherche && matchCat;
+});
+```
 
-- Dans la liste des produits, ajouter un petit badge gris "Désactivé" sur les produits avec `actif = false`.
-- Permettre la **réactivation** depuis le bouton d'édition (toggle `actif`).
+## ⚠️ Warnings non bloquants (à laisser tels quels)
+- `Function components cannot be given refs` sur `TopVendeurs` et `GraphiqueVentes` (recharts CartesianGrid). Présents depuis longtemps, sans impact fonctionnel. Conformément à la politique de maintenance, on n'y touche pas.
 
-## Aucune modification de la base de données nécessaire
+## Fichier modifié
+- `src/pages/Produits.jsx` (1 ligne ajoutée dans `produitsFiltres`)
 
-La colonne `actif` existe déjà sur la table `produits` (default `true`). Aucun migration SQL.
-
-## Résumé
-
-| Avant | Après |
-|---|---|
-| Clic sur Supprimer → erreur silencieuse, le produit reste | Clic sur Supprimer → produit désactivé (si historique) ou supprimé (si vierge) avec message clair |
+Aucun changement DB, aucun changement d'UX, aucun changement de design.
