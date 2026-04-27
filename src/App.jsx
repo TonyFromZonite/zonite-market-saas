@@ -11,6 +11,7 @@ import InstallPrompt from '@/components/InstallPrompt';
 import BiometricLock from '@/components/BiometricLock';
 import AppLockScreen from '@/components/AppLockScreen';
 import NotificationManager from '@/components/NotificationManager';
+import EmailVerifiedRouteGuard from '@/components/EmailVerifiedRouteGuard';
 
 const GestionZones = lazy(() => import('./pages/GestionZones'));
 const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
