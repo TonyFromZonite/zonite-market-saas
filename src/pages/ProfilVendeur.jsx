@@ -680,6 +680,12 @@ export default function ProfilVendeur() {
         </Button>
       </div>
     </div>
+    <EmailVerificationDialog
+      open={showVerifyEmail}
+      onOpenChange={setShowVerifyEmail}
+      seller={compteVendeur}
+      onVerified={chargerDonnees}
+    />
     </PullToRefresh>
   );
 }
