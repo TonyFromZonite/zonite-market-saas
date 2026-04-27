@@ -4,12 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/AuthContext';
 
 // Pages publiques (pas de vérification email requise)
+// Inclut: pages d'auth (login/inscription/reset), pages d'erreur, page d'attente,
+// page de configuration initiale du mot de passe admin, et page racine "/".
 const PUBLIC_PAGES = new Set([
+  '',                            // route racine "/"
   'Connexion',
   'InscriptionVendeur',
   'MotDePasseOublie',
   'ResetPassword',
   'EnAttenteValidation',
+  'ConfigurationAdminPassword',  // setup initial du mot de passe admin
+  'ResoumissionKYC',             // accessible aux comptes en re-soumission
+  'NotFound',
+  '404',
 ]);
 
 // Statut de vérification: 'unknown' | 'verified' | 'unverified' | 'not_seller'
