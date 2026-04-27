@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import PullToRefresh from "@/components/PullToRefresh";
 import ProfileProgress from "@/components/vendor/ProfileProgress";
+import EmailVerificationDialog from "@/components/EmailVerificationDialog";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
@@ -48,6 +49,7 @@ export default function ProfilVendeur() {
   const [filleuls, setFilleuls] = useState([]);
   const [parrain, setParrain] = useState(null);
   const [socialConfigs, setSocialConfigs] = useState({});
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
 
   useEffect(() => {
     chargerDonnees();
