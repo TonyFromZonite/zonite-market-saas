@@ -29,6 +29,24 @@ export default function EmailVerifiedRouteGuard({ children }) {
   const currentPath = (location.pathname.replace('/', '') || '').split('/')[0];
   const isPublicPage = PUBLIC_PAGES.has(currentPath);
 
+  // Compteur incrémenté pour forcer une revalidation immédiate (ex: après OTP).
+  const [revalidateTick, setRevalidateTick] = useState(0);
+
+  // Écoute l'évènement émis par useEmailVerification après un succès d'OTP,
+  // ainsi qu'un évènement générique pour rafraîchir manuellement le gate.
+  useEffect(() => {
+    const handler = () => {
+      setStatus('unknown');
+      setRevalidateTick((t) => t + 1);
+    };
+    window.addEventListener('zonite:email-verified', handler);
+    window.addEventListener('zonite:revalidate-access', handler);
+    return () => {
+      window.removeEventListener('zonite:email-verified', handler);
+      window.removeEventListener('zonite:revalidate-access', handler);
+    };
+  }, []);
+
   useEffect(() => {
     let active = true;
     const check = async () => {
@@ -83,7 +101,7 @@ export default function EmailVerifiedRouteGuard({ children }) {
     return () => {
       active = false;
     };
-  }, [isAuthReady, isAuthenticated, user?.id, currentPath, isPublicPage]);
+  }, [isAuthReady, isAuthenticated, user?.id, currentPath, isPublicPage, revalidateTick]);
 
   useEffect(() => {
     if (status === 'unverified' && !isPublicPage) {
