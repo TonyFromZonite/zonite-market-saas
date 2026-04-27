@@ -82,40 +82,42 @@ const AuthenticatedApp = () => {
 
   return (
     <Suspense fallback={<LoadingScreen />}>
-      <Routes>
-        <Route path="/" element={
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
-        } />
-        {Object.entries(Pages).map(([path, Page]) => (
-          <Route
-            key={path}
-            path={`/${path}`}
-            element={
-              <LayoutWrapper currentPageName={path}>
-                <Page />
-              </LayoutWrapper>
-            }
-          />
-        ))}
-        <Route path="/GestionZones" element={
-          <LayoutWrapper currentPageName="GestionZones"><GestionZones /></LayoutWrapper>
-        } />
-        <Route path="/GestionCoursiers" element={
-          <LayoutWrapper currentPageName="GestionCoursiers"><GestionCoursiers /></LayoutWrapper>
-        } />
-        <Route path="/ResoumissionKYC" element={
-          <LayoutWrapper currentPageName="ResoumissionKYC"><ResoumissionKYC /></LayoutWrapper>
-        } />
-        <Route path="/CatalogueVendeur/:categorieId" element={
-          <LayoutWrapper currentPageName="CatalogueVendeur"><CatalogueVendeurPage /></LayoutWrapper>
-        } />
-        <Route path="/ProduitDetail/:produitId" element={
-          <LayoutWrapper currentPageName="ProduitDetail"><ProduitDetail /></LayoutWrapper>
-        } />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
+      <EmailVerifiedRouteGuard>
+        <Routes>
+          <Route path="/" element={
+            <LayoutWrapper currentPageName={mainPageKey}>
+              <MainPage />
+            </LayoutWrapper>
+          } />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={
+                <LayoutWrapper currentPageName={path}>
+                  <Page />
+                </LayoutWrapper>
+              }
+            />
+          ))}
+          <Route path="/GestionZones" element={
+            <LayoutWrapper currentPageName="GestionZones"><GestionZones /></LayoutWrapper>
+          } />
+          <Route path="/GestionCoursiers" element={
+            <LayoutWrapper currentPageName="GestionCoursiers"><GestionCoursiers /></LayoutWrapper>
+          } />
+          <Route path="/ResoumissionKYC" element={
+            <LayoutWrapper currentPageName="ResoumissionKYC"><ResoumissionKYC /></LayoutWrapper>
+          } />
+          <Route path="/CatalogueVendeur/:categorieId" element={
+            <LayoutWrapper currentPageName="CatalogueVendeur"><CatalogueVendeurPage /></LayoutWrapper>
+          } />
+          <Route path="/ProduitDetail/:produitId" element={
+            <LayoutWrapper currentPageName="ProduitDetail"><ProduitDetail /></LayoutWrapper>
+          } />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </EmailVerifiedRouteGuard>
     </Suspense>
   );
 };
