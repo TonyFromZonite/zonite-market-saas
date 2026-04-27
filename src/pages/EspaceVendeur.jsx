@@ -108,6 +108,7 @@ export default function EspaceVendeur() {
 
   // Welcome wizard state — MUST be before any early return
   const [showWizard, setShowWizard] = useState(false);
+  const [showEmailVerifyDialog, setShowEmailVerifyDialog] = useState(false);
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
