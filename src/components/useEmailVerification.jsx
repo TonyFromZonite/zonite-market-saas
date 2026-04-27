@@ -94,6 +94,14 @@ export function useEmailVerification() {
         .eq("id", sellerId);
       if (upErr) throw upErr;
 
+      // Notifier le routeur (EmailVerifiedRouteGuard) pour qu'il revalide
+      // l'accès immédiatement, sans rechargement manuel.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("zonite:email-verified", { detail: { sellerId } })
+        );
+      } catch (_) { /* no-op */ }
+
       return { ok: true };
     } catch (e) {
       console.error("[useEmailVerification] verifyCode error:", e);
