@@ -34,9 +34,36 @@ export default function EmailVerifiedRouteGuard({ children }) {
 
   // Écoute l'évènement émis par useEmailVerification après un succès d'OTP,
   // ainsi qu'un évènement générique pour rafraîchir manuellement le gate.
+  // En plus du tick de revalidation, on lance immédiatement un re-fetch
+  // dédié de `sellers.email_verified` pour bypasser tout cache et mettre
+  // l'état à jour sans attendre le cycle d'effet.
   useEffect(() => {
-    const handler = () => {
+    const refetchEmailVerified = async () => {
+      try {
+        if (!user?.id) return;
+        const { data, error } = await supabase
+          .from('sellers')
+          .select('email_verified')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) {
+          console.warn('[Guard] re-fetch email_verified failed:', error);
+          return;
+        }
+        if (data?.email_verified === true) {
+          // Mise à jour optimiste immédiate : on débloque l'UI tout de suite.
+          setStatus('verified');
+        }
+      } catch (e) {
+        console.warn('[Guard] re-fetch email_verified threw:', e);
+      }
+    };
+
+    const handler = async () => {
       setStatus('unknown');
+      // 1) Re-fetch immédiat ciblé (source de vérité serveur).
+      await refetchEmailVerified();
+      // 2) Tick pour relancer la vérification complète (rôles + seller).
       setRevalidateTick((t) => t + 1);
     };
     window.addEventListener('zonite:email-verified', handler);
@@ -45,7 +72,7 @@ export default function EmailVerifiedRouteGuard({ children }) {
       window.removeEventListener('zonite:email-verified', handler);
       window.removeEventListener('zonite:revalidate-access', handler);
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     let active = true;
