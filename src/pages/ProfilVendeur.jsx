@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import PullToRefresh from "@/components/PullToRefresh";
 import ProfileProgress from "@/components/vendor/ProfileProgress";
+import EmailVerificationDialog from "@/components/EmailVerificationDialog";
 
 export default function ProfilVendeur() {
   const { toast } = useToast();
@@ -48,6 +49,7 @@ export default function ProfilVendeur() {
   const [filleuls, setFilleuls] = useState([]);
   const [parrain, setParrain] = useState(null);
   const [socialConfigs, setSocialConfigs] = useState({});
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
 
   useEffect(() => {
     chargerDonnees();
@@ -300,6 +302,28 @@ export default function ProfilVendeur() {
       </div>
 
       <div className="px-3 sm:px-4 -mt-5 space-y-3 sm:space-y-4 max-w-screen-md mx-auto w-full">
+        {/* Email verification banner */}
+        {compteVendeur && compteVendeur.email_verified !== true && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+              ⚠️
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-yellow-900">Email non vérifié</p>
+              <p className="text-xs text-yellow-700 truncate">
+                Confirmez {compteVendeur.email} pour sécuriser votre compte.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowVerifyEmail(true)}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Vérifier
+            </Button>
+          </div>
+        )}
+
         {/* Profile Progress */}
         <ProfileProgress seller={compteVendeur} onEditProfile={startEditingProfile} />
 
@@ -656,6 +680,12 @@ export default function ProfilVendeur() {
         </Button>
       </div>
     </div>
+    <EmailVerificationDialog
+      open={showVerifyEmail}
+      onOpenChange={setShowVerifyEmail}
+      seller={compteVendeur}
+      onVerified={chargerDonnees}
+    />
     </PullToRefresh>
   );
 }
