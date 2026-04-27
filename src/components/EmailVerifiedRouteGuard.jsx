@@ -34,9 +34,9 @@ export default function EmailVerifiedRouteGuard({ children }) {
 
   // Écoute l'évènement émis par useEmailVerification après un succès d'OTP,
   // ainsi qu'un évènement générique pour rafraîchir manuellement le gate.
-  // En plus du tick de revalidation, on lance immédiatement un re-fetch
-  // dédié de `sellers.email_verified` pour bypasser tout cache et mettre
-  // l'état à jour sans attendre le cycle d'effet.
+  // Filtre strict : on ignore tout évènement provenant d'une autre session
+  // vendeur (autre user_id) pour éviter les redirections incorrectes en
+  // contexte multi-onglets / multi-comptes.
   useEffect(() => {
     const refetchEmailVerified = async () => {
       try {
@@ -51,7 +51,6 @@ export default function EmailVerifiedRouteGuard({ children }) {
           return;
         }
         if (data?.email_verified === true) {
-          // Mise à jour optimiste immédiate : on débloque l'UI tout de suite.
           setStatus('verified');
         }
       } catch (e) {
@@ -59,11 +58,36 @@ export default function EmailVerifiedRouteGuard({ children }) {
       }
     };
 
-    const handler = async () => {
+    const handler = async (event) => {
+      const detail = event?.detail || {};
+      const evtUserId = detail.userId || null;
+      const evtSellerId = detail.sellerId || null;
+
+      // Si l'évènement précise un userId, il DOIT correspondre à la session
+      // courante. Sinon on ignore (évènement provenant d'une autre session).
+      if (evtUserId && user?.id && evtUserId !== user.id) {
+        return;
+      }
+
+      // Si seul sellerId est fourni, on le confronte au seller courant via RPC.
+      if (!evtUserId && evtSellerId && user?.id) {
+        try {
+          const { data: currentSellerId } = await supabase.rpc(
+            'get_seller_id_for_user',
+            { _user_id: user.id }
+          );
+          if (currentSellerId && currentSellerId !== evtSellerId) {
+            return;
+          }
+        } catch (e) {
+          // En cas d'échec RPC, on reste prudent : on ne bloque pas la
+          // revalidation (fail-open), mais on log.
+          console.warn('[Guard] sellerId match RPC failed:', e);
+        }
+      }
+
       setStatus('unknown');
-      // 1) Re-fetch immédiat ciblé (source de vérité serveur).
       await refetchEmailVerified();
-      // 2) Tick pour relancer la vérification complète (rôles + seller).
       setRevalidateTick((t) => t + 1);
     };
     window.addEventListener('zonite:email-verified', handler);

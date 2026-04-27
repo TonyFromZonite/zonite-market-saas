@@ -96,9 +96,19 @@ export function useEmailVerification() {
 
       // Notifier le routeur (EmailVerifiedRouteGuard) pour qu'il revalide
       // l'accès immédiatement, sans rechargement manuel.
+      // On inclut sellerId ET userId courant afin que le guard puisse ignorer
+      // tout évènement provenant d'une autre session vendeur (multi-onglets,
+      // multi-comptes sur le même appareil, etc.).
       try {
+        let userId = null;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          userId = session?.user?.id || null;
+        } catch (_) { /* no-op */ }
         window.dispatchEvent(
-          new CustomEvent("zonite:email-verified", { detail: { sellerId } })
+          new CustomEvent("zonite:email-verified", {
+            detail: { sellerId, userId },
+          })
         );
       } catch (_) { /* no-op */ }
 
