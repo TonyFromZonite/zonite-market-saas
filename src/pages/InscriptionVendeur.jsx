@@ -61,6 +61,25 @@ export default function InscriptionVendeur() {
 
   useEffect(() => {
     if (refFromUrl) validateRefCode(refFromUrl);
+
+    // Resume verification flow when redirected from login (email not verified)
+    const verifyMode = urlParams.get("verify");
+    const sellerIdParam = urlParams.get("seller_id");
+    if (verifyMode === "1" && sellerIdParam) {
+      (async () => {
+        const { data } = await supabase
+          .from("sellers")
+          .select("id, email, full_name")
+          .eq("id", sellerIdParam)
+          .maybeSingle();
+        if (data) {
+          setSellerId(data.id);
+          setForm((f) => ({ ...f, email: data.email || "", full_name: data.full_name || "" }));
+          setEtape(2);
+          setErreur("Votre email n'est pas encore vérifié. Un nouveau code vient d'être envoyé.");
+        }
+      })();
+    }
   }, []);
 
   const validateRefCode = async (code) => {
