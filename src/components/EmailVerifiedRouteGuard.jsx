@@ -43,20 +43,21 @@ export default function EmailVerifiedRouteGuard({ children }) {
         return;
       }
 
-      // Admin (table sous_admins / user_roles 'admin') = exempté du gate seller
+      // Exemption admin/sous-admin : on s'appuie UNIQUEMENT sur la table
+      // Supabase `user_roles` (vérifiée côté serveur via RLS + SECURITY DEFINER).
+      // On n'utilise PAS localStorage qui peut être manipulé par un attaquant.
       try {
-        const adminSession = JSON.parse(localStorage.getItem('admin_session') || 'null');
-        if (adminSession?.role === 'admin' || adminSession?.role === 'sous_admin') {
-          if (active) setStatus('verified');
-          return;
-        }
-
-        const { data: roleRow } = await supabase
+        const { data: roleRows, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (roleRow?.role === 'admin') {
+          .eq('user_id', user.id);
+
+        if (rolesError) {
+          console.error('EmailVerifiedRouteGuard: roles fetch failed', rolesError);
+        }
+
+        const roles = (roleRows || []).map((r) => r.role);
+        if (roles.includes('admin') || roles.includes('sous_admin')) {
           if (active) setStatus('verified');
           return;
         }
