@@ -424,15 +424,46 @@ export default function EspaceVendeur() {
   }
 
   // Allow all active statuses to see dashboard (simplified onboarding)
-  // Only block pending_verification
-  if (compteVendeur.seller_status === SELLER_STATUSES.PENDING_VERIFICATION) {
+  // SECURITY: block pending_verification OR any seller whose email is not verified.
+  if (
+    compteVendeur.seller_status === SELLER_STATUSES.PENDING_VERIFICATION ||
+    compteVendeur.email_verified !== true
+  ) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-lg">
           <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Vérification en cours</h2>
-          <p className="text-sm text-slate-500">Veuillez vérifier votre numéro pour continuer.</p>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Email non vérifié</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Pour accéder à votre espace vendeur, vous devez confirmer votre adresse email{" "}
+            <span className="font-semibold">{compteVendeur.email}</span>.
+          </p>
+          <Button
+            onClick={() => setShowEmailVerifyDialog(true)}
+            className="w-full bg-[#1a1f5e] text-white hover:bg-[#1a1f5e]/90"
+          >
+            Vérifier mon email
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full mt-2 text-slate-500"
+            onClick={async () => {
+              await supabase.auth.signOut().catch(() => {});
+              clearAllSessions();
+              window.location.href = createPageUrl("Connexion");
+            }}
+          >
+            Se déconnecter
+          </Button>
         </div>
+        <EmailVerificationDialog
+          open={showEmailVerifyDialog}
+          onOpenChange={setShowEmailVerifyDialog}
+          seller={compteVendeur}
+          autoSend
+          onVerified={() => window.location.reload()}
+        />
       </div>
     );
   }
