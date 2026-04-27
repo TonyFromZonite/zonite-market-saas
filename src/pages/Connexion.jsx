@@ -187,6 +187,33 @@ export default function Connexion() {
           setErreur("Profil vendeur introuvable. Veuillez vous inscrire.");
           return;
         }
+
+        // SECURITY: block login until the vendor email is verified.
+        // Regenerate a fresh code, send it, then redirect to the verification step.
+        if (seller.email_verified !== true) {
+          try {
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            await supabase
+              .from("sellers")
+              .update({
+                email_verification_code: code,
+                email_verification_expires_at: expiresAt,
+                seller_status: "pending_verification",
+              })
+              .eq("id", seller.id);
+            await supabase.functions.invoke("send-verification-email", {
+              body: { email: seller.email, nom: seller.full_name, code },
+            }).catch(() => {});
+          } catch (e) {
+            console.warn("Verification code regeneration failed:", e);
+          }
+          // Sign out so no protected page is reachable
+          await supabase.auth.signOut().catch(() => {});
+          window.location.href = createPageUrl("InscriptionVendeur") + `?verify=1&seller_id=${seller.id}`;
+          return;
+        }
+
         localStorage.setItem("vendeur_session", JSON.stringify({
           id: seller.id,
           user_id: user.id,
