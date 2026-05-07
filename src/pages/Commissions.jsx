@@ -223,6 +223,8 @@ export default function Commissions() {
             </TableBody>
           </Table>
         </div>
+      </div>
+
       {/* Historique des ajustements */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-200">
