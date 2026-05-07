@@ -1,64 +1,50 @@
-# Sécuriser la vérification email vendeur
+## Objectif
 
-## Problème constaté
+Permettre à l'admin d'augmenter ou diminuer le solde commission d'un vendeur depuis la page **Commissions**, en saisissant obligatoirement un motif. Le vendeur reçoit une notification consultable expliquant l'ajustement.
 
-Un vendeur (`ramzydivane9@gmail.com`) existe avec `email_verified=false` mais a pourtant un `seller_status=kyc_rejected` (donc a accédé à l'espace vendeur, soumis un KYC, etc.). Cela vient de plusieurs failles :
+## Changements base de données
 
-1. **Aucun garde au login** : `Connexion.jsx` connecte le vendeur sans vérifier `email_verified`.
-2. **Garde dashboard incomplet** : `EspaceVendeur.jsx` bloque uniquement `seller_status === pending_verification`. Dès qu'un statut change (manuellement par admin, ou via un autre flux), l'accès est ouvert même sans email vérifié.
-3. **Pas de bouton "Vérifier mon email" réellement fonctionnel** dans `ProfilVendeur.jsx` (l'utilisateur dit qu'il existe et ne fait rien — il est absent ou cassé).
-4. **Inscription interruptible** : si l'utilisateur ferme l'onglet entre l'étape 1 (compte créé) et l'étape 2 (saisie du code), le compte vendeur reste créé avec `email_verified=false` et redevient orphelin.
+**Nouvelle table `ajustements_commission`** (historique complet) :
+- `vendeur_id` (uuid, ref sellers)
+- `montant` (numeric, positif = crédit, négatif = débit)
+- `motif` (text, obligatoire)
+- `solde_avant`, `solde_apres` (numeric)
+- `effectue_par` (text, email admin)
+- `created_at`
 
-## Plan d'action
+RLS :
+- Admins : ALL via `has_role(auth.uid(), 'admin')`
+- Vendeurs : SELECT sur leurs propres ajustements via `vendeur_id = get_seller_id_for_user(auth.uid())`
 
-### 1. Bloquer le login si email non vérifié — `src/pages/Connexion.jsx`
-Après `signInWithPassword` et récupération du `seller`, si `seller.email_verified === false` :
-- Ne PAS créer la session vendeur ni rediriger
-- Régénérer un nouveau code 6-chiffres + expiration 24h, l'enregistrer dans `sellers`, appeler l'edge function `send-verification-email`
-- Rediriger vers `/InscriptionVendeur?verify=1&seller_id=...` (ou afficher un modal inline) pour saisir le code reçu
-- Afficher un message clair : *"Votre email n'est pas vérifié. Un nouveau code vient d'être envoyé à X."*
+**Nouvelle fonction RPC `admin_adjust_seller_commission(_seller_id, _delta, _motif, _admin_email)`** (`SECURITY DEFINER`) :
+- Vérifie via `has_role` que l'appelant est admin (sinon `RAISE EXCEPTION`)
+- Récupère solde actuel, applique le delta avec `GREATEST(0, ...)` pour éviter solde négatif
+- Met aussi à jour `total_commissions_gagnees` (en cohérence avec les RPC existants `credit_seller_commission` / `debit_seller_commission`)
+- Insère une ligne dans `ajustements_commission`
+- Insère une notification dans `notifications_vendeur` avec titre "Ajustement de votre solde" + message contenant montant et motif
 
-### 2. Renforcer le garde du dashboard vendeur — `src/pages/EspaceVendeur.jsx`
-Modifier la condition (ligne 426) pour bloquer aussi tout compte avec `email_verified === false`, peu importe le `seller_status` :
-```
-if (!compteVendeur.email_verified || seller_status === PENDING_VERIFICATION) → écran de vérification
-```
-L'écran proposera deux actions : **"Renvoyer le code"** et **"Saisir le code reçu"** (champ OTP inline qui appelle la même logique de validation que `InscriptionVendeur.validerCode`).
+## Changements UI
 
-### 3. Ajouter un vrai bouton fonctionnel "Vérifier mon email" — `src/pages/ProfilVendeur.jsx`
-Dans la carte profil, si `email_verified === false` afficher une bannière jaune avec :
-- Un badge "Email non vérifié"
-- Bouton **"Vérifier maintenant"** qui ouvre un `Dialog` avec :
-  - Bouton "Envoyer un code" (génère code, met à jour `sellers.email_verification_code/expires_at`, appelle edge function `send-verification-email`)
-  - Champ OTP 6 chiffres + bouton "Valider" → met à jour `email_verified=true`, vide le code, toast succès, recharge.
-- Réutiliser la même logique que `InscriptionVendeur` (extraire dans un petit hook partagé `useEmailVerification` dans `src/components/`).
+**`src/pages/Commissions.jsx`** :
+- Ajouter une colonne "Action" dans le tableau "Soldes des Vendeurs" avec un bouton "Ajuster"
+- Nouveau dialog `DialogAjustementCommission` :
+  - Type : Crédit (+) / Débit (−) (radio)
+  - Montant FCFA (input number, > 0)
+  - Motif (textarea, requis, min 5 caractères)
+  - Aperçu : solde actuel → solde après
+  - Validation Zod côté client
+  - Appel `supabase.rpc('admin_adjust_seller_commission', ...)`
+  - Toast succès, invalidate queries `vendeurs`
+- Nouvelle section "Historique des ajustements" sous l'historique des paiements (date, vendeur, montant ±, motif, par qui)
 
-### 4. Adapter l'InscriptionVendeur pour reprendre une vérification existante
-À l'arrivée sur `/InscriptionVendeur?verify=1&seller_id=...` (renvoi depuis Connexion) :
-- Sauter l'étape 1, charger le `seller`, passer directement à l'étape 2 (saisie du code).
+**`src/pages/EspaceVendeur.jsx`** (côté vendeur) :
+- Les ajustements arrivent déjà via `notifications_vendeur` (système existant). Pas de changement requis — la notif s'affichera automatiquement dans le NotificationCenterVendeur avec titre + message + motif.
 
-### 5. Nettoyage du compte orphelin existant
-Une migration ponctuelle pour le compte `ramzydivane9@gmail.com` :
-- Soit le supprimer via l'edge function `delete-seller-complete` s'il n'a aucune donnée valide
-- Soit le ramener à `seller_status='pending_verification'` pour qu'il soit forcé de vérifier au prochain login.
+## Sécurité
 
-Choix recommandé : remettre `seller_status='pending_verification'` (garde les données KYC déjà soumises). Le nouveau garde du point 1 le forcera à vérifier.
+- Mutation exclusivement via RPC `SECURITY DEFINER` qui re-vérifie `has_role(auth.uid(), 'admin')` côté serveur — pas de dépendance à `localStorage` admin_session.
+- Action enregistrée dans `journal_audit` (module: 'commissions', action: 'ajustement_solde').
 
-## Détails techniques
-
-- **Hook partagé** `src/components/useEmailVerification.jsx` : expose `{ sendCode(sellerId, email, nom), verifyCode(sellerId, code) }` — utilisé par `InscriptionVendeur`, `ProfilVendeur` et l'écran de blocage `EspaceVendeur`.
-- **RLS** : les UPDATE sur `sellers.email_verification_code` sont déjà autorisés par la policy `Users update own seller (auth.uid() = user_id)` — OK.
-- **Edge function** `send-verification-email` existe déjà — aucun changement requis.
-- **Migration SQL** unique pour réparer les comptes orphelins existants :
-  ```sql
-  UPDATE sellers
-     SET seller_status = 'pending_verification'
-   WHERE email_verified = false
-     AND seller_status <> 'pending_verification';
-  ```
-
-## Résultat attendu
-
-- Impossible de se connecter, d'atteindre le dashboard vendeur ou d'utiliser l'app sans `email_verified=true`.
-- Le bouton "Vérifier mon email" du profil ouvre un vrai dialog qui envoie un code et valide.
-- Les comptes existants non vérifiés sont remis dans le flux de vérification au prochain login.
+## Fichiers modifiés
+- Migration SQL (nouvelle table + RPC)
+- `src/pages/Commissions.jsx` (colonne action, dialog, historique)

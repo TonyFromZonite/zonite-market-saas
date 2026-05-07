@@ -46,6 +46,39 @@ export type Database = {
           },
         ]
       }
+      ajustements_commission: {
+        Row: {
+          created_at: string
+          effectue_par: string | null
+          id: string
+          montant: number
+          motif: string
+          solde_apres: number
+          solde_avant: number
+          vendeur_id: string
+        }
+        Insert: {
+          created_at?: string
+          effectue_par?: string | null
+          id?: string
+          montant: number
+          motif: string
+          solde_apres?: number
+          solde_avant?: number
+          vendeur_id: string
+        }
+        Update: {
+          created_at?: string
+          effectue_par?: string | null
+          id?: string
+          montant?: number
+          motif?: string
+          solde_apres?: number
+          solde_avant?: number
+          vendeur_id?: string
+        }
+        Relationships: []
+      }
       badges_vendeur: {
         Row: {
           badge: string
@@ -1553,6 +1586,15 @@ export type Database = {
       adjust_seller_commission: {
         Args: { _delta: number; _seller_id: string }
         Returns: number
+      }
+      admin_adjust_seller_commission: {
+        Args: {
+          _admin_email: string
+          _delta: number
+          _motif: string
+          _seller_id: string
+        }
+        Returns: Json
       }
       approve_seller_payment: {
         Args: { _amount: number; _seller_id: string }
