@@ -308,7 +308,15 @@ function ListeVendeurs() {
       <DialogAjustementCommission
         vendeur={ajustVendeur}
         onClose={() => setAjustVendeur(null)}
-        onSuccess={() => {
+        onSuccess={({ delta, sellerId } = {}) => {
+          if (sellerId && typeof delta === "number") {
+            queryClient.setQueriesData({ queryKey: ["vendeurs"] }, (old) => {
+              if (!Array.isArray(old)) return old;
+              return old.map((v) => v.id === sellerId
+                ? { ...v, solde_commission: Math.max(0, Number(v.solde_commission || 0) + delta) }
+                : v);
+            });
+          }
           queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
           queryClient.invalidateQueries({ queryKey: ["ajustements_commission"] });
         }}
