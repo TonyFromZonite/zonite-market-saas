@@ -304,6 +304,16 @@ function ListeVendeurs() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <DialogAjustementCommission
+        vendeur={ajustVendeur}
+        onClose={() => setAjustVendeur(null)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+          queryClient.invalidateQueries({ queryKey: ["ajustements_commission"] });
+        }}
+        toast={toast}
+      />
     </div>
   );
 }
