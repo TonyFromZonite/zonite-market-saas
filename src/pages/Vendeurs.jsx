@@ -15,6 +15,8 @@ import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, Check
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
+import DialogAjustementCommission from "@/components/commissions/DialogAjustementCommission";
+import useAdminAccess from "@/hooks/useAdminAccess";
 
 const ONGLETS = [
   { key: "liste", label: "Vendeurs" },
@@ -43,8 +45,10 @@ function ListeVendeurs() {
   const [dialogRoleOuvert, setDialogRoleOuvert] = useState(false);
   const [vendeurRoleEdite, setVendeurRoleEdite] = useState(null);
   const [nouveauRoleVendeur, setNouveauRoleVendeur] = useState("user");
+  const [ajustVendeur, setAjustVendeur] = useState(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isAdmin } = useAdminAccess();
 
   const { data: vendeurs = [], isLoading } = useQuery({
     queryKey: ["vendeurs"],
@@ -239,6 +243,11 @@ function ListeVendeurs() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => ouvrir(v)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" title="Ajuster commission" onClick={() => setAjustVendeur(v)}>
+                          <Wallet className="w-4 h-4 text-yellow-600" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => { setVendeurRoleEdite(v); setNouveauRoleVendeur("user"); setDialogRoleOuvert(true); }}><UserCog className="w-4 h-4 text-blue-500" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => supprimer(v)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                     </div>
