@@ -154,6 +154,7 @@ export default function Commissions() {
                 <TableHead className="text-right">Payé</TableHead>
                 <TableHead className="text-right">En attente</TableHead>
                 <TableHead className="text-right">Solde disponible</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -172,6 +173,11 @@ export default function Commissions() {
                     <span className={`font-bold ${(v.solde_commission || 0) > 0 ? "text-yellow-600" : "text-emerald-600"}`}>
                       {formater(v.solde_commission)}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="outline" onClick={() => setAjustVendeur(v)}>
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Ajuster
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
