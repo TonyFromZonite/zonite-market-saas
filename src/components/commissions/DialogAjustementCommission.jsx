@@ -40,7 +40,7 @@ export default function DialogAjustementCommission({ vendeur, onClose, onSuccess
       });
       if (error) throw error;
       toast?.({ title: "Ajustement effectué", description: `Solde ajusté de ${delta >= 0 ? "+" : "−"}${formater(Math.abs(delta))}.` });
-      onSuccess?.();
+      onSuccess?.({ delta, sellerId: vendeur.id });
       onClose();
     } catch (e) {
       toast?.({ title: "Erreur", description: e.message || "Impossible d'ajuster le solde", variant: "destructive" });
