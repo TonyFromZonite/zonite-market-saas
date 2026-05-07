@@ -23,19 +23,24 @@ import { subscribeToTable } from "@/lib/supabaseHelpers";
 
 export default function Commissions() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [ajustVendeur, setAjustVendeur] = useState(null);
 
   useEffect(() => {
     const refreshCommissions = () => {
       queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
       queryClient.invalidateQueries({ queryKey: ["paiements_commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["ajustements_commission"] });
     };
 
     const unsubscribeSellers = subscribeToTable("sellers", refreshCommissions);
     const unsubscribeCommandes = subscribeToTable("commandes_vendeur", refreshCommissions);
+    const unsubscribeAjust = subscribeToTable("ajustements_commission", refreshCommissions);
 
     return () => {
       unsubscribeSellers?.();
       unsubscribeCommandes?.();
+      unsubscribeAjust?.();
     };
   }, [queryClient]);
 
