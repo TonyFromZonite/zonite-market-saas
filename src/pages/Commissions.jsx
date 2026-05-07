@@ -66,6 +66,18 @@ export default function Commissions() {
     },
   });
 
+  const { data: ajustements = [] } = useQuery({
+    queryKey: ["ajustements_commission"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ajustements_commission")
+        .select("*, sellers:vendeur_id(full_name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+  });
+
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
   const formaterDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
