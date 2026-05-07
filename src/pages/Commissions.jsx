@@ -269,6 +269,7 @@ export default function Commissions() {
       }}
       toast={toast}
     />
+    </>
     </PullToRefresh>
   );
 }
