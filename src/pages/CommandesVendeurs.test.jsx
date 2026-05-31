@@ -291,3 +291,49 @@ describe("CommandesVendeurs — édition livraison par l'admin", () => {
     expect(detailCommissions.length).toBeGreaterThan(0);
   });
 });
+
+describe("CommandesVendeurs — synchronisation commission liste/détail", () => {
+  const cas = [
+    { label: "livraison en sus, frais 0", livraison_incluse: false, frais_livraison: 0, attendu: /14[\s ]000/ },
+    { label: "livraison en sus, frais 2500", livraison_incluse: false, frais_livraison: 2500, attendu: /14[\s ]000/ },
+    { label: "livraison incluse, frais 1000", livraison_incluse: true, frais_livraison: 1000, attendu: /13[\s ]000/ },
+    { label: "livraison incluse, frais 2500", livraison_incluse: true, frais_livraison: 2500, attendu: /11[\s ]500/ },
+    { label: "livraison incluse, frais 5000", livraison_incluse: true, frais_livraison: 5000, attendu: /9[\s ]000/ },
+  ];
+
+  cas.forEach(({ label, livraison_incluse, frais_livraison, attendu }) => {
+    it(`commission identique liste & détail après rechargement (${label})`, async () => {
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === "commandes_vendeur") {
+          return createChain([{ ...mockCommande, livraison_incluse, frais_livraison }]);
+        }
+        if (table === "coursiers" || table === "villes_cameroun") return createChain([]);
+        return createChain(null);
+      });
+
+      renderWithQueryClient(<CommandesVendeurs />);
+      const produit = await screen.findByText(/Super Produit/);
+
+      // Commission visible dans la liste
+      const ligneListe = await screen.findByText(/Commission:/);
+      expect(ligneListe.textContent).toMatch(attendu);
+      const montantListe = ligneListe.textContent.match(/Commission:\s*(.+)$/)[1].trim();
+
+      // Ouvrir le détail
+      fireEvent.click(produit);
+      await waitFor(() => {
+        expect(screen.getByText(/Commission vendeur/)).toBeInTheDocument();
+      });
+
+      // Commission visible dans le détail (élément suivant le label)
+      const labelDetail = screen.getByText(/Commission vendeur/);
+      const montantDetail = labelDetail.parentElement
+        .querySelector("p:last-child")
+        .textContent.trim();
+
+      expect(montantDetail).toMatch(attendu);
+      // Les deux montants doivent être strictement identiques
+      expect(montantDetail).toBe(montantListe);
+    });
+  });
+});
