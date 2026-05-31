@@ -152,6 +152,29 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
             <Input type="number" min="0" value={donnees.prix_livraison} onChange={(e) => modifier("prix_livraison", e.target.value)} placeholder="0" />
           </div>
 
+          {/* Mode paiement livraison */}
+          <div className="col-span-full space-y-2">
+            <Label>Paiement de la livraison</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => modifier("livraison_incluse", false)}
+                className={`text-left p-3 rounded-lg border-2 transition-all ${!donnees.livraison_incluse ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+              >
+                <p className="font-semibold text-sm">Client paie au livreur</p>
+                <p className="text-xs text-slate-500 mt-1">Frais réglés séparément au livreur. Commission vendeur non impactée.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => modifier("livraison_incluse", true)}
+                className={`text-left p-3 rounded-lg border-2 transition-all ${donnees.livraison_incluse ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+              >
+                <p className="font-semibold text-sm">Inclus dans le prix</p>
+                <p className="text-xs text-slate-500 mt-1">Frais déduits de la commission vendeur.</p>
+              </button>
+            </div>
+          </div>
+
           {/* Client */}
           <div className="space-y-2">
             <Label>Nom du Client</Label>
