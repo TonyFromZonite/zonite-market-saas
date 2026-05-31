@@ -35,6 +35,16 @@ export default function NouvelleCommandeVendeur() {
   const [selectedVariations, setSelectedVariations] = useState({});
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
+  const [localStorageDisponible] = useState(() => {
+    try {
+      const k = "__zonite_ls_test__";
+      localStorage.setItem(k, "1");
+      localStorage.removeItem(k);
+      return true;
+    } catch {
+      return false;
+    }
+  });
   const [succes, setSucces] = useState(false);
   const queryClient = useQueryClient();
 
