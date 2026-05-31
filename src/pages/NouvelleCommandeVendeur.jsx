@@ -256,6 +256,12 @@ export default function NouvelleCommandeVendeur() {
     if (qte < 1) return setErreur("La quantité doit être au moins 1.");
     if (!prixFinal || prixFinal < prixGros) return setErreur(`Le prix final doit être ≥ ${formater(prixGros)}`);
     if (!form.client_nom || !form.client_telephone) return setErreur("Renseignez les informations du client.");
+    if (form.mode_paiement_livraison !== "inclus" && form.mode_paiement_livraison !== "separe") {
+      return setErreur("Veuillez préciser le mode de paiement de la livraison (incluse dans le prix ou payée séparément au livreur).");
+    }
+    if (livraisonIncluse && prixFinal * qte < prixGros * qte + fraisLivraisonEstime) {
+      return setErreur(`Livraison incluse : le prix final total doit couvrir le prix de gros + frais de livraison estimés (${formater(prixGros * qte + fraisLivraisonEstime)}).`);
+    }
 
     // Validate stock exists in city (if ville is known)
     if (matchedVille && !stockInCity.available) {
