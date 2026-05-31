@@ -50,6 +50,7 @@ export default function NouvelleCommandeVendeur() {
   });
   const [succes, setSucces] = useState(false);
   const [openProduit, setOpenProduit] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const location = useLocation();
