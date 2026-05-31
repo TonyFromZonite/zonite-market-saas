@@ -43,7 +43,7 @@ export default function CommandesVendeurs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commandes_vendeur")
-        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name), produits!commandes_vendeur_produit_id_fkey(prix_gros)")
+        .select("*, sellers!commandes_vendeur_vendeur_id_fkey(full_name), produits!commandes_vendeur_produit_id_fkey(prix_gros, images)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) { console.error("load commandes:", error); return []; }
