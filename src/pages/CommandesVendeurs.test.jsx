@@ -210,4 +210,42 @@ describe("CommandesVendeurs — édition livraison par l'admin", () => {
       );
     });
   });
+
+  it("persiste les modifications et les ré-affiche après rechargement", async () => {
+    // Simule une commande déjà modifiée en base (livraison incluse + frais 2500)
+    const mockPersiste = {
+      ...mockCommande,
+      livraison_incluse: true,
+      frais_livraison: 2500,
+    };
+
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === "commandes_vendeur") return createChain([mockPersiste]);
+      if (table === "coursiers" || table === "villes_cameroun") return createChain([]);
+      return createChain(null);
+    });
+
+    const { unmount } = renderWithQueryClient(<CommandesVendeurs />);
+    const produitText = await screen.findByText(/Super Produit/);
+    fireEvent.click(produitText);
+
+    // Au rechargement : les valeurs persistées doivent être pré-remplies dans la section d'édition
+    await waitFor(() => {
+      expect(screen.getByText(/Ajuster les frais de livraison/)).toBeInTheDocument();
+    });
+
+    // Le champ frais reflète la valeur persistée (2500)
+    const fraisInput = screen.getByPlaceholderText("0");
+    expect(fraisInput).toHaveValue(2500);
+
+    // Le bouton "Livraison incluse" est actif (sélectionné) — visuel emerald
+    const btnIncluse = screen.getByRole("button", { name: "Livraison incluse" });
+    expect(btnIncluse.className).toMatch(/emerald-600/);
+
+    // Le récapitulatif affiche bien "déjà inclus dans le prix client" et le montant 2 500
+    expect(screen.getByText(/déjà inclus dans le prix client/)).toBeInTheDocument();
+    expect(screen.getAllByText(/2[\s ]500/).length).toBeGreaterThan(0);
+
+    unmount();
+  });
 });
