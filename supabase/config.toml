@@ -19,3 +19,5 @@ project_id = "jpopxydfttoseckcakqp"
     verify_jwt = false
   [functions.cleanup-unverified-account]
     verify_jwt = false
+  [functions.resend-verification-code]
+    verify_jwt = false

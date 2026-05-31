@@ -140,21 +140,18 @@ function ListeVendeurs() {
 
   const renvoyerOtp = async (vendeur) => {
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await supabase.from("sellers").update({
-        email_verification_code: code,
-        email_verification_expires_at: expiresAt,
-        seller_status: "pending_verification",
-      }).eq("id", vendeur.id);
-      await supabase.functions.invoke("send-verification-email", {
-        body: { email: vendeur.email, nom: vendeur.full_name || vendeur.nom_complet, code },
+      const { data, error } = await supabase.functions.invoke("resend-verification-code", {
+        body: { seller_id: vendeur.id },
       });
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Erreur");
+      }
       toast({ title: "📨 Code renvoyé", description: vendeur.email, duration: 4000 });
     } catch (e) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
     }
   };
+
 
   const lancerPurge = async () => {
     setPurgeEnCours(true);
