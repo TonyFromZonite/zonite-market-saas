@@ -544,10 +544,11 @@ export default function InscriptionVendeur() {
 
             <div className="text-sm text-slate-300 text-center">
               <p>Pas reçu le code ?</p>
-              <button type="button" onClick={renvoyerCode} disabled={reenvoyerDisable || loading}
+              <button type="button" onClick={renvoyerCode} disabled={reenvoyerDisable || loading || cooldownLeft > 0}
                 className="text-[#F5C518] hover:underline font-semibold disabled:opacity-50">
-                {reenvoyerDisable ? "Renvoyer dans 30s..." : "Renvoyer le code"}
+                {cooldownLeft > 0 ? `Renvoyer dans ${cooldownLeft}s...` : (reenvoyerDisable ? "Envoi..." : "Renvoyer le code")}
               </button>
+
             </div>
 
             <div className="flex gap-2">
