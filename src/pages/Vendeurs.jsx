@@ -218,7 +218,22 @@ function ListeVendeurs() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Rechercher un vendeur..." value={recherche} onChange={(e) => setRecherche(e.target.value)} className="pl-9" />
         </div>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            onClick={() => setPurgeDialogOuvert(true)}
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-2"
+            title="Supprime les comptes vendeurs non vérifiés et les comptes auth orphelins"
+          >
+            <Trash className="w-4 h-4" />
+            Purger non vérifiés
+            {nbNonVerifies > 0 && (
+              <Badge className="bg-red-100 text-red-700 ml-1">{nbNonVerifies}</Badge>
+            )}
+          </Button>
+        )}
       </div>
+
 
       {/* Statistiques vendeurs */}
       <div className="space-y-3">
