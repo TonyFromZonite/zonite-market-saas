@@ -372,16 +372,73 @@ export default function NouvelleCommandeVendeur() {
         {/* Produit */}
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold text-slate-900 text-sm">Produit</h2>
-          <Select value={form.produit_id} onValueChange={(v) => { modifier("produit_id", v); setSelectedVariations({}); }}>
-            <SelectTrigger><SelectValue placeholder="Choisir un produit" /></SelectTrigger>
-            <SelectContent>
-              {produits.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nom} — Stock: {p.stock_global || 0}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={openProduit} onOpenChange={setOpenProduit}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openProduit}
+                className="w-full justify-between h-auto py-2 px-3"
+              >
+                {produitSelectionne ? (
+                  <div className="flex items-center gap-3">
+                    {Array.isArray(produitSelectionne.images) && produitSelectionne.images.length > 0 ? (
+                      <img src={produitSelectionne.images[0]} alt={produitSelectionne.nom} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <Truck className="w-5 h-5 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="text-left">
+                      <div className="font-medium text-sm">{produitSelectionne.nom}</div>
+                      <div className="text-xs text-slate-500">Stock: {produitSelectionne.stock_global || 0}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Choisir un produit</span>
+                )}
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Rechercher un produit..." />
+                <CommandList>
+                  <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                  <CommandGroup>
+                    {produits.map((p) => (
+                      <CommandItem
+                        key={p.id}
+                        value={p.id}
+                        keywords={[p.nom, p.reference || ""]}
+                        onSelect={(currentValue) => {
+                          modifier("produit_id", currentValue);
+                          setSelectedVariations({});
+                          setOpenProduit(false);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          {Array.isArray(p.images) && p.images.length > 0 ? (
+                            <img src={p.images[0]} alt={p.nom} className="w-10 h-10 rounded-md object-cover flex-shrink-0" loading="lazy" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
+                              <Truck className="w-5 h-5 text-slate-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{p.nom}</div>
+                            <div className="text-xs text-slate-500">Stock: {p.stock_global || 0}</div>
+                          </div>
+                          {form.produit_id === p.id && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           {/* Variations */}
           {produitSelectionne && variations.length > 0 && (
