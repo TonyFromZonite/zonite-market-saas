@@ -138,6 +138,50 @@ function ListeVendeurs() {
     }
   };
 
+  const renvoyerOtp = async (vendeur) => {
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from("sellers").update({
+        email_verification_code: code,
+        email_verification_expires_at: expiresAt,
+        seller_status: "pending_verification",
+      }).eq("id", vendeur.id);
+      await supabase.functions.invoke("send-verification-email", {
+        body: { email: vendeur.email, nom: vendeur.full_name || vendeur.nom_complet, code },
+      });
+      toast({ title: "📨 Code renvoyé", description: vendeur.email, duration: 4000 });
+    } catch (e) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const lancerPurge = async () => {
+    setPurgeEnCours(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-unverified-account", {
+        body: { purge_all: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Purge terminée",
+        description: `${data?.deleted_count || 0} compte(s) supprimé(s), ${data?.skipped_count || 0} ignoré(s)`,
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      setPurgeDialogOuvert(false);
+    } catch (e) {
+      toast({ title: "Erreur purge", description: e.message, variant: "destructive", duration: 6000 });
+    } finally {
+      setPurgeEnCours(false);
+    }
+  };
+
+  const nbNonVerifies = (vendeurs || []).filter((v) => v.email_verified === false).length;
+
+
+
   const stats = useMemo(() => {
     const total = vendeurs.length;
     const now = new Date();
