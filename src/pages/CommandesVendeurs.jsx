@@ -54,11 +54,15 @@ export default function CommandesVendeurs() {
       return (data || []).map(c => {
         const prixGros = Number(c.produits?.prix_gros) || Number(c.prix_unitaire) || 0;
         const prixFinal = Number(c.prix_final_client) || 0;
+        const quantite = c.quantite || 1;
+        const fraisLivraison = Number(c.frais_livraison) || 0;
+        const livraisonIncluse = !!c.livraison_incluse;
+        const commissionBrute = (prixFinal - prixGros) * quantite;
+        const commission = Math.max(0, livraisonIncluse ? commissionBrute - fraisLivraison : commissionBrute);
         return {
           ...c,
           vendeur_nom: c.sellers?.full_name || c.vendeur_email,
-          // Commission = (prix_final_client - prix_gros) × quantite
-          commission_calculee: Math.max(0, (prixFinal - prixGros) * (c.quantite || 1)),
+          commission_calculee: commission,
         };
       });
     },
