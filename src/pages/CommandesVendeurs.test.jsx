@@ -149,10 +149,65 @@ describe("CommandesVendeurs — récapitulatif livraison dans le détail", () =>
     fireEvent.click(produitText);
 
     await waitFor(() => {
-      expect(screen.getByText(/Livraison incluse/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Livraison incluse/).length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText(/Frais de livraison/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Frais de livraison/).length).toBeGreaterThan(0);
     expect(screen.getByText(/déjà inclus dans le prix client/)).toBeInTheDocument();
+  });
+});
+
+describe("CommandesVendeurs — édition livraison par l'admin", () => {
+  it("affiche la section d'ajustement et applique la modification avec message vendeur", async () => {
+    const updateMock = vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) }));
+    const insertMock = vi.fn(() => Promise.resolve({ error: null }));
+
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === "commandes_vendeur") {
+        const chain = createChain([mockCommande]);
+        chain.update = updateMock;
+        return chain;
+      }
+      if (table === "notifications_vendeur") {
+        return { insert: insertMock };
+      }
+      if (table === "coursiers" || table === "villes_cameroun") {
+        return createChain([]);
+      }
+      return createChain(null);
+    });
+
+    renderWithQueryClient(<CommandesVendeurs />);
+    const produitText = await screen.findByText(/Super Produit/);
+    fireEvent.click(produitText);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ajuster les frais de livraison/)).toBeInTheDocument();
+    });
+
+    const btn = screen.getByRole("button", { name: /Appliquer la modification/ });
+    expect(btn).toBeDisabled();
+
+    const fraisInput = screen.getByPlaceholderText("0");
+    fireEvent.change(fraisInput, { target: { value: "2500" } });
+
+    const msgArea = screen.getByPlaceholderText(/Expliquez la raison/);
+    fireEvent.change(msgArea, { target: { value: "Frais ajustés pour cette zone." } });
+
+    await waitFor(() => expect(btn).not.toBeDisabled());
+
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ frais_livraison: 2500, livraison_incluse: false })
+      );
+      expect(insertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          titre: "Modification des frais de livraison",
+          vendeur_id: "v1",
+        })
+      );
+    });
   });
 });
