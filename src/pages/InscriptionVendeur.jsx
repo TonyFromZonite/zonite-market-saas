@@ -197,8 +197,15 @@ export default function InscriptionVendeur() {
       if (data?.resumed) {
         setErreur("Un nouveau code de vérification vient d'être envoyé à votre email.");
       }
+
+      // Sign in client-side so RLS allows reading/updating own seller row in step 2
+      try {
+        await supabase.auth.signInWithPassword({ email: emailClean, password: form.password });
+      } catch (e) { console.warn("Auto sign-in after register failed:", e); }
+
       setSellerId(data.seller_id);
       setEtape(2);
+
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de l'inscription");
