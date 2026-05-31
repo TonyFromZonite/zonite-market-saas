@@ -1,53 +1,72 @@
-## Objectif
+## Problème confirmé en base
 
-Permettre à l'admin, depuis le dialogue de détail d'une commande (`/CommandesVendeurs`), de :
-1. Basculer `livraison_incluse` (oui / non) pour la commande courante uniquement.
-2. Modifier le montant `frais_livraison` directement dans un champ de saisie, uniquement pour cette commande.
-3. Saisir un message libre qui sera envoyé au vendeur en notification expliquant la modification.
+- **60 utilisateurs `auth.users` orphelins** : compte Supabase Auth créé, mais aucune ligne `sellers` (ni rôle admin). Le vendeur ne peut plus se réinscrire (« email déjà enregistré ») et ne peut pas se connecter (« Profil vendeur introuvable »).
+- **31 lignes `sellers` avec `email_verified=false`** datant de plus d'1 jour : la fiche existe, l'admin voit « non vérifié », mais le vendeur n'a jamais reçu/saisi son OTP et reste bloqué.
 
-Ces changements impactent automatiquement la commission du vendeur (calcul déjà existant côté livraison) et sont tracés dans le journal d'audit.
+## Cause racine
 
-## Changements
+Le flux actuel de `InscriptionVendeur.jsx` enchaîne 5 opérations côté client (`auth.signUp` → `signInWithPassword` → `INSERT sellers` → `INSERT user_roles` → invocation OTP). Chaque étape peut échouer indépendamment et laisser un état partiel. Aucun rollback, aucune idempotence, envoi OTP en `try/catch` silencieux.
 
-### `src/pages/CommandesVendeurs.jsx`
+## Solution
 
-1. **Nouveaux états locaux** (à côté de `notesAdmin`, `livreurNom`) :
-   - `editLivraisonIncluse` (bool)
-   - `editFraisLivraison` (string/number)
-   - `messageVendeur` (texte du message envoyé au vendeur)
-   - `enregistrementLivraison` (bool, loading)
+Tout déplacer dans **une seule edge function `register-seller`** exécutée en `service_role`, transactionnelle, avec rollback si l'OTP ne part pas. Ajout d'outils admin pour reprendre/nettoyer les comptes existants.
 
-2. **Initialisation** : au clic sur une commande (ligne 473, `onClick`), pré-remplir ces états avec les valeurs actuelles de la commande.
+### 1. Edge function `supabase/functions/register-seller/index.ts`
 
-3. **Nouveau bloc UI** dans le dialogue, juste après la grille récap (après ligne 538), titré « Ajuster les frais de livraison » :
-   - `Switch` ou paire de boutons radio : « Livraison incluse dans le prix client » / « Livraison en sus »
-   - `Input` numérique « Frais de livraison (FCFA) » lié à `editFraisLivraison`
-   - `Textarea` « Message au vendeur (obligatoire) »
-   - `Button` « Appliquer la modification », désactivé tant que le message est vide ou qu'aucun champ n'a changé.
-   - Petite note d'info : « Cette modification s'applique uniquement à cette commande et impactera la commission du vendeur à la livraison. »
+Entrée : `{ full_name, username, email, password, parraine_par? }`. Validation Zod stricte.
 
-4. **Handler `appliquerModificationLivraison`** :
-   - `UPDATE commandes_vendeur` avec `{ livraison_incluse, frais_livraison }` pour l'`id` courant.
-   - Insertion d'une notification vendeur (`notifications_vendeur`) :
-     - `titre` : « Modification des frais de livraison »
-     - `message` : message admin + récap (ancien/nouveau frais, statut incluse).
-     - `type` : "info"
-   - Insertion `journal_audit` (action `Modification frais livraison`, entité = id commande, détails ancien/nouveau).
-   - `invalidateQueries(["commandes_vendeurs_admin"])`.
-   - Met à jour la commande sélectionnée localement (pour refléter dans le dialogue sans le fermer).
+Logique :
+1. Vérifier unicité `username` et `email` dans `sellers` via service_role.
+2. **Reprise** : si `sellers.email` existe avec `email_verified=false` → régénérer OTP, `UPDATE sellers`, invoquer `send-verification-email`, renvoyer `{ resumed: true, seller_id }`. (Mot de passe non touché.)
+3. **Nouveau compte** :
+   - `auth.admin.createUser({ email, password, email_confirm: true })` — pas de mail Supabase, notre OTP fait foi.
+   - `INSERT sellers` complet (`seller_status='pending_verification'`, OTP + expiration 24 h, `code_parrainage` dérivé du username).
+   - `INSERT user_roles` (`role='vendeur'`).
+   - Invoquer `send-verification-email`. **Si échec → rollback** : `DELETE user_roles` + `DELETE sellers` + `auth.admin.deleteUser`, renvoyer 502.
+4. Sur erreur Postgres `23505` (unique violation), renvoyer 409 avec le champ concerné.
 
-5. **Affichage commission** (ligne 50-58 et 519) : ajuster `commission_calculee` pour soustraire `frais_livraison` quand `livraison_incluse` est vrai, afin d'être cohérent avec le calcul final de `marquerLivree` (lignes 172-173). Sinon l'admin verrait une commission affichée différente de celle réellement créditée.
+CORS standard, `verify_jwt = false`, logs structurés.
 
-### Hors-scope
+### 2. Refactor `src/pages/InscriptionVendeur.jsx`
 
-- Aucune modification de schéma DB (les colonnes `livraison_incluse` et `frais_livraison` existent déjà sur `commandes_vendeur`).
-- Pas de modification des autres écrans (côté vendeur, dashboard, etc.).
-- Pas de changement du calcul de commission lors de la livraison : `marquerLivree` lit déjà ces deux colonnes au moment où la commande passe à `livree`, donc les modifications admin sont automatiquement prises en compte.
+- `handleRegister` n'appelle plus que `supabase.functions.invoke('register-seller', ...)`.
+- Suppression des 5 appels client (`auth.signUp`, `signInWithPassword`, inserts directs, invocation OTP manuelle).
+- Si réponse `resumed=true` → message « Un nouveau code vient d'être envoyé » et passage direct à l'étape 2.
+- Étape 2 (saisie OTP) et `validerCode` inchangés (RLS « Users update own seller » déjà OK).
+- `renvoyerCode` continue d'appeler `send-verification-email` directement.
 
-## Test
+### 3. Edge function `supabase/functions/cleanup-unverified-account/index.ts`
 
-Ajouter à `src/pages/CommandesVendeurs.test.jsx` un test UI qui :
-- Ouvre le dialogue d'une commande mockée.
-- Vérifie la présence du switch « Livraison incluse », du champ frais, du textarea message.
-- Vérifie que le bouton « Appliquer » est désactivé sans message.
-- Vérifie qu'après saisie + clic, `supabase.from("commandes_vendeur").update(...)` est appelé avec les bonnes valeurs et qu'une notification vendeur est insérée.
+- Entrée : `{ email }` (un compte) **ou** `{ purge_all: true }` (tous les bloqués).
+- Garde : JWT requis, l'appelant doit avoir `role='admin'` dans `user_roles` (via service_role).
+- Pour chaque email cible :
+  - Refuse si compte vérifié ou si l'utilisateur a `role` admin/sous_admin.
+  - `DELETE` `user_roles`, `sellers`, puis `auth.admin.deleteUser`.
+  - Loggue dans `journal_audit` (`action='cleanup_unverified_account'`).
+- En mode `purge_all` : sélectionne tous les `auth.users` sans `sellers` ni rôle admin **et** toutes les `sellers` avec `email_verified=false`. Renvoie `{ deleted_count, errors }`.
+- Protège explicitement `Tonykodjeu@gmail.com` (memory : ne jamais supprimer).
+
+### 4. Bouton admin dans `src/pages/Vendeurs.jsx`
+
+- Bouton « 🧹 Purger comptes non vérifiés » (badge avec le compte actuel : `60 orphelins + 31 non vérifiés`).
+- Modal de confirmation listant le nombre exact (récupéré via une requête simple côté admin) et avertissant que l'opération est irréversible.
+- Au clic : invocation de `cleanup-unverified-account` avec `{ purge_all: true }`, toast de résultat, refresh de la liste.
+- Action supplémentaire par ligne « non vérifié » : « Renvoyer le code » (invocation `send-verification-email` après régénération de l'OTP via update direct, admin RLS le permet déjà).
+
+### 5. Configuration auth Supabase
+
+Via `supabase--configure_auth` : confirmer `auto_confirm_email=true` (on crée déjà les comptes avec `email_confirm:true` côté admin API, et notre OTP custom gère la vérification métier). Ne pas toucher aux autres flags.
+
+## Détails techniques
+
+- `service_role` via `Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")`.
+- Aucun changement de schéma `sellers`/`user_roles`.
+- Mémoire à mettre à jour : `mem://logic/vendor-verification-flow` pour refléter le passage via edge function atomique.
+
+## Vérification après build
+
+1. Inscription nominale → 1 ligne `auth.users` + 1 `sellers` + 1 `user_roles`, OTP reçu.
+2. Inscription avec email déjà non vérifié → `resumed=true`, nouveau code, pas de duplicat.
+3. Simulation d'échec OTP → aucune ligne en base.
+4. Login compte non vérifié → redirection vers étape 2 (inchangé).
+5. Bouton admin « Purger » → les 60 + 31 comptes disparaissent, compteur passe à 0, `Tonykodjeu@gmail.com` intact.
