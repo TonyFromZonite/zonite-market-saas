@@ -305,6 +305,11 @@ function ListeVendeurs() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => ouvrir(v)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
+                      {isAdmin && v.email_verified === false && (
+                        <Button variant="ghost" size="icon" title="Renvoyer le code de vérification" onClick={() => renvoyerOtp(v)}>
+                          <Mail className="w-4 h-4 text-orange-500" />
+                        </Button>
+                      )}
                       {isAdmin && (
                         <Button variant="ghost" size="icon" title="Ajuster commission" onClick={() => setAjustVendeur(v)}>
                           <Wallet className="w-4 h-4 text-yellow-600" />
@@ -313,6 +318,7 @@ function ListeVendeurs() {
                       <Button variant="ghost" size="icon" onClick={() => { setVendeurRoleEdite(v); setNouveauRoleVendeur("user"); setDialogRoleOuvert(true); }}><UserCog className="w-4 h-4 text-blue-500" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => supprimer(v)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                     </div>
+
                   </TableCell>
                 </TableRow>
               ))}
