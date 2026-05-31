@@ -82,6 +82,55 @@ export default function CommandesVendeurs() {
 
   const nbEnAttente = commandes.filter(c => c.statut === "en_attente_validation_admin").length;
 
+  const appliquerModificationLivraison = async () => {
+    if (!commandeSelectionnee) return;
+    const msg = messageVendeur.trim();
+    if (!msg) return;
+    const nouveauFrais = Math.max(0, Number(editFraisLivraison) || 0);
+    const ancienFrais = Number(commandeSelectionnee.frais_livraison) || 0;
+    const ancienIncluse = !!commandeSelectionnee.livraison_incluse;
+    const nouvelleIncluse = !!editLivraisonIncluse;
+
+    if (nouveauFrais === ancienFrais && nouvelleIncluse === ancienIncluse) return;
+
+    setEnregistrementLivraison(true);
+    try {
+      const { error } = await supabase
+        .from("commandes_vendeur")
+        .update({ frais_livraison: nouveauFrais, livraison_incluse: nouvelleIncluse })
+        .eq("id", commandeSelectionnee.id);
+      if (error) throw error;
+
+      const recap = `\n\nAncien frais : ${ancienFrais.toLocaleString("fr-FR")} FCFA (${ancienIncluse ? "incluse" : "en sus"})\nNouveau frais : ${nouveauFrais.toLocaleString("fr-FR")} FCFA (${nouvelleIncluse ? "incluse dans le prix client" : "à percevoir auprès du client"})`;
+
+      await supabase.from("notifications_vendeur").insert({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Modification des frais de livraison",
+        message: `${msg}${recap}`,
+        type: "info",
+      });
+
+      try {
+        await adminApi.createJournalAudit({
+          action: "Modification frais livraison",
+          module: "commande",
+          details: `Commande ${commandeSelectionnee.id} — frais ${ancienFrais} → ${nouveauFrais}, incluse ${ancienIncluse} → ${nouvelleIncluse}. Message: ${msg}`,
+          entite_id: commandeSelectionnee.id,
+        });
+      } catch (e) { console.warn("audit:", e); }
+
+      setCommandeSelectionnee(c => c ? { ...c, frais_livraison: nouveauFrais, livraison_incluse: nouvelleIncluse } : c);
+      setMessageVendeur("");
+      queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
+    } catch (err) {
+      console.error("appliquerModificationLivraison:", err);
+    }
+    setEnregistrementLivraison(false);
+  };
+
+
+
   const validerCommande = async () => {
     setEnCours(true);
     try {
