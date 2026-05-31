@@ -19,6 +19,7 @@ export default function NouvelleCommandeVendeur() {
     produit_id: "", quantite: 1, prix_final_client: "",
     client_nom: "", client_telephone: "", client_adresse: "",
     notes: "",
+    mode_paiement_livraison: "separe", // "separe" = client paye au livreur, "inclus" = inclus dans le prix
   });
   const [villeText, setVilleText] = useState("");
   const [quartierText, setQuartierText] = useState("");
