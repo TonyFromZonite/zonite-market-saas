@@ -39,8 +39,9 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
   const montantTotal = qte * prixUnit;
   const prixGros = produitSelectionne?.prix_gros || 0;
   const prixAchat = produitSelectionne?.prix_achat || 0;
-  const commission = (prixUnit - prixGros) * qte;
-  const profitZonite = (prixGros - prixAchat) * qte - prixLivraison;
+  const commissionBrute = (prixUnit - prixGros) * qte;
+  const commission = donnees.livraison_incluse ? commissionBrute - prixLivraison : commissionBrute;
+  const profitZonite = (prixGros - prixAchat) * qte - (donnees.livraison_incluse ? 0 : prixLivraison);
 
   const modifier = (champ, valeur) => {
     setDonnees((prev) => ({ ...prev, [champ]: valeur }));
