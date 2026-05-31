@@ -18,6 +18,7 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
     client_telephone: "",
     client_adresse: "",
     notes: "",
+    livraison_incluse: false,
   });
 
   const [localisation, setLocalisation] = useState({
