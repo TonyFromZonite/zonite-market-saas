@@ -248,4 +248,46 @@ describe("CommandesVendeurs — édition livraison par l'admin", () => {
 
     unmount();
   });
+
+  it("recalcule la commission affichée selon livraison_incluse + frais_livraison au rechargement", async () => {
+    // prix_final=10000, prix_gros=3000, quantité=2 → commission brute = 14 000
+    // Cas 1 : livraison en sus → commission = 14 000
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === "commandes_vendeur") {
+        return createChain([{ ...mockCommande, livraison_incluse: false, frais_livraison: 2500 }]);
+      }
+      if (table === "coursiers" || table === "villes_cameroun") return createChain([]);
+      return createChain(null);
+    });
+
+    const { unmount } = renderWithQueryClient(<CommandesVendeurs />);
+    await screen.findByText(/Super Produit/);
+    await waitFor(() => {
+      expect(screen.getByText(/Commission:\s*14[\s ]000/)).toBeInTheDocument();
+    });
+    unmount();
+
+    // Cas 2 : livraison incluse + 2500 → commission = 14 000 - 2 500 = 11 500
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === "commandes_vendeur") {
+        return createChain([{ ...mockCommande, livraison_incluse: true, frais_livraison: 2500 }]);
+      }
+      if (table === "coursiers" || table === "villes_cameroun") return createChain([]);
+      return createChain(null);
+    });
+
+    renderWithQueryClient(<CommandesVendeurs />);
+    const produit = await screen.findByText(/Super Produit/);
+    await waitFor(() => {
+      expect(screen.getByText(/Commission:\s*11[\s ]500/)).toBeInTheDocument();
+    });
+
+    // Détail : la commission vendeur affichée doit aussi être 11 500
+    fireEvent.click(produit);
+    await waitFor(() => {
+      expect(screen.getByText(/Commission vendeur/)).toBeInTheDocument();
+    });
+    const detailCommissions = screen.getAllByText(/11[\s ]500/);
+    expect(detailCommissions.length).toBeGreaterThan(0);
+  });
 });
