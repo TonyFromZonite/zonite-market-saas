@@ -531,12 +531,17 @@ export default function NouvelleCommandeVendeur() {
               <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
               <p>Livraison: <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
               {estimationLivraison && (
-                <p>Frais livraison (estimation): <strong>
-                  {estimationLivraison.min === estimationLivraison.max
-                    ? formater(estimationLivraison.min)
-                    : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
-                </strong></p>
+                livraisonIncluse ? (
+                  <p>Livraison : <strong>incluse dans le prix</strong> <span className="text-xs text-slate-500">(≈ {formater(fraisLivraisonEstime)} déduits de votre commission)</span></p>
+                ) : (
+                  <p>À régler au livreur : <strong>
+                    {estimationLivraison.min === estimationLivraison.max
+                      ? formater(estimationLivraison.min)
+                      : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
+                  </strong></p>
+                )
               )}
+              <p>Commission estimée : <strong className="text-emerald-700">{formater(commission)}</strong></p>
               <p className="text-xs text-slate-400">Le coursier sera attribué par l'administration.</p>
             </div>
           </div>
