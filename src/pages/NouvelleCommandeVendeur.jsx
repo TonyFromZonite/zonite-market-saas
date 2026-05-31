@@ -215,7 +215,14 @@ export default function NouvelleCommandeVendeur() {
   const qte = parseInt(form.quantite) || 1;
   const prixGros = produitSelectionne?.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
-  const commission = Math.max(0, (prixFinal - prixGros) * qte);
+  const fraisLivraisonEstime = estimationLivraison
+    ? Math.round((estimationLivraison.min + estimationLivraison.max) / 2)
+    : 1500;
+  const livraisonIncluse = form.mode_paiement_livraison === "inclus";
+  const commissionBrute = Math.max(0, (prixFinal - prixGros) * qte);
+  const commission = livraisonIncluse
+    ? Math.max(0, commissionBrute - fraisLivraisonEstime)
+    : commissionBrute;
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
   const soumettre = async () => {
