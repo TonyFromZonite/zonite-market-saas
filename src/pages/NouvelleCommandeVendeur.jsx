@@ -385,9 +385,38 @@ export default function NouvelleCommandeVendeur() {
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm">
               <p className="text-slate-600">Votre commission estimée :</p>
               <p className="font-bold text-emerald-700 text-lg">{formater(commission)}</p>
+              {livraisonIncluse && (
+                <p className="text-xs text-slate-500 mt-1">
+                  (Commission brute {formater(commissionBrute)} − frais livraison {formater(fraisLivraisonEstime)})
+                </p>
+              )}
             </div>
           )}
         </div>
+
+        {/* Mode de paiement livraison */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <h2 className="font-semibold text-slate-900 text-sm">Paiement de la livraison</h2>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={() => modifier("mode_paiement_livraison", "separe")}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${form.mode_paiement_livraison === "separe" ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+            >
+              <p className="font-semibold text-sm text-slate-900">Le client paie la livraison au livreur</p>
+              <p className="text-xs text-slate-500 mt-1">Le client règle séparément les frais de livraison au livreur à la réception. Votre commission n'est pas impactée.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => modifier("mode_paiement_livraison", "inclus")}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${form.mode_paiement_livraison === "inclus" ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+            >
+              <p className="font-semibold text-sm text-slate-900">Les frais de livraison sont inclus dans le prix</p>
+              <p className="text-xs text-slate-500 mt-1">Le prix affiché au client comprend déjà la livraison. Les frais seront déduits de votre commission.</p>
+            </button>
+          </div>
+        </div>
+
 
         {/* Localisation */}
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
