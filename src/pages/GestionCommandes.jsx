@@ -204,8 +204,11 @@ export default function GestionCommandes() {
     const prixFinalClient = Number(commande.prix_final_client) || Number(commande.prix_unitaire) || Number(produit.prix_vente) || 0;
     const prixGros = Number(produit.prix_gros) || 0;
     const prixAchat = Number(produit.prix_achat) || 0;
+    const fraisLivraison = Number(commande.frais_livraison) || 0;
+    const livraisonIncluse = !!commande.livraison_incluse;
 
-    const commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
+    const commissionBrute = (prixFinalClient - prixGros) * quantite;
+    const commissionVendeur = Math.max(0, livraisonIncluse ? commissionBrute - fraisLivraison : commissionBrute);
     const margeZonite = (prixGros - prixAchat) * quantite;
     const caVente = prixFinalClient * quantite;
 
