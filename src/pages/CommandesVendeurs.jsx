@@ -507,8 +507,29 @@ export default function CommandesVendeurs() {
               <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
                 <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Quantité</p><p className="font-medium">{commandeSelectionnee.quantite}</p></div>
-                <div><p className="text-slate-400 text-xs">Prix client</p><p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p></div>
+                <div>
+                  <p className="text-slate-400 text-xs">Prix client</p>
+                  <p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p>
+                  {commandeSelectionnee.livraison_incluse ? (
+                    <Badge className="mt-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px]">Livraison incluse</Badge>
+                  ) : (
+                    <Badge className="mt-1 bg-orange-100 text-orange-700 border border-orange-200 text-[10px]">Livraison en sus</Badge>
+                  )}
+                </div>
                 <div><p className="text-slate-400 text-xs">Commission vendeur</p><p className="font-bold text-yellow-600">{formater(commandeSelectionnee.commission_calculee)}</p></div>
+                {Number(commandeSelectionnee.frais_livraison) > 0 && (
+                  <div className="col-span-2">
+                    <p className="text-slate-400 text-xs">Frais de livraison</p>
+                    <p className="font-medium">
+                      {formater(commandeSelectionnee.frais_livraison)}
+                      <span className="text-slate-500 text-xs ml-1">
+                        {commandeSelectionnee.livraison_incluse
+                          ? "(déjà inclus dans le prix client)"
+                          : "(à percevoir auprès du client à la livraison)"}
+                      </span>
+                    </p>
+                  </div>
+                )}
                 <div><p className="text-slate-400 text-xs">Client</p><p className="font-medium">{commandeSelectionnee.client_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Téléphone</p><p className="font-medium">{commandeSelectionnee.client_telephone}</p></div>
                 <div className="col-span-2"><p className="text-slate-400 text-xs">Adresse</p><p className="font-medium">{commandeSelectionnee.client_ville}{commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}{commandeSelectionnee.client_adresse ? ` – ${commandeSelectionnee.client_adresse}` : ""}</p></div>
