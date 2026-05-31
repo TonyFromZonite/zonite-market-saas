@@ -1093,6 +1093,9 @@ export type Database = {
           email: string
           email_verification_code: string | null
           email_verification_expires_at: string | null
+          email_verification_last_sent_at: string | null
+          email_verification_send_count: number
+          email_verification_window_start: string | null
           email_verified: boolean | null
           experience_vente: string | null
           full_name: string
@@ -1139,6 +1142,9 @@ export type Database = {
           email: string
           email_verification_code?: string | null
           email_verification_expires_at?: string | null
+          email_verification_last_sent_at?: string | null
+          email_verification_send_count?: number
+          email_verification_window_start?: string | null
           email_verified?: boolean | null
           experience_vente?: string | null
           full_name: string
@@ -1185,6 +1191,9 @@ export type Database = {
           email?: string
           email_verification_code?: string | null
           email_verification_expires_at?: string | null
+          email_verification_last_sent_at?: string | null
+          email_verification_send_count?: number
+          email_verification_window_start?: string | null
           email_verified?: boolean | null
           experience_vente?: string | null
           full_name?: string
