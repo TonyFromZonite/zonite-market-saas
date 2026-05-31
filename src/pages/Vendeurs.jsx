@@ -390,7 +390,37 @@ function ListeVendeurs() {
         }}
         toast={toast}
       />
+
+      <Dialog open={purgeDialogOuvert} onOpenChange={setPurgeDialogOuvert}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Purger les comptes non vérifiés</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              Cette opération supprime <strong>définitivement</strong> :
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-slate-700">
+              <li>Toutes les fiches vendeurs avec <code>email_verified = false</code> ({nbNonVerifies} actuellement).</li>
+              <li>Tous les comptes <em>auth</em> orphelins (créés sans fiche vendeur).</li>
+            </ul>
+            <p className="text-xs text-red-600">
+              ⚠️ Action irréversible. Les comptes admin et sous-admin sont protégés.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPurgeDialogOuvert(false)} disabled={purgeEnCours}>
+              Annuler
+            </Button>
+            <Button onClick={lancerPurge} disabled={purgeEnCours} className="bg-red-600 hover:bg-red-700 text-white">
+              {purgeEnCours ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash className="w-4 h-4 mr-2" />}
+              Confirmer la purge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
