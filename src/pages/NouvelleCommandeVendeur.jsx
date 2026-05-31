@@ -123,10 +123,14 @@ export default function NouvelleCommandeVendeur() {
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = produitSelectionne?.variations || [];
 
-  // Build variation key
+  // Build variation key — empty string until ALL variations are selected,
+  // so stock checks fall back to stock_total instead of looking up an
+  // incomplete variation_key (which would always return 0 stock).
   const getVariationKey = () => {
     if (variations.length === 0) return "";
-    return variations.map((v) => `${v.nom}:${selectedVariations[v.nom] || ""}`).join("|");
+    const allSelected = variations.every((v) => selectedVariations[v.nom]);
+    if (!allSelected) return "";
+    return variations.map((v) => `${v.nom}:${selectedVariations[v.nom]}`).join("|");
   };
   const variationKey = getVariationKey();
 
