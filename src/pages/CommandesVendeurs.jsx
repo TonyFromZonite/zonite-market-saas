@@ -34,6 +34,10 @@ export default function CommandesVendeurs() {
   const [enCours, setEnCours] = useState(false);
   const [modalRetour, setModalRetour] = useState(false);
   const [retourForm, setRetourForm] = useState({ raison: "client_refuse", raison_detail: "", quantite: 1 });
+  const [editLivraisonIncluse, setEditLivraisonIncluse] = useState(false);
+  const [editFraisLivraison, setEditFraisLivraison] = useState("");
+  const [messageVendeur, setMessageVendeur] = useState("");
+  const [enregistrementLivraison, setEnregistrementLivraison] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
