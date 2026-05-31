@@ -50,7 +50,7 @@ export default function NouvelleVente() {
         prix_final_client: donnees.prix_unitaire,
         montant_total: donnees.montantTotal,
         frais_livraison: donnees.coutLivraison || 0,
-        livraison_incluse: false,
+        livraison_incluse: !!donnees.livraison_incluse,
         client_nom: donnees.client_nom || "Client admin",
         client_telephone: donnees.client_telephone || "",
         client_ville: donnees.ville || "",

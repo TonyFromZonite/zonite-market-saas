@@ -19,6 +19,7 @@ export default function NouvelleCommandeVendeur() {
     produit_id: "", quantite: 1, prix_final_client: "",
     client_nom: "", client_telephone: "", client_adresse: "",
     notes: "",
+    mode_paiement_livraison: "separe", // "separe" = client paye au livreur, "inclus" = inclus dans le prix
   });
   const [villeText, setVilleText] = useState("");
   const [quartierText, setQuartierText] = useState("");
@@ -214,7 +215,14 @@ export default function NouvelleCommandeVendeur() {
   const qte = parseInt(form.quantite) || 1;
   const prixGros = produitSelectionne?.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
-  const commission = Math.max(0, (prixFinal - prixGros) * qte);
+  const fraisLivraisonEstime = estimationLivraison
+    ? Math.round((estimationLivraison.min + estimationLivraison.max) / 2)
+    : 1500;
+  const livraisonIncluse = form.mode_paiement_livraison === "inclus";
+  const commissionBrute = Math.max(0, (prixFinal - prixGros) * qte);
+  const commission = livraisonIncluse
+    ? Math.max(0, commissionBrute - fraisLivraisonEstime)
+    : commissionBrute;
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
   const soumettre = async () => {
@@ -250,8 +258,8 @@ export default function NouvelleCommandeVendeur() {
         prix_unitaire: prixGros,
         prix_final_client: prixFinal,
         montant_total: prixFinal * qte,
-        frais_livraison: estimationLivraison ? Math.round((estimationLivraison.min + estimationLivraison.max) / 2) : 1500,
-        livraison_incluse: false,
+        frais_livraison: fraisLivraisonEstime,
+        livraison_incluse: livraisonIncluse,
         coursier_id: null,
         client_nom: form.client_nom,
         client_telephone: form.client_telephone,
@@ -377,9 +385,38 @@ export default function NouvelleCommandeVendeur() {
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm">
               <p className="text-slate-600">Votre commission estimée :</p>
               <p className="font-bold text-emerald-700 text-lg">{formater(commission)}</p>
+              {livraisonIncluse && (
+                <p className="text-xs text-slate-500 mt-1">
+                  (Commission brute {formater(commissionBrute)} − frais livraison {formater(fraisLivraisonEstime)})
+                </p>
+              )}
             </div>
           )}
         </div>
+
+        {/* Mode de paiement livraison */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <h2 className="font-semibold text-slate-900 text-sm">Paiement de la livraison</h2>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={() => modifier("mode_paiement_livraison", "separe")}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${form.mode_paiement_livraison === "separe" ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+            >
+              <p className="font-semibold text-sm text-slate-900">Le client paie la livraison au livreur</p>
+              <p className="text-xs text-slate-500 mt-1">Le client règle séparément les frais de livraison au livreur à la réception. Votre commission n'est pas impactée.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => modifier("mode_paiement_livraison", "inclus")}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${form.mode_paiement_livraison === "inclus" ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+            >
+              <p className="font-semibold text-sm text-slate-900">Les frais de livraison sont inclus dans le prix</p>
+              <p className="text-xs text-slate-500 mt-1">Le prix affiché au client comprend déjà la livraison. Les frais seront déduits de votre commission.</p>
+            </button>
+          </div>
+        </div>
+
 
         {/* Localisation */}
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
@@ -494,12 +531,17 @@ export default function NouvelleCommandeVendeur() {
               <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
               <p>Livraison: <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
               {estimationLivraison && (
-                <p>Frais livraison (estimation): <strong>
-                  {estimationLivraison.min === estimationLivraison.max
-                    ? formater(estimationLivraison.min)
-                    : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
-                </strong></p>
+                livraisonIncluse ? (
+                  <p>Livraison : <strong>incluse dans le prix</strong> <span className="text-xs text-slate-500">(≈ {formater(fraisLivraisonEstime)} déduits de votre commission)</span></p>
+                ) : (
+                  <p>À régler au livreur : <strong>
+                    {estimationLivraison.min === estimationLivraison.max
+                      ? formater(estimationLivraison.min)
+                      : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
+                  </strong></p>
+                )
               )}
+              <p>Commission estimée : <strong className="text-emerald-700">{formater(commission)}</strong></p>
               <p className="text-xs text-slate-400">Le coursier sera attribué par l'administration.</p>
             </div>
           </div>

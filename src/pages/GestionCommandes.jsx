@@ -204,8 +204,11 @@ export default function GestionCommandes() {
     const prixFinalClient = Number(commande.prix_final_client) || Number(commande.prix_unitaire) || Number(produit.prix_vente) || 0;
     const prixGros = Number(produit.prix_gros) || 0;
     const prixAchat = Number(produit.prix_achat) || 0;
+    const fraisLivraison = Number(commande.frais_livraison) || 0;
+    const livraisonIncluse = !!commande.livraison_incluse;
 
-    const commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
+    const commissionBrute = (prixFinalClient - prixGros) * quantite;
+    const commissionVendeur = Math.max(0, livraisonIncluse ? commissionBrute - fraisLivraison : commissionBrute);
     const margeZonite = (prixGros - prixAchat) * quantite;
     const caVente = prixFinalClient * quantite;
 
@@ -257,7 +260,7 @@ export default function GestionCommandes() {
       vendeur_id: commande.vendeur_id,
       vendeur_email: commande.vendeur_email,
       titre: "🎉 Livraison confirmée !",
-      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA${livraisonIncluse ? `\n🚚 Frais livraison déduits (livraison incluse) : ${fraisLivraison.toLocaleString("fr-FR")} FCFA` : ""}\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
       type: "succes",
     });
 
@@ -404,6 +407,9 @@ export default function GestionCommandes() {
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{cmd.produit_nom}</h3>
                     <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label || cmd.statut}</Badge>
+                    {cmd.livraison_incluse && (
+                      <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">Livraison incluse</Badge>
+                    )}
                     {cmd.reference_commande && (
                       <span className="text-xs text-slate-400">{cmd.reference_commande}</span>
                     )}

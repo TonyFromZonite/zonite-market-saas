@@ -18,6 +18,7 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
     client_telephone: "",
     client_adresse: "",
     notes: "",
+    livraison_incluse: false,
   });
 
   const [localisation, setLocalisation] = useState({
@@ -38,8 +39,9 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
   const montantTotal = qte * prixUnit;
   const prixGros = produitSelectionne?.prix_gros || 0;
   const prixAchat = produitSelectionne?.prix_achat || 0;
-  const commission = (prixUnit - prixGros) * qte;
-  const profitZonite = (prixGros - prixAchat) * qte - prixLivraison;
+  const commissionBrute = (prixUnit - prixGros) * qte;
+  const commission = donnees.livraison_incluse ? commissionBrute - prixLivraison : commissionBrute;
+  const profitZonite = (prixGros - prixAchat) * qte;
 
   const modifier = (champ, valeur) => {
     setDonnees((prev) => ({ ...prev, [champ]: valeur }));
@@ -78,6 +80,7 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
       coutLivraison: prixLivraison,
       commission,
       profitZonite,
+      livraison_incluse: !!donnees.livraison_incluse,
       produitSelectionne,
       vendeurSelectionne,
       ville: localisation.ville,
@@ -147,6 +150,29 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
           <div className="space-y-2">
             <Label>Prix Livraison (FCFA)</Label>
             <Input type="number" min="0" value={donnees.prix_livraison} onChange={(e) => modifier("prix_livraison", e.target.value)} placeholder="0" />
+          </div>
+
+          {/* Mode paiement livraison */}
+          <div className="col-span-full space-y-2">
+            <Label>Paiement de la livraison</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => modifier("livraison_incluse", false)}
+                className={`text-left p-3 rounded-lg border-2 transition-all ${!donnees.livraison_incluse ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+              >
+                <p className="font-semibold text-sm">Client paie au livreur</p>
+                <p className="text-xs text-slate-500 mt-1">Frais réglés séparément au livreur. Commission vendeur non impactée.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => modifier("livraison_incluse", true)}
+                className={`text-left p-3 rounded-lg border-2 transition-all ${donnees.livraison_incluse ? "border-[#1a1f5e] bg-blue-50" : "border-slate-200 bg-white"}`}
+              >
+                <p className="font-semibold text-sm">Inclus dans le prix</p>
+                <p className="text-xs text-slate-500 mt-1">Frais déduits de la commission vendeur.</p>
+              </button>
+            </div>
           </div>
 
           {/* Client */}
