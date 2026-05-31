@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog, Users } from "lucide-react";
+import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog, Users, Trash, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
@@ -46,9 +46,12 @@ function ListeVendeurs() {
   const [vendeurRoleEdite, setVendeurRoleEdite] = useState(null);
   const [nouveauRoleVendeur, setNouveauRoleVendeur] = useState("user");
   const [ajustVendeur, setAjustVendeur] = useState(null);
+  const [purgeDialogOuvert, setPurgeDialogOuvert] = useState(false);
+  const [purgeEnCours, setPurgeEnCours] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { isAdmin } = useAdminAccess();
+
 
   const { data: vendeurs = [], isLoading } = useQuery({
     queryKey: ["vendeurs"],
@@ -135,6 +138,50 @@ function ListeVendeurs() {
     }
   };
 
+  const renvoyerOtp = async (vendeur) => {
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from("sellers").update({
+        email_verification_code: code,
+        email_verification_expires_at: expiresAt,
+        seller_status: "pending_verification",
+      }).eq("id", vendeur.id);
+      await supabase.functions.invoke("send-verification-email", {
+        body: { email: vendeur.email, nom: vendeur.full_name || vendeur.nom_complet, code },
+      });
+      toast({ title: "📨 Code renvoyé", description: vendeur.email, duration: 4000 });
+    } catch (e) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const lancerPurge = async () => {
+    setPurgeEnCours(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-unverified-account", {
+        body: { purge_all: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Purge terminée",
+        description: `${data?.deleted_count || 0} compte(s) supprimé(s), ${data?.skipped_count || 0} ignoré(s)`,
+        duration: 6000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendeurs"] });
+      setPurgeDialogOuvert(false);
+    } catch (e) {
+      toast({ title: "Erreur purge", description: e.message, variant: "destructive", duration: 6000 });
+    } finally {
+      setPurgeEnCours(false);
+    }
+  };
+
+  const nbNonVerifies = (vendeurs || []).filter((v) => v.email_verified === false).length;
+
+
+
   const stats = useMemo(() => {
     const total = vendeurs.length;
     const now = new Date();
@@ -171,7 +218,22 @@ function ListeVendeurs() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Rechercher un vendeur..." value={recherche} onChange={(e) => setRecherche(e.target.value)} className="pl-9" />
         </div>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            onClick={() => setPurgeDialogOuvert(true)}
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-2"
+            title="Supprime les comptes vendeurs non vérifiés et les comptes auth orphelins"
+          >
+            <Trash className="w-4 h-4" />
+            Purger non vérifiés
+            {nbNonVerifies > 0 && (
+              <Badge className="bg-red-100 text-red-700 ml-1">{nbNonVerifies}</Badge>
+            )}
+          </Button>
+        )}
       </div>
+
 
       {/* Statistiques vendeurs */}
       <div className="space-y-3">
@@ -243,6 +305,11 @@ function ListeVendeurs() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => ouvrir(v)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
+                      {isAdmin && v.email_verified === false && (
+                        <Button variant="ghost" size="icon" title="Renvoyer le code de vérification" onClick={() => renvoyerOtp(v)}>
+                          <Mail className="w-4 h-4 text-orange-500" />
+                        </Button>
+                      )}
                       {isAdmin && (
                         <Button variant="ghost" size="icon" title="Ajuster commission" onClick={() => setAjustVendeur(v)}>
                           <Wallet className="w-4 h-4 text-yellow-600" />
@@ -251,6 +318,7 @@ function ListeVendeurs() {
                       <Button variant="ghost" size="icon" onClick={() => { setVendeurRoleEdite(v); setNouveauRoleVendeur("user"); setDialogRoleOuvert(true); }}><UserCog className="w-4 h-4 text-blue-500" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => supprimer(v)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                     </div>
+
                   </TableCell>
                 </TableRow>
               ))}
@@ -322,7 +390,37 @@ function ListeVendeurs() {
         }}
         toast={toast}
       />
+
+      <Dialog open={purgeDialogOuvert} onOpenChange={setPurgeDialogOuvert}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Purger les comptes non vérifiés</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              Cette opération supprime <strong>définitivement</strong> :
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-slate-700">
+              <li>Toutes les fiches vendeurs avec <code>email_verified = false</code> ({nbNonVerifies} actuellement).</li>
+              <li>Tous les comptes <em>auth</em> orphelins (créés sans fiche vendeur).</li>
+            </ul>
+            <p className="text-xs text-red-600">
+              ⚠️ Action irréversible. Les comptes admin et sous-admin sont protégés.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPurgeDialogOuvert(false)} disabled={purgeEnCours}>
+              Annuler
+            </Button>
+            <Button onClick={lancerPurge} disabled={purgeEnCours} className="bg-red-600 hover:bg-red-700 text-white">
+              {purgeEnCours ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash className="w-4 h-4 mr-2" />}
+              Confirmer la purge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 

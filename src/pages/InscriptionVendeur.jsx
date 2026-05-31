@@ -161,69 +161,51 @@ export default function InscriptionVendeur() {
     try {
       const emailClean = form.email.toLowerCase().trim();
       const usernameClean = form.username.toLowerCase().trim().replace(/[^a-z0-9_]/g, "");
+      const effectiveRefCode = refCode
+        ? refCode.toUpperCase().trim()
+        : (manualRef && manualRefValid ? manualRef.toUpperCase().trim() : null);
 
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: emailClean,
-        password: form.password,
-        options: { data: { full_name: form.full_name, username: usernameClean } },
-      });
-
-      if (authError) {
-        if (authError.message.includes("already registered")) {
-          setErrors(p => ({ ...p, email: "Cet email a déjà un compte. Connectez-vous." }));
-          return;
-        }
-        throw authError;
-      }
-
-      // Sign in immediately for RLS
-      await supabase.auth.signInWithPassword({ email: emailClean, password: form.password });
-
-      // Determine effective referral
-      const effectiveRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef && manualRefValid ? manualRef.toUpperCase().trim() : null);
-      const effectiveRefData = refCode ? refValid : manualRefValid;
-
-      // Generate verification code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-      // Generate referral code from username
-      const myRefCode = usernameClean.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-
-      // Create seller record
-      const { data: sellerData, error: sellerError } = await supabase
-        .from("sellers")
-        .insert({
-          user_id: authData.user.id,
+      // Atomic server-side registration : auth.users + sellers + user_roles + OTP
+      const { data, error } = await supabase.functions.invoke("register-seller", {
+        body: {
           full_name: form.full_name.trim(),
           username: usernameClean,
           email: emailClean,
-          code_parrainage: myRefCode,
-          seller_status: "pending_verification",
-          statut_kyc: "non_soumis",
-          wizard_completed: false,
-          email_verification_code: code,
-          email_verification_expires_at: expiresAt,
-          parraine_par: effectiveRefCode || null,
-        })
-        .select("id")
-        .single();
+          password: form.password,
+          parraine_par: effectiveRefCode,
+        },
+      });
 
-      if (sellerError) throw sellerError;
+      // Edge function HTTP error (non-2xx) → `error` is set, body in error.context
+      if (error) {
+        let payload = null;
+        try { payload = await error.context?.json?.(); } catch (_) {}
+        const message = payload?.error || error.message || "Erreur lors de l'inscription";
+        if (payload?.field) {
+          setErrors((p) => ({ ...p, [payload.field]: message }));
+        } else {
+          setErreur(message);
+        }
+        return;
+      }
+      if (data?.error) {
+        if (data.field) setErrors((p) => ({ ...p, [data.field]: data.error }));
+        else setErreur(data.error);
+        return;
+      }
 
-      // Insert user role
-      await supabase.from("user_roles").insert({ user_id: authData.user.id, role: "vendeur" });
+      if (data?.resumed) {
+        setErreur("Un nouveau code de vérification vient d'être envoyé à votre email.");
+      }
 
-      // Try to send verification email
+      // Sign in client-side so RLS allows reading/updating own seller row in step 2
       try {
-        await supabase.functions.invoke("send-verification-email", {
-          body: { email: emailClean, nom: form.full_name, code },
-        });
-      } catch (e) { console.warn("Verification email send failed:", e); }
+        await supabase.auth.signInWithPassword({ email: emailClean, password: form.password });
+      } catch (e) { console.warn("Auto sign-in after register failed:", e); }
 
-      setSellerId(sellerData.id);
+      setSellerId(data.seller_id);
       setEtape(2);
+
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de l'inscription");
@@ -231,6 +213,7 @@ export default function InscriptionVendeur() {
       setLoading(false);
     }
   };
+
 
   const validerCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
