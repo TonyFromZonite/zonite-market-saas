@@ -260,7 +260,7 @@ export default function GestionCommandes() {
       vendeur_id: commande.vendeur_id,
       vendeur_email: commande.vendeur_email,
       titre: "🎉 Livraison confirmée !",
-      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+      message: `Votre commande ${commande.reference_commande || commande.id} a été livrée avec succès !\n\n📦 Produit : ${commande.produit_nom}${commande.variation ? ` (${commande.variation})` : ""}\n🔢 Quantité : ${quantite}\n💵 Prix de vente : ${prixFinalClient.toLocaleString("fr-FR")} FCFA\n🏷️ Prix de gros : ${prixGros.toLocaleString("fr-FR")} FCFA${livraisonIncluse ? `\n🚚 Frais livraison déduits (livraison incluse) : ${fraisLivraison.toLocaleString("fr-FR")} FCFA` : ""}\n\n💰 Votre commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
       type: "succes",
     });
 
