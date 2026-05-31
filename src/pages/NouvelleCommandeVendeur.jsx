@@ -103,7 +103,13 @@ export default function NouvelleCommandeVendeur() {
     },
   });
 
-  const modifier = (champ, val) => { setForm((p) => ({ ...p, [champ]: val })); setErreur(""); };
+  const modifier = (champ, val) => {
+    setForm((p) => ({ ...p, [champ]: val }));
+    setErreur("");
+    if (champ === "mode_paiement_livraison") {
+      try { localStorage.setItem("zonite_mode_paiement_livraison", val); } catch {}
+    }
+  };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = produitSelectionne?.variations || [];
 
