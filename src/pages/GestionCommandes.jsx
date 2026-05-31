@@ -469,18 +469,27 @@ export default function GestionCommandes() {
           {commandeSelectionnee && (
             <div className="space-y-5">
               {/* Order summary */}
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm font-medium text-slate-800">
-                  {commandeSelectionnee.produit_nom} — {commandeSelectionnee.quantite || 1} unité(s)
-                </p>
-                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {commandeSelectionnee.client_ville || "Ville non spécifiée"}
-                  {commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Client: {commandeSelectionnee.client_nom} — {commandeSelectionnee.client_telephone}
-                </p>
+              <div className="bg-slate-50 rounded-lg p-3 flex gap-3">
+                <div className="w-14 h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center border border-slate-200">
+                  {getImage(commandeSelectionnee) ? (
+                    <img src={getImage(commandeSelectionnee)} alt={commandeSelectionnee.produit_nom} className="w-full h-full object-cover" />
+                  ) : (
+                    <Truck className="w-5 h-5 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {commandeSelectionnee.produit_nom} — {commandeSelectionnee.quantite || 1} unité(s)
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {commandeSelectionnee.client_ville || "Ville non spécifiée"}
+                    {commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Client: {commandeSelectionnee.client_nom} — {commandeSelectionnee.client_telephone}
+                  </p>
+                </div>
               </div>
 
               {/* Warning */}
