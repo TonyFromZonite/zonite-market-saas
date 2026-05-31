@@ -407,6 +407,9 @@ export default function GestionCommandes() {
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{cmd.produit_nom}</h3>
                     <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label || cmd.statut}</Badge>
+                    {cmd.livraison_incluse && (
+                      <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">Livraison incluse</Badge>
+                    )}
                     {cmd.reference_commande && (
                       <span className="text-xs text-slate-400">{cmd.reference_commande}</span>
                     )}
