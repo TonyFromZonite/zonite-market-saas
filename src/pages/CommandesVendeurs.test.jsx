@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import CommandesVendeurs from "./CommandesVendeurs";
 
 vi.mock("@/components/useSessionGuard", () => ({
@@ -108,5 +109,50 @@ describe("CommandesVendeurs — vignette produit dans le détail", () => {
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute("src", "https://example.com/image.jpg");
     expect(img).toHaveClass("rounded-xl");
+  });
+});
+
+describe("CommandesVendeurs — récapitulatif livraison dans le détail", () => {
+  it("affiche le badge 'Livraison en sus' et la ligne des frais de livraison", async () => {
+    renderWithQueryClient(<CommandesVendeurs />);
+
+    const produitText = await screen.findByText(/Super Produit/);
+    fireEvent.click(produitText);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Livraison en sus/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Frais de livraison/)).toBeInTheDocument();
+    expect(screen.getByText(/à percevoir auprès du client/)).toBeInTheDocument();
+  });
+
+  it("affiche le badge 'Livraison incluse' et le libellé correspondant", async () => {
+    const mockIncluse = { ...mockCommande, livraison_incluse: true };
+
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === "commandes_vendeur") {
+        return createChain([mockIncluse]);
+      }
+      if (table === "coursiers") {
+        return createChain([]);
+      }
+      if (table === "villes_cameroun") {
+        return createChain([]);
+      }
+      return createChain(null);
+    });
+
+    renderWithQueryClient(<CommandesVendeurs />);
+
+    const produitText = await screen.findByText(/Super Produit/);
+    fireEvent.click(produitText);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Livraison incluse/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Frais de livraison/)).toBeInTheDocument();
+    expect(screen.getByText(/déjà inclus dans le prix client/)).toBeInTheDocument();
   });
 });
