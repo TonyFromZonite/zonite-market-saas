@@ -165,9 +165,12 @@ export default function CommandesVendeurs() {
         const prixFinalClient = Number(cmd.prix_final_client) || Number(cmd.prix_unitaire) || Number(produit.prix_vente) || 0;
         const prixGros = Number(produit.prix_gros) || 0;
         const prixAchat = Number(produit.prix_achat) || 0;
+        const fraisLivraison = Number(cmd.frais_livraison) || 0;
+        const livraisonIncluse = !!cmd.livraison_incluse;
 
-        // Commission vendeur = (prix_vente - prix_gros) × quantite
-        commissionVendeur = Math.max(0, (prixFinalClient - prixGros) * quantite);
+        // Commission vendeur : si livraison incluse dans le prix, on déduit les frais
+        const commissionBrute = (prixFinalClient - prixGros) * quantite;
+        commissionVendeur = Math.max(0, livraisonIncluse ? commissionBrute - fraisLivraison : commissionBrute);
         // Marge ZONITE = (prix_gros - prix_achat) × quantite
         const margeZonite = (prixGros - prixAchat) * quantite;
         const caVente = prixFinalClient * quantite;
