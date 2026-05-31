@@ -80,6 +80,7 @@ export default function FormulaireVente({ produits, vendeurs, onSubmit, enCours 
       coutLivraison: prixLivraison,
       commission,
       profitZonite,
+      livraison_incluse: !!donnees.livraison_incluse,
       produitSelectionne,
       vendeurSelectionne,
       ville: localisation.ville,
