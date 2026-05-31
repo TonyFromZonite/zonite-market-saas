@@ -1,17 +1,23 @@
 ## Objectif
-Quand un admin clique sur l'œil pour voir une commande dans `CommandesVendeurs.jsx`, afficher la vignette du produit dans le dialogue de détail (actuellement absente).
 
-## Changements dans `src/pages/CommandesVendeurs.jsx`
+Dans le dialogue de détail d'une commande côté admin (`/CommandesVendeurs`), indiquer clairement si le prix client inclut les frais de livraison ou non, en s'appuyant sur les champs déjà présents en base (`livraison_incluse`, `frais_livraison`).
 
-1. **Ligne 46** — Étendre le `select` Supabase pour inclure `images` du produit :
-   ```
-   .select("*, sellers!...(full_name), produits!...(prix_gros, images)")
-   ```
+## Changements
 
-2. **Dialogue détail (lignes 487–510)** — Ajouter une vignette `w-20 h-20` (image ronde/arrondie) en haut du contenu, juste après le `DialogHeader`. Source : premier élément de `commandeSelectionnee.produits?.images` (tableau JSONB). Fallback : icône `Truck` ou `Package` sur fond gris si aucune image. Lazy loading (`loading="lazy"`).
+Fichier : `src/pages/CommandesVendeurs.jsx`, bloc récapitulatif (lignes 507-517).
 
-3. Aucune modif backend, RLS ou logique métier — uniquement présentation.
+1. Sous la ligne « Prix client », ajouter un badge/texte :
+   - Si `commandeSelectionnee.livraison_incluse === true` → badge vert « Livraison incluse » + montant des frais (`frais_livraison`) en sous-texte.
+   - Sinon → badge orange « Livraison en sus » + montant des frais à percevoir auprès du client à la livraison.
+2. Ajouter une ligne dédiée « Frais de livraison » dans la grille pour afficher `formater(frais_livraison)` quand le montant est > 0.
 
-## Vérification
-- Tests Vitest (114) doivent rester verts
-- Build doit réussir
+Styling : tokens Tailwind existants (badges `bg-emerald-100/text-emerald-700` et `bg-orange-100/text-orange-700`), aucun changement de design system.
+
+## Hors-scope
+
+- Aucune modification de logique métier, RLS, query Supabase ou calcul de commission.
+- Aucun changement côté vendeur.
+
+## Test
+
+Mettre à jour `src/pages/CommandesVendeurs.test.jsx` pour vérifier l'affichage du label « Livraison incluse » / « Livraison en sus » selon `livraison_incluse` dans les données mockées.
