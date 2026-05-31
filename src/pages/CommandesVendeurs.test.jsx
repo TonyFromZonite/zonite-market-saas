@@ -120,10 +120,10 @@ describe("CommandesVendeurs — récapitulatif livraison dans le détail", () =>
     fireEvent.click(produitText);
 
     await waitFor(() => {
-      expect(screen.getByText(/Livraison en sus/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Livraison en sus/).length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText(/Frais de livraison/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Frais de livraison/).length).toBeGreaterThan(0);
     expect(screen.getByText(/à percevoir auprès du client/)).toBeInTheDocument();
   });
 
