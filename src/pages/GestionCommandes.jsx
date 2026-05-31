@@ -41,6 +41,22 @@ export default function GestionCommandes() {
     },
   });
 
+  // Fetch product images for all orders (single query, mapped by id)
+  const produitIds = Array.from(new Set(commandes.map((c) => c.produit_id).filter(Boolean)));
+  const { data: produitsImages = {} } = useQuery({
+    queryKey: ["commandes_produits_images", produitIds.sort().join(",")],
+    enabled: produitIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase.from("produits").select("id, images").in("id", produitIds);
+      const map = {};
+      (data || []).forEach((p) => {
+        map[p.id] = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null;
+      });
+      return map;
+    },
+  });
+  const getImage = (cmd) => (cmd?.produit_id ? produitsImages[cmd.produit_id] : null);
+
   const commandesFiltrees = filtreStatut === "all"
     ? commandes
     : commandes.filter(c => c.statut === filtreStatut);
