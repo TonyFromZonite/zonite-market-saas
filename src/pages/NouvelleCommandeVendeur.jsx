@@ -625,32 +625,87 @@ export default function NouvelleCommandeVendeur() {
         {produitSelectionne && prixFinal > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-[#1a1f5e]">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">📋 Résumé de la commande</h2>
-            <div className="space-y-1 text-sm">
-              <p>Produit: <strong>{produitSelectionne.nom}</strong> {variationKey && `(${variationKey})`}</p>
-              <p>Quantité: <strong>{qte}</strong></p>
-              <p>Prix unitaire: <strong>{formater(prixFinal)}</strong></p>
-              <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
-              <p>Livraison: <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
-              {estimationLivraison && (
-                livraisonIncluse ? (
-                  <p>Livraison : <strong>incluse dans le prix</strong> <span className="text-xs text-slate-500">(≈ {formater(fraisLivraisonEstime)} déduits de votre commission)</span></p>
-                ) : (
-                  <p>À régler au livreur : <strong>
-                    {estimationLivraison.min === estimationLivraison.max
-                      ? formater(estimationLivraison.min)
-                      : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
-                  </strong></p>
-                )
+            <div className="flex gap-3">
+              {Array.isArray(produitSelectionne.images) && produitSelectionne.images.length > 0 ? (
+                <img src={produitSelectionne.images[0]} alt={produitSelectionne.nom} className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-slate-200" loading="lazy" />
+              ) : (
+                <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 border border-slate-200">
+                  <Truck className="w-6 h-6 text-slate-400" />
+                </div>
               )}
-              <p>Commission estimée : <strong className="text-emerald-700">{formater(commission)}</strong></p>
-              <p className="text-xs text-slate-400">Le coursier sera attribué par l'administration.</p>
+              <div className="space-y-1 text-sm flex-1 min-w-0">
+                <p>Produit: <strong>{produitSelectionne.nom}</strong> {variationKey && `(${variationKey})`}</p>
+                <p>Quantité: <strong>{qte}</strong></p>
+                <p>Prix unitaire: <strong>{formater(prixFinal)}</strong></p>
+                <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
+                <p>Livraison: <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
+                {estimationLivraison && (
+                  livraisonIncluse ? (
+                    <p>Livraison : <strong>incluse dans le prix</strong> <span className="text-xs text-slate-500">(≈ {formater(fraisLivraisonEstime)} déduits de votre commission)</span></p>
+                  ) : (
+                    <p>À régler au livreur : <strong>
+                      {estimationLivraison.min === estimationLivraison.max
+                        ? formater(estimationLivraison.min)
+                        : `${formater(estimationLivraison.min)} — ${formater(estimationLivraison.max)}`}
+                    </strong></p>
+                  )
+                )}
+                <p>Commission estimée : <strong className="text-emerald-700">{formater(commission)}</strong></p>
+                <p className="text-xs text-slate-400">Le coursier sera attribué par l'administration.</p>
+              </div>
             </div>
           </div>
         )}
 
-        <Button onClick={soumettre} disabled={enCours} className="w-full h-12 bg-[#1a1f5e] hover:bg-[#141952] text-white font-bold text-base">
+        <Button onClick={() => setConfirmOpen(true)} disabled={enCours} className="w-full h-12 bg-[#1a1f5e] hover:bg-[#141952] text-white font-bold text-base">
           {enCours ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer la commande →"}
         </Button>
+
+        <Dialog open={confirmOpen} onOpenChange={(o) => { if (!enCours) setConfirmOpen(o); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmer la commande</DialogTitle>
+              <DialogDescription>Vérifiez les informations du produit avant l'envoi à l'administration.</DialogDescription>
+            </DialogHeader>
+            {produitSelectionne ? (
+              <div className="space-y-3">
+                <div className="flex gap-3 p-3 bg-slate-50 rounded-xl">
+                  {Array.isArray(produitSelectionne.images) && produitSelectionne.images.length > 0 ? (
+                    <img src={produitSelectionne.images[0]} alt={produitSelectionne.nom} className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-slate-200" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 border border-slate-200">
+                      <Truck className="w-8 h-8 text-slate-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 text-sm">
+                    <p className="font-semibold text-slate-900 truncate">{produitSelectionne.nom}</p>
+                    {variationKey && <p className="text-xs text-slate-500">{variationKey}</p>}
+                    <p className="text-xs text-slate-600 mt-1">Quantité : <strong>{qte}</strong></p>
+                    <p className="text-xs text-slate-600">Total : <strong>{formater(prixFinal * qte)}</strong></p>
+                  </div>
+                </div>
+                <div className="text-sm space-y-1 text-slate-700">
+                  <p>Client : <strong>{form.client_nom || "—"}</strong> ({form.client_telephone || "—"})</p>
+                  <p>Livraison : <strong>{villeText.trim() || "—"}{quartierText.trim() ? `, ${quartierText.trim()}` : ""}</strong></p>
+                  <p>Mode : <strong>{livraisonIncluse ? "Livraison incluse dans le prix" : "Livraison payée au livreur"}</strong></p>
+                  <p>Commission estimée : <strong className="text-emerald-700">{formater(commission)}</strong></p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Aucun produit sélectionné.</p>
+            )}
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={enCours} className="flex-1">Modifier</Button>
+              <Button
+                onClick={async () => { await soumettre(); setConfirmOpen(false); }}
+                disabled={enCours}
+                className="flex-1 bg-[#1a1f5e] hover:bg-[#141952] text-white"
+              >
+                {enCours ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer et envoyer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
