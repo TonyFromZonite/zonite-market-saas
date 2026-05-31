@@ -420,6 +420,12 @@ export default function NouvelleCommandeVendeur() {
         {/* Mode de paiement livraison */}
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <h2 className="font-semibold text-slate-900 text-sm">Paiement de la livraison</h2>
+          {!localStorageDisponible && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              Mode navigation privée détecté. Votre choix sera conservé pendant cette session, mais ne sera pas mémorisé après rechargement.
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
