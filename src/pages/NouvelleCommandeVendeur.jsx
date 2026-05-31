@@ -15,11 +15,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
-  const [form, setForm] = useState({
-    produit_id: "", quantite: 1, prix_final_client: "",
-    client_nom: "", client_telephone: "", client_adresse: "",
-    notes: "",
-    mode_paiement_livraison: "separe", // "separe" = client paye au livreur, "inclus" = inclus dans le prix
+  const [form, setForm] = useState(() => {
+    let modeInitial = "separe";
+    try {
+      const saved = localStorage.getItem("zonite_mode_paiement_livraison");
+      if (saved === "inclus" || saved === "separe") modeInitial = saved;
+    } catch {}
+    return {
+      produit_id: "", quantite: 1, prix_final_client: "",
+      client_nom: "", client_telephone: "", client_adresse: "",
+      notes: "",
+      mode_paiement_livraison: modeInitial, // persisté entre les commandes
+    };
   });
   const [villeText, setVilleText] = useState("");
   const [quartierText, setQuartierText] = useState("");
@@ -96,7 +103,13 @@ export default function NouvelleCommandeVendeur() {
     },
   });
 
-  const modifier = (champ, val) => { setForm((p) => ({ ...p, [champ]: val })); setErreur(""); };
+  const modifier = (champ, val) => {
+    setForm((p) => ({ ...p, [champ]: val }));
+    setErreur("");
+    if (champ === "mode_paiement_livraison") {
+      try { localStorage.setItem("zonite_mode_paiement_livraison", val); } catch {}
+    }
+  };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = produitSelectionne?.variations || [];
 
