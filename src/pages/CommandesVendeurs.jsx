@@ -527,7 +527,7 @@ export default function CommandesVendeurs() {
           <div className="p-8 text-center text-slate-400">Aucune commande</div>
         )}
         {commandesFiltrees.map(c => (
-          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); }}>
+          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); setEditLivraisonIncluse(!!c.livraison_incluse); setEditFraisLivraison(String(Number(c.frais_livraison) || 0)); setMessageVendeur(""); }}>
             <div className="flex-1 min-w-0 mr-3">
               <p className="font-medium text-sm text-slate-900 truncate">{c.produit_nom} <span className="text-slate-400 font-normal">× {c.quantite}</span></p>
               <p className="text-xs text-slate-500">{c.vendeur_nom} → {c.client_nom} ({c.client_ville})</p>
