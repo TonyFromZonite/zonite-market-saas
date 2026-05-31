@@ -492,7 +492,17 @@ export default function CommandesVendeurs() {
           </DialogHeader>
           {commandeSelectionnee && (
             <div className="space-y-4 text-sm">
-              <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
+              <div className="flex items-center gap-3">
+                {Array.isArray(commandeSelectionnee.produits?.images) && commandeSelectionnee.produits.images[0] ? (
+                  <img src={commandeSelectionnee.produits.images[0]} alt={commandeSelectionnee.produit_nom} loading="lazy" className="w-20 h-20 rounded-xl object-cover border border-slate-200 flex-shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-8 h-8 text-slate-400" />
+                  </div>
+                )}
+                <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
+              </div>
+
 
               <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
                 <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
