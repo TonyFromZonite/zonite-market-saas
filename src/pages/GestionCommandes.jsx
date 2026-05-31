@@ -41,6 +41,22 @@ export default function GestionCommandes() {
     },
   });
 
+  // Fetch product images for all orders (single query, mapped by id)
+  const produitIds = Array.from(new Set(commandes.map((c) => c.produit_id).filter(Boolean)));
+  const { data: produitsImages = {} } = useQuery({
+    queryKey: ["commandes_produits_images", produitIds.sort().join(",")],
+    enabled: produitIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase.from("produits").select("id, images").in("id", produitIds);
+      const map = {};
+      (data || []).forEach((p) => {
+        map[p.id] = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null;
+      });
+      return map;
+    },
+  });
+  const getImage = (cmd) => (cmd?.produit_id ? produitsImages[cmd.produit_id] : null);
+
   const commandesFiltrees = filtreStatut === "all"
     ? commandes
     : commandes.filter(c => c.statut === filtreStatut);
@@ -403,7 +419,15 @@ export default function GestionCommandes() {
           commandesFiltrees.map((cmd) => (
             <div key={cmd.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <div className="flex-1">
+                {/* Product thumbnail */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center border border-slate-200">
+                  {getImage(cmd) ? (
+                    <img src={getImage(cmd)} alt={cmd.produit_nom} loading="lazy" className="w-full h-full object-cover" />
+                  ) : (
+                    <Truck className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{cmd.produit_nom}</h3>
                     <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label || cmd.statut}</Badge>
@@ -445,18 +469,27 @@ export default function GestionCommandes() {
           {commandeSelectionnee && (
             <div className="space-y-5">
               {/* Order summary */}
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm font-medium text-slate-800">
-                  {commandeSelectionnee.produit_nom} — {commandeSelectionnee.quantite || 1} unité(s)
-                </p>
-                <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {commandeSelectionnee.client_ville || "Ville non spécifiée"}
-                  {commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Client: {commandeSelectionnee.client_nom} — {commandeSelectionnee.client_telephone}
-                </p>
+              <div className="bg-slate-50 rounded-lg p-3 flex gap-3">
+                <div className="w-14 h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center border border-slate-200">
+                  {getImage(commandeSelectionnee) ? (
+                    <img src={getImage(commandeSelectionnee)} alt={commandeSelectionnee.produit_nom} className="w-full h-full object-cover" />
+                  ) : (
+                    <Truck className="w-5 h-5 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {commandeSelectionnee.produit_nom} — {commandeSelectionnee.quantite || 1} unité(s)
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {commandeSelectionnee.client_ville || "Ville non spécifiée"}
+                    {commandeSelectionnee.client_quartier ? `, ${commandeSelectionnee.client_quartier}` : ""}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Client: {commandeSelectionnee.client_nom} — {commandeSelectionnee.client_telephone}
+                  </p>
+                </div>
               </div>
 
               {/* Warning */}
