@@ -34,6 +34,10 @@ export default function CommandesVendeurs() {
   const [enCours, setEnCours] = useState(false);
   const [modalRetour, setModalRetour] = useState(false);
   const [retourForm, setRetourForm] = useState({ raison: "client_refuse", raison_detail: "", quantite: 1 });
+  const [editLivraisonIncluse, setEditLivraisonIncluse] = useState(false);
+  const [editFraisLivraison, setEditFraisLivraison] = useState("");
+  const [messageVendeur, setMessageVendeur] = useState("");
+  const [enregistrementLivraison, setEnregistrementLivraison] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -50,11 +54,15 @@ export default function CommandesVendeurs() {
       return (data || []).map(c => {
         const prixGros = Number(c.produits?.prix_gros) || Number(c.prix_unitaire) || 0;
         const prixFinal = Number(c.prix_final_client) || 0;
+        const quantite = c.quantite || 1;
+        const fraisLivraison = Number(c.frais_livraison) || 0;
+        const livraisonIncluse = !!c.livraison_incluse;
+        const commissionBrute = (prixFinal - prixGros) * quantite;
+        const commission = Math.max(0, livraisonIncluse ? commissionBrute - fraisLivraison : commissionBrute);
         return {
           ...c,
           vendeur_nom: c.sellers?.full_name || c.vendeur_email,
-          // Commission = (prix_final_client - prix_gros) × quantite
-          commission_calculee: Math.max(0, (prixFinal - prixGros) * (c.quantite || 1)),
+          commission_calculee: commission,
         };
       });
     },
@@ -73,6 +81,55 @@ export default function CommandesVendeurs() {
   });
 
   const nbEnAttente = commandes.filter(c => c.statut === "en_attente_validation_admin").length;
+
+  const appliquerModificationLivraison = async () => {
+    if (!commandeSelectionnee) return;
+    const msg = messageVendeur.trim();
+    if (!msg) return;
+    const nouveauFrais = Math.max(0, Number(editFraisLivraison) || 0);
+    const ancienFrais = Number(commandeSelectionnee.frais_livraison) || 0;
+    const ancienIncluse = !!commandeSelectionnee.livraison_incluse;
+    const nouvelleIncluse = !!editLivraisonIncluse;
+
+    if (nouveauFrais === ancienFrais && nouvelleIncluse === ancienIncluse) return;
+
+    setEnregistrementLivraison(true);
+    try {
+      const { error } = await supabase
+        .from("commandes_vendeur")
+        .update({ frais_livraison: nouveauFrais, livraison_incluse: nouvelleIncluse })
+        .eq("id", commandeSelectionnee.id);
+      if (error) throw error;
+
+      const recap = `\n\nAncien frais : ${ancienFrais.toLocaleString("fr-FR")} FCFA (${ancienIncluse ? "incluse" : "en sus"})\nNouveau frais : ${nouveauFrais.toLocaleString("fr-FR")} FCFA (${nouvelleIncluse ? "incluse dans le prix client" : "à percevoir auprès du client"})`;
+
+      await supabase.from("notifications_vendeur").insert({
+        vendeur_id: commandeSelectionnee.vendeur_id,
+        vendeur_email: commandeSelectionnee.vendeur_email,
+        titre: "Modification des frais de livraison",
+        message: `${msg}${recap}`,
+        type: "info",
+      });
+
+      try {
+        await adminApi.createJournalAudit({
+          action: "Modification frais livraison",
+          module: "commande",
+          details: `Commande ${commandeSelectionnee.id} — frais ${ancienFrais} → ${nouveauFrais}, incluse ${ancienIncluse} → ${nouvelleIncluse}. Message: ${msg}`,
+          entite_id: commandeSelectionnee.id,
+        });
+      } catch (e) { console.warn("audit:", e); }
+
+      setCommandeSelectionnee(c => c ? { ...c, frais_livraison: nouveauFrais, livraison_incluse: nouvelleIncluse } : c);
+      setMessageVendeur("");
+      queryClient.invalidateQueries({ queryKey: ["commandes_vendeurs_admin"] });
+    } catch (err) {
+      console.error("appliquerModificationLivraison:", err);
+    }
+    setEnregistrementLivraison(false);
+  };
+
+
 
   const validerCommande = async () => {
     setEnCours(true);
@@ -470,7 +527,7 @@ export default function CommandesVendeurs() {
           <div className="p-8 text-center text-slate-400">Aucune commande</div>
         )}
         {commandesFiltrees.map(c => (
-          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); }}>
+          <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); setEditLivraisonIncluse(!!c.livraison_incluse); setEditFraisLivraison(String(Number(c.frais_livraison) || 0)); setMessageVendeur(""); }}>
             <div className="flex-1 min-w-0 mr-3">
               <p className="font-medium text-sm text-slate-900 truncate">{c.produit_nom} <span className="text-slate-400 font-normal">× {c.quantite}</span></p>
               <p className="text-xs text-slate-500">{c.vendeur_nom} → {c.client_nom} ({c.client_ville})</p>
@@ -536,6 +593,49 @@ export default function CommandesVendeurs() {
                 {commandeSelectionnee.coursier_nom && <div className="col-span-2"><p className="text-slate-400 text-xs">Coursier</p><p className="font-medium">{commandeSelectionnee.coursier_nom}</p></div>}
                 {commandeSelectionnee.notes && <div className="col-span-2"><p className="text-slate-400 text-xs">Notes vendeur</p><p>{commandeSelectionnee.notes}</p></div>}
               </div>
+
+              {!["livree", "echec_livraison", "annulee"].includes(commandeSelectionnee.statut) && (
+                <div className="border border-slate-200 rounded-xl p-3 space-y-3 bg-white">
+                  <p className="text-xs font-semibold text-slate-700">Ajuster les frais de livraison</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditLivraisonIncluse(true)}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${editLivraisonIncluse ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}`}
+                    >Livraison incluse</button>
+                    <button
+                      type="button"
+                      onClick={() => setEditLivraisonIncluse(false)}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${!editLivraisonIncluse ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}`}
+                    >Livraison en sus</button>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 text-xs font-medium">Frais de livraison (FCFA)</label>
+                    <Input type="number" min="0" value={editFraisLivraison} onChange={e => setEditFraisLivraison(e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 text-xs font-medium">Message au vendeur (obligatoire)</label>
+                    <Textarea value={messageVendeur} onChange={e => setMessageVendeur(e.target.value)} placeholder="Expliquez la raison de la modification..." rows={2} />
+                  </div>
+                  <p className="text-[11px] text-slate-500">Cette modification s'applique uniquement à cette commande et impactera la commission du vendeur à la livraison.</p>
+                  <Button
+                    onClick={appliquerModificationLivraison}
+                    disabled={
+                      enregistrementLivraison ||
+                      !messageVendeur.trim() ||
+                      (
+                        (Math.max(0, Number(editFraisLivraison) || 0) === (Number(commandeSelectionnee.frais_livraison) || 0)) &&
+                        (!!editLivraisonIncluse === !!commandeSelectionnee.livraison_incluse)
+                      )
+                    }
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white"
+                  >
+                    {enregistrementLivraison ? "Enregistrement..." : "Appliquer la modification"}
+                  </Button>
+                </div>
+              )}
+
+
 
               <div className="space-y-1">
                 <label className="text-slate-500 text-xs font-medium">Note admin (visible par le vendeur)</label>
