@@ -594,6 +594,49 @@ export default function CommandesVendeurs() {
                 {commandeSelectionnee.notes && <div className="col-span-2"><p className="text-slate-400 text-xs">Notes vendeur</p><p>{commandeSelectionnee.notes}</p></div>}
               </div>
 
+              {!["livree", "echec_livraison", "annulee"].includes(commandeSelectionnee.statut) && (
+                <div className="border border-slate-200 rounded-xl p-3 space-y-3 bg-white">
+                  <p className="text-xs font-semibold text-slate-700">Ajuster les frais de livraison</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditLivraisonIncluse(true)}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${editLivraisonIncluse ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}`}
+                    >Livraison incluse</button>
+                    <button
+                      type="button"
+                      onClick={() => setEditLivraisonIncluse(false)}
+                      className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${!editLivraisonIncluse ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}`}
+                    >Livraison en sus</button>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 text-xs font-medium">Frais de livraison (FCFA)</label>
+                    <Input type="number" min="0" value={editFraisLivraison} onChange={e => setEditFraisLivraison(e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 text-xs font-medium">Message au vendeur (obligatoire)</label>
+                    <Textarea value={messageVendeur} onChange={e => setMessageVendeur(e.target.value)} placeholder="Expliquez la raison de la modification..." rows={2} />
+                  </div>
+                  <p className="text-[11px] text-slate-500">Cette modification s'applique uniquement à cette commande et impactera la commission du vendeur à la livraison.</p>
+                  <Button
+                    onClick={appliquerModificationLivraison}
+                    disabled={
+                      enregistrementLivraison ||
+                      !messageVendeur.trim() ||
+                      (
+                        (Math.max(0, Number(editFraisLivraison) || 0) === (Number(commandeSelectionnee.frais_livraison) || 0)) &&
+                        (!!editLivraisonIncluse === !!commandeSelectionnee.livraison_incluse)
+                      )
+                    }
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white"
+                  >
+                    {enregistrementLivraison ? "Enregistrement..." : "Appliquer la modification"}
+                  </Button>
+                </div>
+              )}
+
+
+
               <div className="space-y-1">
                 <label className="text-slate-500 text-xs font-medium">Note admin (visible par le vendeur)</label>
                 <Textarea value={notesAdmin} onChange={e => setNotesAdmin(e.target.value)} placeholder="Message au vendeur..." rows={2} />
