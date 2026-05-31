@@ -419,7 +419,15 @@ export default function GestionCommandes() {
           commandesFiltrees.map((cmd) => (
             <div key={cmd.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <div className="flex-1">
+                {/* Product thumbnail */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center border border-slate-200">
+                  {getImage(cmd) ? (
+                    <img src={getImage(cmd)} alt={cmd.produit_nom} loading="lazy" className="w-full h-full object-cover" />
+                  ) : (
+                    <Truck className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{cmd.produit_nom}</h3>
                     <Badge className={STATUTS[cmd.statut]?.color}>{STATUTS[cmd.statut]?.label || cmd.statut}</Badge>
