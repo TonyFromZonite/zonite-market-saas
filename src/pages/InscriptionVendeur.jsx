@@ -289,27 +289,41 @@ export default function InscriptionVendeur() {
     }
   };
 
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const t = setInterval(() => setCooldownLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownLeft]);
+
   const renvoyerCode = async () => {
+    if (reenvoyerDisable || cooldownLeft > 0) return;
     setReenvoyerDisable(true);
     try {
-      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await supabase.from("sellers").update({
-        email_verification_code: newCode,
-        email_verification_expires_at: expiresAt,
-      }).eq("id", sellerId);
-      try {
-        await supabase.functions.invoke("send-verification-email", {
-          body: { email: form.email.toLowerCase().trim(), nom: form.full_name, code: newCode },
-        });
-      } catch {}
-      toast({ title: "📨 Code renvoyé !" });
-      setTimeout(() => setReenvoyerDisable(false), 30000);
-    } catch {
+      const { data, error } = await supabase.functions.invoke("resend-verification-code", {
+        body: { seller_id: sellerId, email: form.email.toLowerCase().trim() },
+      });
+      if (error || data?.error) {
+        const retry = data?.retry_after || 0;
+        if (retry > 0) setCooldownLeft(retry);
+        setErreur(data?.error || error?.message || "Erreur lors de l'envoi du code");
+        toast({ title: "⏳ Trop de tentatives", description: data?.error || "Patientez avant de réessayer", variant: "destructive" });
+        return;
+      }
+      const cd = data?.cooldown_seconds || 60;
+      setCooldownLeft(cd);
+      toast({
+        title: "📨 Code renvoyé !",
+        description: `Tentatives : ${data?.attempts_used}/${data?.attempts_max}`,
+      });
+    } catch (e) {
       setErreur("Erreur lors de l'envoi du code");
+    } finally {
       setReenvoyerDisable(false);
     }
   };
+
 
   const usernameOk = form.username?.length >= 3 && !errors.username && !checking.username;
   const emailOk = form.email.includes("@") && !errors.email && !checking.email;
