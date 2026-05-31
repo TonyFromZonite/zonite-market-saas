@@ -46,9 +46,12 @@ function ListeVendeurs() {
   const [vendeurRoleEdite, setVendeurRoleEdite] = useState(null);
   const [nouveauRoleVendeur, setNouveauRoleVendeur] = useState("user");
   const [ajustVendeur, setAjustVendeur] = useState(null);
+  const [purgeDialogOuvert, setPurgeDialogOuvert] = useState(false);
+  const [purgeEnCours, setPurgeEnCours] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { isAdmin } = useAdminAccess();
+
 
   const { data: vendeurs = [], isLoading } = useQuery({
     queryKey: ["vendeurs"],
