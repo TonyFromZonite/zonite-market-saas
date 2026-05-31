@@ -697,7 +697,7 @@ export default function NouvelleCommandeVendeur() {
             <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={enCours} className="flex-1">Modifier</Button>
               <Button
-                onClick={async () => { await soumettre(); setConfirmOpen(false); }}
+                onClick={async () => { setErreur(""); await soumettre(); }}
                 disabled={enCours}
                 className="flex-1 bg-[#1a1f5e] hover:bg-[#141952] text-white"
               >
