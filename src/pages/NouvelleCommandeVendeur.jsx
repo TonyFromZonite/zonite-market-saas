@@ -498,7 +498,10 @@ export default function NouvelleCommandeVendeur() {
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {v.options.map((opt) => {
-                        const available = isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const available = coursierIdsForLocation
+                          ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
+                          : isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
                         const isSelected = selectedVariations[v.nom] === opt.value;
                         return (
                           <button
