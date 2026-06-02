@@ -1,80 +1,54 @@
 ## Objectif
 
-Lier les images d'un produit à une variation "image" (typiquement la Couleur) pour qu'un vendeur voie immédiatement les déclinaisons disponibles, masquer celles en rupture, autoriser des prix par variation, et garantir que le stock global d'une agence soit la somme des variations (avec sortie définitive à la livraison — comportement actuel conservé).
+Rendre la disponibilité d'une variation **dépendante du coursier / ville / quartier** de livraison, pas seulement du stock global produit.
 
-## Modèle de données (JSONB sur `produits`, pas de nouvelle table)
+## Constat
 
-Structure variations enrichie :
-```
-variations: [
-  {
-    id, nom: "Couleur",
-    is_image_variation: true,
-    options: [
-      { value: "Rouge", image_url: "...", prix_gros, prix_achat, prix_vente_conseille },
-      { value: "Bleu",  image_url: "...", prix_gros, ... }
-    ]
-  },
-  {
-    id, nom: "Taille",
-    is_image_variation: false,
-    options: [ { value: "M" }, { value: "L" } ]   // pas d'image, pas de prix
-  }
-]
-```
+Aujourd'hui dans `variationHelpers.js`, `getOptionStock(produit, varName, value)` **additionne le stock de toutes les agences**. Donc :
+- Côté `ProduitDetail.jsx`, `CatalogueVendeur.jsx`, `NouvelleCommandeVendeur.jsx`, une couleur/taille apparaît "disponible" même si elle n'existe que chez un coursier d'une autre ville.
+- Seul `SelecteurLocalisation.jsx` (utilisé dans la vente directe admin) calcule déjà par coursier.
 
-- Une seule variation peut avoir `is_image_variation = true` (typiquement Couleur).
-- Les prix par option sont **optionnels** ; si absents → fallback sur le prix produit.
-- `produits.images` reste pour l'image principale (vitrine catalogue, partage).
-- Pas de changement de schéma SQL : tout reste dans le JSONB `variations` (compatible existant). Migration douce côté code : les anciennes `options: ["Rouge", "Bleu"]` sont relues comme `[{value:"Rouge"}, {value:"Bleu"}]`.
+L'écran admin `DialogProduit.jsx` permet bien d'éditer `stocks_par_coursier[*].stock_par_variation[*].quantite` par coursier — le modèle de données est donc correct, c'est uniquement la **lecture côté vendeur** qui ne segmente pas.
 
-## Stock
+## Changements (frontend uniquement, aucune migration SQL)
 
-- Règle confirmée : **réservation à la création de commande + sortie définitive à la livraison** (comportement actuel, déjà dans `stockManager.js`). Aucun changement de logique.
-- `stock_global` produit = somme `stocks_par_coursier[*].stock_total` (déjà calculé).
-- `stock_total` par coursier = somme des `stock_par_variation[*].quantite` (déjà calculé dans `DialogProduit`). On verrouille l'UI pour empêcher la saisie manuelle d'un total divergent.
-- Une option de variation est "disponible" si `Σ quantite (toutes agences) > 0` pour les `variation_key` qui contiennent cette option.
+### 1. `src/lib/variationHelpers.js`
+Ajouter deux helpers, sans casser l'API actuelle :
+- `getOptionStockInCoursiers(produit, varName, value, coursierIds)` — comme `getOptionStock` mais filtré sur un `Set` de `coursier_id`. Si `coursierIds` est `null`/`undefined`, retombe sur le comportement global existant.
+- `isOptionAvailableInCoursiers(produit, varName, value, coursierIds)` — booléen équivalent.
+- Helper utilitaire `getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, villeId, quartierId?)` qui renvoie le `Set` des coursiers couvrant une ville (via `ville_id` direct) ou un quartier (via `zones_livraison.quartiers_ids` + `coursiers.zones_livraison_ids`). Si `quartierId` fourni, restreindre aux coursiers couvrant ce quartier exact.
 
-## UI Admin (`src/components/produits/DialogProduit.jsx`)
+### 2. `src/pages/NouvelleCommandeVendeur.jsx`
+- Calculer `coursierIdsForLocation` à partir de `matchedVille` (+ `matchedQuartier` quand connu), via le nouveau helper.
+- Dans les deux `v.options.map(...)` (lignes ~459 et ~483), remplacer `isOptionAvailable(produitSelectionne, v.nom, opt.value)` par `isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)` **dès qu'une ville est saisie**. Tant qu'aucune ville n'est saisie, garder le comportement actuel (global) pour ne pas bloquer la sélection préalable.
+- Afficher le badge "Rupture dans {ville}" plutôt que "Rupture" générique quand le filtre est actif.
+- Le `stockInCity` existant (lignes 170-199) continue d'agir comme garde finale au submit — inchangé.
 
-1. Onglet **Variations** : ajout d'un toggle "Cette variation porte les images" (une seule active). Pour chaque option : champ image (upload + URL) si la variation est porteuse d'images, et 3 champs prix optionnels (gros / achat / vente conseillé).
-2. Onglet **Images** : libellé clarifié "Image principale du produit (vitrine catalogue)". Les images de variations sont gérées dans l'onglet Variations.
-3. Onglet **Stock** : badge récap par option image (ex: "Rouge: 12, Bleu: 0") + bouton "Auto-générer entrée stock pour tous les coursiers" inchangé.
+### 3. `src/pages/ProduitDetail.jsx`
+- Récupérer `coursiers`, `zones_livraison`, `quartiers`, `villes` via `useQuery`.
+- Lire la ville/quartier du vendeur depuis `compteVendeur` (`session` → table `sellers` → `ville`, `quartier`).
+- Calculer `coursierIdsForVendeur` et passer aux appels `isOptionAvailable` (lignes 179 et 215). Si le vendeur n'a pas de ville renseignée, fallback global.
+- Afficher sous chaque option image en rupture locale : `Indisponible à {ville}` au lieu de juste "Rupture".
 
-## UI Vendeur
+### 4. `src/pages/CatalogueVendeur.jsx`
+- Même approche : utiliser la ville du vendeur pour filtrer les vignettes couleurs (lignes 317, 353, 354). Fallback global si pas de ville.
 
-- **`ProduitDetail.jsx`** : nouvelle section "Choisir une variation" sous l'image principale qui affiche une grille d'images cliquables (issues de la variation porteuse d'images). Cliquer change l'image affichée + pré-sélectionne la variation pour le bouton Commander. Les options dont le stock = 0 sont grisées avec badge "Rupture" et non cliquables. Si plusieurs variations (ex: Couleur+Taille), un second sélecteur (chips) apparaît pour la Taille filtré par couleur choisie.
-- **`CatalogueVendeur.jsx`** : pastilles miniatures (4 max) des couleurs disponibles sous la carte produit.
-- **`NouvelleCommandeVendeur.jsx` / `FormulaireVente.jsx`** : le sélecteur de variation utilise les images au lieu de simples libellés, le prix affiché reflète le prix de la variation si défini.
-- **`ShareProductModal.jsx`** : le calcul de commission utilise le `prix_gros` de la variation choisie si présent.
+### 5. Tests — `src/test/audit-05-produits.test.ts`
+Ajouter 3 cas :
+- Une option présente uniquement chez coursier A est **disponible** quand `coursierIds = {A}`, **indisponible** quand `coursierIds = {B}`.
+- Une option dont le stock est 0 chez tous les coursiers d'une ville est indisponible même si elle existe dans une autre ville.
+- `getCoursierIdsForVille` renvoie l'union (coursiers via `ville_id` + coursiers via `zones_livraison_ids` couvrant un quartier de la ville).
 
-## Migration données existantes
+## Hors scope
 
-Aucune migration SQL. À la lecture côté client, un helper `normalizeVariations(variations)` :
-- convertit `options: ["X","Y"]` → `[{value:"X"}, {value:"Y"}]`
-- ajoute `is_image_variation: false` si manquant
-Les anciens produits restent fonctionnels ; admin ajoute progressivement images & prix variation.
-
-## Tests & vérification
-
-- Build (auto).
-- Vitest : ajouter 3 cas dans `audit-05-produits.test.ts` (normalisation variations, calcul stock global = Σ variations, indisponibilité d'une option si stock = 0).
-- Vérifier rendu visuel `ProduitDetail` sur viewport mobile.
+- Aucune modification de schéma DB, RLS, edge function ou logique de réservation/déduction de stock (toujours réservation à la création + sortie définitive à la livraison).
+- `DialogProduit.jsx` (admin) inchangé : le modèle de données autorise déjà des stocks différents par coursier et par variation.
+- `SelecteurLocalisation.jsx` inchangé (déjà correct).
 
 ## Fichiers touchés
 
-- `src/lib/variationHelpers.js` (nouveau) — `normalizeVariations`, `getOptionStock`, `getOptionPrice`, `isOptionAvailable`.
-- `src/components/produits/DialogProduit.jsx` — toggle image-variation, champs image/prix par option.
-- `src/pages/ProduitDetail.jsx` — sélecteur visuel de variation, image dynamique, prix dynamique.
-- `src/pages/CatalogueVendeur.jsx` — pastilles couleurs disponibles.
-- `src/pages/NouvelleCommandeVendeur.jsx` — sélecteur image + prix variation.
-- `src/components/vente/FormulaireVente.jsx` — idem.
-- `src/components/vendor/ShareProductModal.jsx` — prix gros variation.
-- `src/components/ModeDemoClient.jsx` — afficher image variation sélectionnée.
-- `src/test/audit-05-produits.test.ts` — +3 tests.
-
-## Hors périmètre (à confirmer si besoin plus tard)
-
-- Pas de nouvelle table SQL.
-- Pas de changement de la logique stock (réservation/livraison) — déjà conforme.
-- Pas de prix variation côté `ventes` (la vente enregistre le prix réel pratiqué, déjà OK).
+- `src/lib/variationHelpers.js`
+- `src/pages/NouvelleCommandeVendeur.jsx`
+- `src/pages/ProduitDetail.jsx`
+- `src/pages/CatalogueVendeur.jsx`
+- `src/test/audit-05-produits.test.ts`
