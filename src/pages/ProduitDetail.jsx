@@ -12,6 +12,8 @@ import {
   normalizeVariations,
   getImageVariation,
   isOptionAvailable,
+  isOptionAvailableInCoursiers,
+  getCoursierIdsForVille,
   getOptionStock,
   getEffectivePrices,
   getDisplayImage,
