@@ -119,6 +119,82 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     expect(isOptionAvailableInCoursiers(produit, "Taille", "XL", new Set(["yaounde1"]))).toBe(true);
   });
 
+  it("5.12bis un coursier a une variation, un autre ne l'a pas", async () => {
+    const { isOptionAvailableInCoursiers, getOptionStockInCoursiers } = await import("@/lib/variationHelpers");
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "cA", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 4 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+        { coursier_id: "cB", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 7 },
+        ] },
+      ],
+    };
+    // Rouge dispo uniquement chez cA
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Rouge", new Set(["cA"]))).toBe(true);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Rouge", new Set(["cB"]))).toBe(false);
+    // Bleu dispo uniquement chez cB
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Bleu", new Set(["cA"]))).toBe(false);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Bleu", new Set(["cB"]))).toBe(true);
+    // Stocks correctement segmentés
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Rouge", new Set(["cA"]))).toBe(4);
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Bleu", new Set(["cB"]))).toBe(7);
+  });
+
+  it("5.12ter variation dispo dans une ville mais pas dans l'autre via getCoursierIdsForVille", async () => {
+    const { getCoursierIdsForVille, isOptionAvailableInCoursiers } = await import("@/lib/variationHelpers");
+    const quartiers = [
+      { id: "qD1", ville_id: "douala" },
+      { id: "qY1", ville_id: "yaounde" },
+    ];
+    const zonesLivraison: any[] = [];
+    const coursiers = [
+      { id: "cDouala", ville_id: "douala", zones_livraison_ids: [] },
+      { id: "cYaounde", ville_id: "yaounde", zones_livraison_ids: [] },
+    ];
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "cDouala", stock_par_variation: [{ variation_key: "Taille:XL", quantite: 5 }] },
+        { coursier_id: "cYaounde", stock_par_variation: [{ variation_key: "Taille:XL", quantite: 0 }] },
+      ],
+    };
+    const idsDouala = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, "douala");
+    const idsYaounde = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, "yaounde");
+    expect(isOptionAvailableInCoursiers(produit, "Taille", "XL", idsDouala)).toBe(true);
+    expect(isOptionAvailableInCoursiers(produit, "Taille", "XL", idsYaounde)).toBe(false);
+  });
+
+  it("5.12quater filtrage par quartier via zones_livraison", async () => {
+    const { getCoursierIdsForVille, isOptionAvailableInCoursiers } = await import("@/lib/variationHelpers");
+    const quartiers = [
+      { id: "qA", ville_id: "douala" },
+      { id: "qB", ville_id: "douala" },
+    ];
+    const zonesLivraison = [
+      { id: "zA", quartiers_ids: ["qA"] },
+      { id: "zB", quartiers_ids: ["qB"] },
+    ];
+    const coursiers = [
+      { id: "c1", ville_id: null, zones_livraison_ids: ["zA"] },
+      { id: "c2", ville_id: null, zones_livraison_ids: ["zB"] },
+    ];
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [{ variation_key: "Couleur:Vert", quantite: 2 }] },
+        { coursier_id: "c2", stock_par_variation: [{ variation_key: "Couleur:Vert", quantite: 0 }] },
+      ],
+    };
+    const idsQA = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, "douala", "qA");
+    const idsQB = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, "douala", "qB");
+    expect(idsQA.has("c1")).toBe(true);
+    expect(idsQA.has("c2")).toBe(false);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Vert", idsQA)).toBe(true);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Vert", idsQB)).toBe(false);
+  });
+
   it("5.12 getCoursierIdsForVille union ville_id + zones_livraison", async () => {
     const { getCoursierIdsForVille } = await import("@/lib/variationHelpers");
     const villeId = "v1";
