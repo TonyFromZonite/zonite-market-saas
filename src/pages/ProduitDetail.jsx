@@ -1,21 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Package, ExternalLink, Eye } from "lucide-react";
+import { ChevronLeft, Package, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import ShareProductModal from "@/components/vendor/ShareProductModal";
 import ModeDemoClient from "@/components/ModeDemoClient";
 import { getVendeurSession } from "@/components/useSessionGuard";
+import {
+  normalizeVariations,
+  getImageVariation,
+  isOptionAvailable,
+  getOptionStock,
+  getEffectivePrices,
+  getDisplayImage,
+} from "@/lib/variationHelpers";
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
   const navigate = useNavigate();
-  const [currentImage, setCurrentImage] = useState(0);
+  const [selected, setSelected] = useState({}); // { [varName]: optValue }
+  const [galleryIdx, setGalleryIdx] = useState(0);
   const [showDemo, setShowDemo] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const session = getVendeurSession();
+
   const { data: produit, isLoading } = useQuery({
     queryKey: ["produit_detail", produitId],
     queryFn: async () => {
@@ -29,6 +39,17 @@ export default function ProduitDetail() {
   });
 
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
+
+  const variations = useMemo(() => normalizeVariations(produit?.variations), [produit]);
+  const imageVar = useMemo(() => getImageVariation(produit?.variations), [produit]);
+  const prices = useMemo(() => getEffectivePrices(produit, selected), [produit, selected]);
+
+  // Image affichée : option image sélectionnée > galerie produit
+  const mainImage = useMemo(() => {
+    const fromOption = getDisplayImage(produit, selected);
+    if (imageVar && selected[imageVar.nom]) return fromOption;
+    return (produit?.images || [])[galleryIdx] || fromOption;
+  }, [produit, selected, imageVar, galleryIdx]);
 
   if (isLoading) {
     return (
@@ -53,7 +74,6 @@ export default function ProduitDetail() {
   }
 
   const images = produit.images || [];
-  const variations = produit.variations || [];
   const stockDispo = produit.stock_global || 0;
   const stockOk = stockDispo > 0;
   const categorieName = produit.categories?.nom;
@@ -70,23 +90,23 @@ export default function ProduitDetail() {
         <h1 className="text-base font-bold truncate">{produit.nom}</h1>
       </div>
 
-      {/* Image gallery */}
-      {images.length > 0 ? (
+      {/* Image principale */}
+      {mainImage ? (
         <div className="relative bg-white">
           <img
-            src={images[currentImage]}
+            src={mainImage}
             alt={produit.nom}
             className="w-full h-64 sm:h-80 object-contain bg-slate-50"
           />
-          {images.length > 1 && (
+          {images.length > 1 && !(imageVar && selected[imageVar.nom]) && (
             <div className="flex gap-2 p-3 overflow-x-auto">
               {images.map((img, i) => (
                 <img
                   key={i}
                   src={img}
                   alt={`${produit.nom} ${i + 1}`}
-                  onClick={() => setCurrentImage(i)}
-                  className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${i === currentImage ? 'border-amber-500' : 'border-transparent'}`}
+                  onClick={() => setGalleryIdx(i)}
+                  className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${i === galleryIdx ? 'border-amber-500' : 'border-transparent'}`}
                 />
               ))}
             </div>
@@ -115,12 +135,12 @@ export default function ProduitDetail() {
           )}
         </div>
 
-        {/* Price */}
+        {/* Price (dynamic with variation) */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-slate-400">Prix de gros</p>
-              <p className="text-2xl font-bold text-slate-900">{formater(produit.prix_gros)}</p>
+              <p className="text-2xl font-bold text-slate-900">{formater(prices.prix_gros)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400">Votre marge</p>
@@ -145,22 +165,73 @@ export default function ProduitDetail() {
           </div>
         )}
 
-        {/* Variations */}
+        {/* Sélecteur de variations : image-variation en haut (cliquable), autres en chips */}
         {variations.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold text-slate-900 text-sm mb-3">Variations disponibles</h3>
-            {variations.map((v, idx) => (
-              <div key={v.nom || idx} className="mb-3 last:mb-0">
-                <p className="text-xs text-slate-500 mb-1.5">{v.nom}</p>
-                <div className="flex flex-wrap gap-2">
-                  {(v.options || []).map(opt => (
-                    <span key={opt} className="px-3 py-1.5 bg-slate-100 rounded-lg text-xs text-slate-700 font-medium">
-                      {opt}
-                    </span>
-                  ))}
+          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+            <h3 className="font-semibold text-slate-900 text-sm">Choisir une variation</h3>
+            {variations.map((v) => {
+              if (v.is_image_variation) {
+                return (
+                  <div key={v.id}>
+                    <p className="text-xs text-slate-500 mb-2">{v.nom}</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {v.options.map((opt) => {
+                        const available = isOptionAvailable(produit, v.nom, opt.value);
+                        const isSelected = selected[v.nom] === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => setSelected((p) => ({ ...p, [v.nom]: opt.value }))}
+                            className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                              isSelected ? "border-amber-500" : "border-transparent"
+                            } ${!available ? "opacity-40 cursor-not-allowed grayscale" : "cursor-pointer hover:border-amber-300"}`}
+                          >
+                            {opt.image_url ? (
+                              <img src={opt.image_url} alt={opt.value} className="w-full aspect-square object-cover" />
+                            ) : (
+                              <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-slate-400 text-xs">
+                                {opt.value}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-center py-1 bg-white text-slate-700 font-medium truncate">{opt.value}</p>
+                            {!available && (
+                              <span className="absolute top-1 right-1 text-[9px] bg-red-500 text-white rounded px-1">Rupture</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+              // chips classiques (filtrées par dispo si une variation image est déjà choisie)
+              return (
+                <div key={v.id}>
+                  <p className="text-xs text-slate-500 mb-2">{v.nom}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {v.options.map((opt) => {
+                      const available = isOptionAvailable(produit, v.nom, opt.value);
+                      const isSelected = selected[v.nom] === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={!available}
+                          onClick={() => setSelected((p) => ({ ...p, [v.nom]: opt.value }))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-slate-100 text-slate-700 border-slate-200"
+                          } ${!available ? "opacity-40 cursor-not-allowed line-through" : "cursor-pointer hover:border-amber-300"}`}
+                        >
+                          {opt.value}{!available && " • Rupture"}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -184,8 +255,9 @@ export default function ProduitDetail() {
               state: {
                 produit_id: produit.id,
                 produit_nom: produit.nom,
-                prix_vente: produit.prix_vente,
-                prix_gros: produit.prix_gros,
+                prix_vente: prices.prix_vente,
+                prix_gros: prices.prix_gros,
+                selected_variations: selected,
               }
             })}
             className="w-full py-4 rounded-xl text-base font-bold text-white border-none cursor-pointer flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
@@ -205,7 +277,7 @@ export default function ProduitDetail() {
           Partager ce produit
         </button>
         {showShare && (
-          <ShareProductModal produit={produit} seller={session} onClose={() => setShowShare(false)} />
+          <ShareProductModal produit={produit} seller={session} selectedVariations={selected} onClose={() => setShowShare(false)} />
         )}
 
         {/* BUTTON 3 — Demo (Blue) */}
@@ -218,7 +290,6 @@ export default function ProduitDetail() {
         </button>
       </div>
 
-      {/* Demo overlay */}
       {showDemo && <ModeDemoClient produit={produit} onClose={() => setShowDemo(false)} />}
     </div>
   );
