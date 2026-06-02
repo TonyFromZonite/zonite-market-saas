@@ -275,7 +275,7 @@ export default function ProduitDetail() {
                             isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-slate-100 text-slate-700 border-slate-200"
                           } ${!available ? "opacity-40 cursor-not-allowed line-through" : "cursor-pointer hover:border-amber-300"}`}
                         >
-                          {opt.value}{!available && " • Rupture"}
+                          {opt.value}{!available && ` • ${ruptureLabel}`}
                         </button>
                       );
                     })}
