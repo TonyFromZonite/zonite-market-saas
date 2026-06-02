@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { normalizeVariations, isOptionAvailable, getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -69,6 +70,9 @@ export default function NouvelleCommandeVendeur() {
       }
       if (prefilledProduct?.produit_id) {
         setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
+        if (prefilledProduct.selected_variations && typeof prefilledProduct.selected_variations === "object") {
+          setSelectedVariations(prefilledProduct.selected_variations);
+        }
       } else {
         const params = new URLSearchParams(window.location.search);
         const produitId = params.get("produit_id");
@@ -126,7 +130,9 @@ export default function NouvelleCommandeVendeur() {
     }
   };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
-  const variations = produitSelectionne?.variations || [];
+  const variations = useMemo(() => normalizeVariations(produitSelectionne?.variations), [produitSelectionne]);
+  const effectivePrices = useMemo(() => getEffectivePrices(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
+  const displayImage = useMemo(() => getDisplayImage(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
 
   // Build variation key — empty string until ALL variations are selected,
   // so stock checks fall back to stock_total instead of looking up an
