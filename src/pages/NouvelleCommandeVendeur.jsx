@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { normalizeVariations, isOptionAvailable, getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
+import { normalizeVariations, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille, getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
@@ -166,6 +166,20 @@ export default function NouvelleCommandeVendeur() {
       : quartiers;
     return filtered.filter((q) => q.nom.toLowerCase().includes(t)).slice(0, 8);
   }, [quartierText, quartiers, matchedVille]);
+
+  // Quartier exact dans la ville (utilisé pour filtrer dispo + livraison)
+  const matchedQuartier = useMemo(() => {
+    if (!matchedVille || !quartierText.trim()) return null;
+    return quartiers.find(
+      (q) => q.nom.toLowerCase() === quartierText.toLowerCase().trim() && q.ville_id === matchedVille.id
+    ) || null;
+  }, [quartierText, quartiers, matchedVille]);
+
+  // Coursiers qui livrent dans cette ville/quartier — filtre la dispo des variations
+  const coursierIdsForLocation = useMemo(() => {
+    if (!matchedVille) return null; // pas de ville saisie → pas de filtre, dispo globale
+    return getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, matchedVille.id, matchedQuartier?.id);
+  }, [matchedVille, matchedQuartier, coursiers, zonesLivraison, quartiers]);
 
   // --- Check stock exists in this city ---
   const stockInCity = useMemo(() => {
@@ -457,7 +471,10 @@ export default function NouvelleCommandeVendeur() {
                   {v.is_image_variation ? (
                     <div className="grid grid-cols-4 gap-2">
                       {v.options.map((opt) => {
-                        const available = isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const available = coursierIdsForLocation
+                          ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
+                          : isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
                         const isSelected = selectedVariations[v.nom] === opt.value;
                         return (
                           <button
@@ -473,7 +490,7 @@ export default function NouvelleCommandeVendeur() {
                               <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 p-1 text-center">{opt.value}</div>
                             )}
                             <p className="text-[10px] text-center py-0.5 bg-white truncate">{opt.value}</p>
-                            {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">Rupture</span>}
+                            {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>}
                           </button>
                         );
                       })}
@@ -481,7 +498,10 @@ export default function NouvelleCommandeVendeur() {
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {v.options.map((opt) => {
-                        const available = isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const available = coursierIdsForLocation
+                          ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
+                          : isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
                         const isSelected = selectedVariations[v.nom] === opt.value;
                         return (
                           <button
@@ -491,7 +511,7 @@ export default function NouvelleCommandeVendeur() {
                             onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                           >
-                            {opt.value}{!available && " • Rupture"}
+                            {opt.value}{!available && ` • ${ruptureLabel}`}
                           </button>
                         );
                       })}

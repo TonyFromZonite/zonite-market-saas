@@ -93,4 +93,45 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     expect(p.prix_gros).toBe(1200);
     expect(p.prix_vente).toBe(1800);
   });
+
+  it("5.10 isOptionAvailableInCoursiers filtre par coursier", async () => {
+    const { isOptionAvailableInCoursiers } = await import("@/lib/variationHelpers");
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "cA", stock_par_variation: [{ variation_key: "Couleur:Rouge", quantite: 5 }] },
+        { coursier_id: "cB", stock_par_variation: [{ variation_key: "Couleur:Rouge", quantite: 0 }] },
+      ],
+    };
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Rouge", new Set(["cA"]))).toBe(true);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Rouge", new Set(["cB"]))).toBe(false);
+    expect(isOptionAvailableInCoursiers(produit, "Couleur", "Rouge", null)).toBe(true);
+  });
+
+  it("5.11 option indisponible dans une ville si stock=0 pour ses coursiers", async () => {
+    const { isOptionAvailableInCoursiers } = await import("@/lib/variationHelpers");
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "douala1", stock_par_variation: [{ variation_key: "Taille:XL", quantite: 0 }] },
+        { coursier_id: "yaounde1", stock_par_variation: [{ variation_key: "Taille:XL", quantite: 3 }] },
+      ],
+    };
+    expect(isOptionAvailableInCoursiers(produit, "Taille", "XL", new Set(["douala1"]))).toBe(false);
+    expect(isOptionAvailableInCoursiers(produit, "Taille", "XL", new Set(["yaounde1"]))).toBe(true);
+  });
+
+  it("5.12 getCoursierIdsForVille union ville_id + zones_livraison", async () => {
+    const { getCoursierIdsForVille } = await import("@/lib/variationHelpers");
+    const villeId = "v1";
+    const quartiers = [{ id: "q1", ville_id: "v1" }, { id: "q2", ville_id: "v2" }];
+    const zonesLivraison = [{ id: "z1", quartiers_ids: ["q1"] }, { id: "z2", quartiers_ids: ["q2"] }];
+    const coursiers = [
+      { id: "c1", ville_id: "v1", zones_livraison_ids: [] },
+      { id: "c2", ville_id: "v9", zones_livraison_ids: ["z1"] },
+      { id: "c3", ville_id: "v2", zones_livraison_ids: ["z2"] },
+    ];
+    const out = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, villeId);
+    expect(out.has("c1")).toBe(true);
+    expect(out.has("c2")).toBe(true);
+    expect(out.has("c3")).toBe(false);
+  });
 });

@@ -12,7 +12,7 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
-import { getImageVariation, isOptionAvailable } from "@/lib/variationHelpers";
+import { getImageVariation, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille } from "@/lib/variationHelpers";
 
 export default function CatalogueVendeur() {
   const navigate = useNavigate();
@@ -259,6 +259,38 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
     },
   });
 
+  // Logistique pour filtrer la dispo des vignettes par ville du vendeur
+  const { data: coursiersList = [] } = useQuery({
+    queryKey: ["coursiers_for_catalogue"],
+    queryFn: async () => (await supabase.from("coursiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: zonesLivList = [] } = useQuery({
+    queryKey: ["zones_livraison_for_catalogue"],
+    queryFn: async () => (await supabase.from("zones_livraison").select("*").eq("actif", true)).data || [],
+  });
+  const { data: quartiersList = [] } = useQuery({
+    queryKey: ["quartiers_for_catalogue"],
+    queryFn: async () => (await supabase.from("quartiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: villesList = [] } = useQuery({
+    queryKey: ["villes_for_catalogue"],
+    queryFn: async () => (await supabase.from("villes_cameroun").select("*").eq("actif", true)).data || [],
+  });
+  const coursierIdsForVendeur = React.useMemo(() => {
+    const villeNom = compteVendeur?.ville;
+    if (!villeNom) return null;
+    const v = villesList.find((x) => x.nom.toLowerCase() === villeNom.toLowerCase().trim());
+    if (!v) return null;
+    const q = compteVendeur?.quartier
+      ? quartiersList.find((qq) => qq.ville_id === v.id && qq.nom.toLowerCase() === compteVendeur.quartier.toLowerCase().trim())
+      : null;
+    return getCoursierIdsForVille(coursiersList, zonesLivList, quartiersList, v.id, q?.id);
+  }, [compteVendeur, villesList, quartiersList, zonesLivList, coursiersList]);
+  const optAvail = (p, varName, value) =>
+    coursierIdsForVendeur
+      ? isOptionAvailableInCoursiers(p, varName, value, coursierIdsForVendeur)
+      : isOptionAvailable(p, varName, value);
+
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
   const filtered = produits.filter(p =>
@@ -314,7 +346,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
               const imageUrl = (p.images && p.images.length > 0) ? p.images[0] : null;
               const imgVar = getImageVariation(p.variations);
               const availableOptions = imgVar
-                ? imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).slice(0, 4)
+                ? imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).slice(0, 4)
                 : [];
 
               return (
@@ -350,8 +382,8 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
                               className="w-6 h-6 rounded-full object-cover border border-white shadow-sm -ml-1 first:ml-0"
                             />
                           ))}
-                          {imgVar && imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length > 4 && (
-                            <span className="text-[10px] text-slate-400 ml-1">+{imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length - 4}</span>
+                          {imgVar && imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).length > 4 && (
+                            <span className="text-[10px] text-slate-400 ml-1">+{imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).length - 4}</span>
                           )}
                         </div>
                       )}

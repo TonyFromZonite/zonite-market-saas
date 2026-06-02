@@ -12,6 +12,8 @@ import {
   normalizeVariations,
   getImageVariation,
   isOptionAvailable,
+  isOptionAvailableInCoursiers,
+  getCoursierIdsForVille,
   getOptionStock,
   getEffectivePrices,
   getDisplayImage,
@@ -37,6 +39,55 @@ export default function ProduitDetail() {
       return data;
     },
   });
+
+  // Données logistiques pour filtrer la dispo des variations sur la ville du vendeur
+  const { data: seller } = useQuery({
+    queryKey: ["seller_for_detail", session?.id, session?.email],
+    enabled: !!(session?.id || session?.email),
+    queryFn: async () => {
+      let q = supabase.from("sellers").select("id, ville, quartier");
+      if (session?.id) q = q.eq("id", session.id);
+      else q = q.eq("email", session.email);
+      const { data } = await q.maybeSingle();
+      return data;
+    },
+  });
+  const { data: coursiersList = [] } = useQuery({
+    queryKey: ["coursiers_for_detail"],
+    queryFn: async () => (await supabase.from("coursiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: zonesLivList = [] } = useQuery({
+    queryKey: ["zones_livraison_for_detail"],
+    queryFn: async () => (await supabase.from("zones_livraison").select("*").eq("actif", true)).data || [],
+  });
+  const { data: quartiersList = [] } = useQuery({
+    queryKey: ["quartiers_for_detail"],
+    queryFn: async () => (await supabase.from("quartiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: villesList = [] } = useQuery({
+    queryKey: ["villes_for_detail"],
+    queryFn: async () => (await supabase.from("villes_cameroun").select("*").eq("actif", true)).data || [],
+  });
+
+  const vendeurVille = useMemo(() => {
+    if (!seller?.ville) return null;
+    return villesList.find((v) => v.nom.toLowerCase() === seller.ville.toLowerCase().trim()) || null;
+  }, [seller, villesList]);
+  const vendeurQuartier = useMemo(() => {
+    if (!vendeurVille || !seller?.quartier) return null;
+    return quartiersList.find(
+      (q) => q.ville_id === vendeurVille.id && q.nom.toLowerCase() === seller.quartier.toLowerCase().trim()
+    ) || null;
+  }, [seller, quartiersList, vendeurVille]);
+  const coursierIdsForVendeur = useMemo(() => {
+    if (!vendeurVille) return null;
+    return getCoursierIdsForVille(coursiersList, zonesLivList, quartiersList, vendeurVille.id, vendeurQuartier?.id);
+  }, [vendeurVille, vendeurQuartier, coursiersList, zonesLivList, quartiersList]);
+  const checkAvailable = (varName, value) =>
+    coursierIdsForVendeur
+      ? isOptionAvailableInCoursiers(produit, varName, value, coursierIdsForVendeur)
+      : isOptionAvailable(produit, varName, value);
+  const ruptureLabel = coursierIdsForVendeur ? `Indispo. à ${vendeurVille?.nom || ""}`.trim() : "Rupture";
 
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
@@ -176,7 +227,7 @@ export default function ProduitDetail() {
                     <p className="text-xs text-slate-500 mb-2">{v.nom}</p>
                     <div className="grid grid-cols-4 gap-2">
                       {v.options.map((opt) => {
-                        const available = isOptionAvailable(produit, v.nom, opt.value);
+                        const available = checkAvailable(v.nom, opt.value);
                         const isSelected = selected[v.nom] === opt.value;
                         return (
                           <button
@@ -197,7 +248,7 @@ export default function ProduitDetail() {
                             )}
                             <p className="text-[10px] text-center py-1 bg-white text-slate-700 font-medium truncate">{opt.value}</p>
                             {!available && (
-                              <span className="absolute top-1 right-1 text-[9px] bg-red-500 text-white rounded px-1">Rupture</span>
+                              <span className="absolute top-1 right-1 text-[9px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>
                             )}
                           </button>
                         );
@@ -212,7 +263,7 @@ export default function ProduitDetail() {
                   <p className="text-xs text-slate-500 mb-2">{v.nom}</p>
                   <div className="flex flex-wrap gap-2">
                     {v.options.map((opt) => {
-                      const available = isOptionAvailable(produit, v.nom, opt.value);
+                      const available = checkAvailable(v.nom, opt.value);
                       const isSelected = selected[v.nom] === opt.value;
                       return (
                         <button
@@ -224,7 +275,7 @@ export default function ProduitDetail() {
                             isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-slate-100 text-slate-700 border-slate-200"
                           } ${!available ? "opacity-40 cursor-not-allowed line-through" : "cursor-pointer hover:border-amber-300"}`}
                         >
-                          {opt.value}{!available && " • Rupture"}
+                          {opt.value}{!available && ` • ${ruptureLabel}`}
                         </button>
                       );
                     })}
