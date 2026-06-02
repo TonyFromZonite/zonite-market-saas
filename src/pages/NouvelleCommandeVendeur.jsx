@@ -511,7 +511,7 @@ export default function NouvelleCommandeVendeur() {
                             onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                           >
-                            {opt.value}{!available && " • Rupture"}
+                            {opt.value}{!available && ` • ${ruptureLabel}`}
                           </button>
                         );
                       })}
