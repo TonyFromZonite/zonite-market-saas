@@ -227,7 +227,7 @@ export default function ProduitDetail() {
                     <p className="text-xs text-slate-500 mb-2">{v.nom}</p>
                     <div className="grid grid-cols-4 gap-2">
                       {v.options.map((opt) => {
-                        const available = isOptionAvailable(produit, v.nom, opt.value);
+                        const available = checkAvailable(v.nom, opt.value);
                         const isSelected = selected[v.nom] === opt.value;
                         return (
                           <button
