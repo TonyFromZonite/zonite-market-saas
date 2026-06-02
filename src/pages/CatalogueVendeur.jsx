@@ -382,8 +382,8 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
                               className="w-6 h-6 rounded-full object-cover border border-white shadow-sm -ml-1 first:ml-0"
                             />
                           ))}
-                          {imgVar && imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length > 4 && (
-                            <span className="text-[10px] text-slate-400 ml-1">+{imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length - 4}</span>
+                          {imgVar && imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).length > 4 && (
+                            <span className="text-[10px] text-slate-400 ml-1">+{imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).length - 4}</span>
                           )}
                         </div>
                       )}
