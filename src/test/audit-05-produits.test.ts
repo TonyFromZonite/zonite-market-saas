@@ -210,4 +210,113 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     expect(out.has("c2")).toBe(true);
     expect(out.has("c3")).toBe(false);
   });
+
+  it("5.13 getImageVariation ne retourne que la variation marquée porteuse d'images", async () => {
+    const { getImageVariation } = await import("@/lib/variationHelpers");
+    const produit = {
+      variations: [
+        { nom: "Taille", is_image_variation: false, options: [{ value: "M" }, { value: "L" }] },
+        { nom: "Couleur", is_image_variation: true, options: [
+          { value: "Rouge", image_url: "https://x/r.jpg" },
+          { value: "Bleu", image_url: "https://x/b.jpg" },
+        ] },
+      ],
+    };
+    const imgVar = getImageVariation(produit.variations);
+    expect(imgVar?.nom).toBe("Couleur");
+    expect(getImageVariation([{ nom: "Taille", options: ["M"] }])).toBeNull();
+  });
+
+  it("5.14 getDisplayImage retombe sur l'image principale du produit si rien de sélectionné", async () => {
+    const { getDisplayImage } = await import("@/lib/variationHelpers");
+    const produit = {
+      images: ["https://x/main.jpg"],
+      variations: [
+        { nom: "Couleur", is_image_variation: true, options: [
+          { value: "Rouge", image_url: "https://x/r.jpg" },
+        ] },
+      ],
+    };
+    expect(getDisplayImage(produit, {})).toBe("https://x/main.jpg");
+    expect(getDisplayImage(produit, { Couleur: "Rouge" })).toBe("https://x/r.jpg");
+    expect(getDisplayImage(produit, { Couleur: "Inconnue" })).toBe("https://x/main.jpg");
+  });
+
+  it("5.15 seules les options d'image disponibles sont affichées (filtre catalogue)", async () => {
+    const { getImageVariation, isOptionAvailable } = await import("@/lib/variationHelpers");
+    const produit = {
+      images: ["https://x/main.jpg"],
+      variations: [
+        { nom: "Couleur", is_image_variation: true, options: [
+          { value: "Rouge", image_url: "https://x/r.jpg" },
+          { value: "Bleu", image_url: "https://x/b.jpg" },
+          { value: "Vert", image_url: "https://x/v.jpg" },
+        ] },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 3 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+          { variation_key: "Couleur:Vert", quantite: 5 },
+        ] },
+      ],
+    };
+    const imgVar = getImageVariation(produit.variations)!;
+    const visible = imgVar.options.filter(
+      (o: any) => o.image_url && isOptionAvailable(produit, imgVar.nom, o.value)
+    );
+    const values = visible.map((o: any) => o.value);
+    expect(values).toContain("Rouge");
+    expect(values).toContain("Vert");
+    expect(values).not.toContain("Bleu");
+    expect(visible.length).toBe(2);
+  });
+
+  it("5.16 image d'option retirée si indisponible chez les coursiers de la ville du vendeur", async () => {
+    const { getImageVariation, isOptionAvailableInCoursiers, getCoursierIdsForVille } = await import("@/lib/variationHelpers");
+    const quartiers = [{ id: "qD", ville_id: "douala" }, { id: "qY", ville_id: "yaounde" }];
+    const coursiers = [
+      { id: "cDouala", ville_id: "douala", zones_livraison_ids: [] },
+      { id: "cYaounde", ville_id: "yaounde", zones_livraison_ids: [] },
+    ];
+    const produit = {
+      variations: [
+        { nom: "Couleur", is_image_variation: true, options: [
+          { value: "Rouge", image_url: "https://x/r.jpg" },
+          { value: "Bleu", image_url: "https://x/b.jpg" },
+        ] },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "cDouala", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 4 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+        { coursier_id: "cYaounde", stock_par_variation: [
+          { variation_key: "Couleur:Bleu", quantite: 7 },
+        ] },
+      ],
+    };
+    const imgVar = getImageVariation(produit.variations)!;
+    const idsDouala = getCoursierIdsForVille(coursiers, [], quartiers, "douala");
+    const visibleDouala = imgVar.options.filter(
+      (o: any) => o.image_url && isOptionAvailableInCoursiers(produit, imgVar.nom, o.value, idsDouala)
+    );
+    expect(visibleDouala.map((o: any) => o.value)).toEqual(["Rouge"]);
+
+    const idsYaounde = getCoursierIdsForVille(coursiers, [], quartiers, "yaounde");
+    const visibleYaounde = imgVar.options.filter(
+      (o: any) => o.image_url && isOptionAvailableInCoursiers(produit, imgVar.nom, o.value, idsYaounde)
+    );
+    expect(visibleYaounde.map((o: any) => o.value)).toEqual(["Bleu"]);
+  });
+
+  it("5.17 une seule variation porteuse d'images est retenue", async () => {
+    const { normalizeVariations, getImageVariation } = await import("@/lib/variationHelpers");
+    const norm = normalizeVariations([
+      { nom: "Couleur", is_image_variation: true, options: [{ value: "R", image_url: "r.jpg" }] },
+      { nom: "Taille", is_image_variation: true, options: [{ value: "M", image_url: "m.jpg" }] },
+    ]);
+    const imgVar = getImageVariation(norm);
+    expect(imgVar?.nom).toBe("Couleur");
+  });
 });
