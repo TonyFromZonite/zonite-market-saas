@@ -319,4 +319,82 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     const imgVar = getImageVariation(norm);
     expect(imgVar?.nom).toBe("Couleur");
   });
+
+  it("5.18 matrice ville/quartier : filtrage d'images par coursier et zone de livraison", async () => {
+    const { getImageVariation, isOptionAvailableInCoursiers, getCoursierIdsForVille } = await import("@/lib/variationHelpers");
+
+    const quartiers = [
+      { id: "qD-Akwa", ville_id: "douala" },
+      { id: "qD-Bonapriso", ville_id: "douala" },
+      { id: "qY-Bastos", ville_id: "yaounde" },
+      { id: "qY-Mvog", ville_id: "yaounde" },
+    ];
+    const zonesLivraison = [
+      { id: "zAkwa", quartiers_ids: ["qD-Akwa"] },
+      { id: "zBonapriso", quartiers_ids: ["qD-Bonapriso"] },
+      { id: "zBastos", quartiers_ids: ["qY-Bastos"] },
+      { id: "zMvog", quartiers_ids: ["qY-Mvog"] },
+    ];
+    const coursiers = [
+      { id: "cAkwa", ville_id: null, zones_livraison_ids: ["zAkwa"] },
+      { id: "cBonapriso", ville_id: null, zones_livraison_ids: ["zBonapriso"] },
+      { id: "cBastos", ville_id: null, zones_livraison_ids: ["zBastos"] },
+      { id: "cMvog", ville_id: null, zones_livraison_ids: ["zMvog"] },
+    ];
+
+    const produit = {
+      variations: [
+        { nom: "Couleur", is_image_variation: true, options: [
+          { value: "Rouge", image_url: "https://x/r.jpg" },
+          { value: "Bleu", image_url: "https://x/b.jpg" },
+          { value: "Vert", image_url: "https://x/v.jpg" },
+        ] },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "cAkwa", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 3 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+          { variation_key: "Couleur:Vert", quantite: 2 },
+        ] },
+        { coursier_id: "cBonapriso", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 4 },
+          { variation_key: "Couleur:Vert", quantite: 0 },
+        ] },
+        { coursier_id: "cBastos", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+          { variation_key: "Couleur:Vert", quantite: 5 },
+        ] },
+        { coursier_id: "cMvog", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 1 },
+          { variation_key: "Couleur:Bleu", quantite: 1 },
+          { variation_key: "Couleur:Vert", quantite: 0 },
+        ] },
+      ],
+    };
+
+    const imgVar = getImageVariation(produit.variations)!;
+    const visibleFor = (villeId: string, quartierId?: string) => {
+      const ids = getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, villeId, quartierId);
+      return imgVar.options
+        .filter((o: any) => o.image_url && isOptionAvailableInCoursiers(produit, imgVar.nom, o.value, ids))
+        .map((o: any) => o.value);
+    };
+
+    const matrix: Array<[string, string | undefined, string[]]> = [
+      ["douala", undefined, ["Rouge", "Bleu", "Vert"]],
+      ["douala", "qD-Akwa", ["Rouge", "Vert"]],
+      ["douala", "qD-Bonapriso", ["Bleu"]],
+      ["yaounde", undefined, ["Rouge", "Bleu", "Vert"]],
+      ["yaounde", "qY-Bastos", ["Vert"]],
+      ["yaounde", "qY-Mvog", ["Rouge", "Bleu"]],
+    ];
+
+    for (const [ville, quartier, expected] of matrix) {
+      expect(visibleFor(ville, quartier)).toEqual(expected);
+    }
+
+    expect(visibleFor("inconnue")).toEqual([]);
+  });
 });
