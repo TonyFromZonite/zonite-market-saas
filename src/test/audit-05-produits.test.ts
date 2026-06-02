@@ -59,3 +59,38 @@ describe("Audit 5 — Produits", () => {
     expect(stock.seuil_alerte_stock).toBeGreaterThan(0);
   });
 });
+
+describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
+  it("5.7 normalizeVariations convertit les options string en objets", async () => {
+    const { normalizeVariations } = await import("@/lib/variationHelpers");
+    const out = normalizeVariations([{ nom: "Couleur", options: ["Rouge", "Bleu"] }]);
+    expect(out[0].options[0]).toEqual({ value: "Rouge" });
+    expect(out[0].is_image_variation).toBe(false);
+  });
+
+  it("5.8 isOptionAvailable détecte une option en rupture", async () => {
+    const { isOptionAvailable, getOptionStock } = await import("@/lib/variationHelpers");
+    const produit = {
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 5 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+      ],
+    };
+    expect(isOptionAvailable(produit, "Couleur", "Rouge")).toBe(true);
+    expect(isOptionAvailable(produit, "Couleur", "Bleu")).toBe(false);
+    expect(getOptionStock(produit, "Couleur", "Rouge")).toBe(5);
+  });
+
+  it("5.9 getEffectivePrices utilise le prix de la variation si défini", async () => {
+    const { getEffectivePrices } = await import("@/lib/variationHelpers");
+    const produit = {
+      prix_gros: 1000, prix_vente: 1500,
+      variations: [{ nom: "Taille", options: [{ value: "XL", prix_gros: 1200, prix_vente_conseille: 1800 }] }],
+    };
+    const p = getEffectivePrices(produit, { Taille: "XL" });
+    expect(p.prix_gros).toBe(1200);
+    expect(p.prix_vente).toBe(1800);
+  });
+});

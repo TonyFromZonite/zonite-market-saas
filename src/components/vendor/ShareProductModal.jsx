@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Copy, Check, Share2 } from "lucide-react";
 import { addWatermark, blobToFile } from "@/lib/watermark";
 import { useToast } from "@/components/ui/use-toast";
+import { getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
 
 const WhatsAppIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -9,12 +10,14 @@ const WhatsAppIcon = ({ className }) => (
   </svg>
 );
 
-export default function ShareProductModal({ produit, seller, onClose }) {
-  const prixGros = Number(produit?.prix_gros || 0);
-  const prixSuggere = Number(produit?.prix_vente || 0);
+export default function ShareProductModal({ produit, seller, selectedVariations, onClose }) {
+  const effective = getEffectivePrices(produit, selectedVariations);
+  const prixGros = Number(effective.prix_gros || 0);
+  const prixSuggere = Number(effective.prix_vente || 0);
   const [prixVente, setPrixVente] = useState(prixSuggere);
   const [sharing, setSharing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(produit?.images?.[0] || null);
+  const variationImage = getDisplayImage(produit, selectedVariations);
+  const [selectedImage, setSelectedImage] = useState(variationImage || produit?.images?.[0] || null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const images = produit?.images || [];

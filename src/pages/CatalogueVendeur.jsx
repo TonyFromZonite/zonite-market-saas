@@ -12,6 +12,7 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { getImageVariation, isOptionAvailable } from "@/lib/variationHelpers";
 
 export default function CatalogueVendeur() {
   const navigate = useNavigate();
@@ -311,6 +312,10 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
               const stockDispo = p.stock_global || 0;
               const stockOk = stockDispo > 0;
               const imageUrl = (p.images && p.images.length > 0) ? p.images[0] : null;
+              const imgVar = getImageVariation(p.variations);
+              const availableOptions = imgVar
+                ? imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).slice(0, 4)
+                : [];
 
               return (
                 <div
@@ -334,6 +339,22 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-2">{p.description}</p>
+                      {availableOptions.length > 0 && (
+                        <div className="flex items-center gap-1 mt-2">
+                          {availableOptions.map((opt) => (
+                            <img
+                              key={opt.value}
+                              src={opt.image_url}
+                              alt={opt.value}
+                              title={opt.value}
+                              className="w-6 h-6 rounded-full object-cover border border-white shadow-sm -ml-1 first:ml-0"
+                            />
+                          ))}
+                          {imgVar && imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length > 4 && (
+                            <span className="text-[10px] text-slate-400 ml-1">+{imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).length - 4}</span>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2">
                         <p className="text-xs text-slate-400">Prix de gros</p>
                         <p className="font-bold text-slate-900 text-sm">{formater(p.prix_gros)}</p>

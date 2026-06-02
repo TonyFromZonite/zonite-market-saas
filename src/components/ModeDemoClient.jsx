@@ -207,9 +207,13 @@ export default function ModeDemoClient({ produit, onClose }) {
             <div className="flex flex-wrap gap-1.5 mt-3">
               {produit.variations.map((v, i) => (
                 <div key={i} className="flex flex-wrap gap-1.5">
-                  {(v.options || []).map(opt => (
-                    <span key={opt} className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/80">{opt}</span>
-                  ))}
+                  {(v.options || []).map((opt) => {
+                    const label = typeof opt === "string" ? opt : (opt?.value || opt?.nom || "");
+                    if (!label) return null;
+                    return (
+                      <span key={label} className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/80">{label}</span>
+                    );
+                  })}
                 </div>
               ))}
             </div>
