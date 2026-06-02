@@ -283,8 +283,12 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
               </div>
             </TabsContent>
 
-            {/* TAB IMAGES */}
+            {/* TAB IMAGES — Image principale du produit (vitrine catalogue) */}
             <TabsContent value="images" className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                <p className="font-medium">🖼️ Image principale du produit (vitrine catalogue & partage).</p>
+                <p className="mt-1">Les images liées aux variations (ex : couleurs) se gèrent dans l'onglet <strong>Variations</strong>.</p>
+              </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {(form.images || []).map((url, idx) => (
                   <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square">
@@ -309,43 +313,111 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
               </div>
             </TabsContent>
 
-            {/* TAB VARIATIONS */}
+            {/* TAB VARIATIONS — éditeur par option (image + prix facultatifs) */}
             <TabsContent value="variations" className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
                 <p className="text-blue-900 font-medium">ℹ️ Définissez les types de variations du produit</p>
-                <p className="text-blue-700 text-xs mt-1">Ex: Taille → S, M, L, XL ou Couleur → Noir, Blanc, Rouge</p>
+                <p className="text-blue-700 text-xs mt-1">
+                  Activez « Porte les images » sur la variation qui distingue visuellement les déclinaisons (ex : Couleur). Les prix par option sont facultatifs et écrasent le prix produit.
+                </p>
               </div>
 
-              {variations.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="text-left p-3 font-medium">Variation</th>
-                        <th className="text-left p-3 font-medium">Options</th>
-                        <th className="w-12"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {variations.map((v) => (
-                        <tr key={v.id}>
-                          <td className="p-3 font-medium">{v.nom}</td>
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-1">
-                              {v.options.map((o, i) => <Badge key={i} variant="outline" className="text-xs">{o}</Badge>)}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <Button variant="ghost" size="icon" onClick={() => supprimerVariation(v.id)}>
-                              <Trash2 className="w-4 h-4 text-red-400" />
+              {variations.map((v) => (
+                <div key={v.id} className="border rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 border-b">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{v.nom}</p>
+                      <p className="text-xs text-slate-500">{v.options.length} option(s)</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                        <ImageIcon className="w-3.5 h-3.5" /> Porte les images
+                        <Switch checked={v.is_image_variation} onCheckedChange={() => toggleImageVariation(v.id)} />
+                      </label>
+                      <Button variant="ghost" size="icon" onClick={() => supprimerVariation(v.id)}>
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="divide-y">
+                    {v.options.map((opt, idx) => (
+                      <div key={idx} className="p-3 flex gap-3 items-start">
+                        {v.is_image_variation ? (
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
+                            {opt.image_url ? (
+                              <>
+                                <img src={opt.image_url} alt={opt.value} className="w-full h-full object-cover" />
+                                <button
+                                  onClick={() => updateOption(v.id, idx, { image_url: null })}
+                                  className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white rounded-bl flex items-center justify-center"
+                                  type="button"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </>
+                            ) : (
+                              <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-slate-400 text-[10px]">
+                                <ImagePlus className="w-4 h-4 mb-0.5" /> Image
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => uploadOptionImage(v.id, idx, e.target.files?.[0])}
+                                  disabled={uploadEnCours}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        ) : null}
+
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Tag className="w-3.5 h-3.5 text-slate-400" />
+                            <Input
+                              value={opt.value}
+                              onChange={(e) => updateOption(v.id, idx, { value: e.target.value })}
+                              className="h-8 text-sm"
+                              placeholder="Nom de l'option"
+                            />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateVariations(variations.map((vv) => vv.id === v.id ? { ...vv, options: vv.options.filter((_, i) => i !== idx) } : vv))}>
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
                             </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Input
+                              type="number" min="0" placeholder="Prix gros"
+                              className="h-8 text-xs"
+                              value={opt.prix_gros ?? ""}
+                              onChange={(e) => updateOption(v.id, idx, { prix_gros: e.target.value === "" ? null : Number(e.target.value) })}
+                            />
+                            <Input
+                              type="number" min="0" placeholder="Prix achat"
+                              className="h-8 text-xs"
+                              value={opt.prix_achat ?? ""}
+                              onChange={(e) => updateOption(v.id, idx, { prix_achat: e.target.value === "" ? null : Number(e.target.value) })}
+                            />
+                            <Input
+                              type="number" min="0" placeholder="Vente conseil."
+                              className="h-8 text-xs"
+                              value={opt.prix_vente_conseille ?? ""}
+                              onChange={(e) => updateOption(v.id, idx, { prix_vente_conseille: e.target.value === "" ? null : Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="p-2 bg-slate-50">
+                      <Button
+                        type="button" variant="ghost" size="sm" className="text-xs"
+                        onClick={() => updateVariations(variations.map((vv) => vv.id === v.id ? { ...vv, options: [...vv.options, { value: "" }] } : vv))}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Ajouter une option
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              )}
+              ))}
 
               <Button type="button" variant="outline" onClick={() => setShowVarModal(true)}>
                 <Layers className="w-4 h-4 mr-2" /> Ajouter une variation
