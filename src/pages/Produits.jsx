@@ -15,6 +15,7 @@ import RetoursTab from "@/components/produits/RetoursTab";
 import DialogProduit from "@/components/produits/DialogProduit";
 import { listTable, filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeVariations } from "@/lib/variationHelpers";
 
 const initProduit = {
   nom: "", description: "", reference: "",
@@ -72,7 +73,7 @@ export default function Produits() {
         ...initProduit,
         ...produit,
         images: produit.images || [],
-        variations: produit.variations || [],
+        variations: normalizeVariations(produit.variations || []),
         stocks_par_coursier: produit.stocks_par_coursier || [],
       });
     } else {
