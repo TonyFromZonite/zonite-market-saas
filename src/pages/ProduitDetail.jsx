@@ -248,7 +248,7 @@ export default function ProduitDetail() {
                             )}
                             <p className="text-[10px] text-center py-1 bg-white text-slate-700 font-medium truncate">{opt.value}</p>
                             {!available && (
-                              <span className="absolute top-1 right-1 text-[9px] bg-red-500 text-white rounded px-1">Rupture</span>
+                              <span className="absolute top-1 right-1 text-[9px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>
                             )}
                           </button>
                         );
