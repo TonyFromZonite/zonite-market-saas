@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { normalizeVariations, isOptionAvailable, getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
+import { normalizeVariations, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille, getEffectivePrices, getDisplayImage } from "@/lib/variationHelpers";
 
 export default function NouvelleCommandeVendeur() {
   const [compteVendeur, setCompteVendeur] = useState(null);
