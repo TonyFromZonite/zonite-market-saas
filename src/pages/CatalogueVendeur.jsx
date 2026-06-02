@@ -12,7 +12,7 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
-import { getImageVariation, isOptionAvailable } from "@/lib/variationHelpers";
+import { getImageVariation, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille } from "@/lib/variationHelpers";
 
 export default function CatalogueVendeur() {
   const navigate = useNavigate();
