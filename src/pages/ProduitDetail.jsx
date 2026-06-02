@@ -40,6 +40,55 @@ export default function ProduitDetail() {
     },
   });
 
+  // Données logistiques pour filtrer la dispo des variations sur la ville du vendeur
+  const { data: seller } = useQuery({
+    queryKey: ["seller_for_detail", session?.id, session?.email],
+    enabled: !!(session?.id || session?.email),
+    queryFn: async () => {
+      let q = supabase.from("sellers").select("id, ville, quartier");
+      if (session?.id) q = q.eq("id", session.id);
+      else q = q.eq("email", session.email);
+      const { data } = await q.maybeSingle();
+      return data;
+    },
+  });
+  const { data: coursiersList = [] } = useQuery({
+    queryKey: ["coursiers_for_detail"],
+    queryFn: async () => (await supabase.from("coursiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: zonesLivList = [] } = useQuery({
+    queryKey: ["zones_livraison_for_detail"],
+    queryFn: async () => (await supabase.from("zones_livraison").select("*").eq("actif", true)).data || [],
+  });
+  const { data: quartiersList = [] } = useQuery({
+    queryKey: ["quartiers_for_detail"],
+    queryFn: async () => (await supabase.from("quartiers").select("*").eq("actif", true)).data || [],
+  });
+  const { data: villesList = [] } = useQuery({
+    queryKey: ["villes_for_detail"],
+    queryFn: async () => (await supabase.from("villes_cameroun").select("*").eq("actif", true)).data || [],
+  });
+
+  const vendeurVille = useMemo(() => {
+    if (!seller?.ville) return null;
+    return villesList.find((v) => v.nom.toLowerCase() === seller.ville.toLowerCase().trim()) || null;
+  }, [seller, villesList]);
+  const vendeurQuartier = useMemo(() => {
+    if (!vendeurVille || !seller?.quartier) return null;
+    return quartiersList.find(
+      (q) => q.ville_id === vendeurVille.id && q.nom.toLowerCase() === seller.quartier.toLowerCase().trim()
+    ) || null;
+  }, [seller, quartiersList, vendeurVille]);
+  const coursierIdsForVendeur = useMemo(() => {
+    if (!vendeurVille) return null;
+    return getCoursierIdsForVille(coursiersList, zonesLivList, quartiersList, vendeurVille.id, vendeurQuartier?.id);
+  }, [vendeurVille, vendeurQuartier, coursiersList, zonesLivList, quartiersList]);
+  const checkAvailable = (varName, value) =>
+    coursierIdsForVendeur
+      ? isOptionAvailableInCoursiers(produit, varName, value, coursierIdsForVendeur)
+      : isOptionAvailable(produit, varName, value);
+  const ruptureLabel = coursierIdsForVendeur ? `Indispo. à ${vendeurVille?.nom || ""}`.trim() : "Rupture";
+
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
   const variations = useMemo(() => normalizeVariations(produit?.variations), [produit]);
