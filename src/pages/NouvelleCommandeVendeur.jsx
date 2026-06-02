@@ -713,8 +713,8 @@ export default function NouvelleCommandeVendeur() {
             {produitSelectionne ? (
               <div className="space-y-3">
                 <div className="flex gap-3 p-3 bg-slate-50 rounded-xl">
-                  {Array.isArray(produitSelectionne.images) && produitSelectionne.images.length > 0 ? (
-                    <img src={produitSelectionne.images[0]} alt={produitSelectionne.nom} className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-slate-200" />
+                  {displayImage ? (
+                    <img src={displayImage} alt={produitSelectionne.nom} className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-slate-200" />
                   ) : (
                     <div className="w-20 h-20 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 border border-slate-200">
                       <Truck className="w-8 h-8 text-slate-400" />
