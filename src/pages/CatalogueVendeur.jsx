@@ -346,7 +346,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
               const imageUrl = (p.images && p.images.length > 0) ? p.images[0] : null;
               const imgVar = getImageVariation(p.variations);
               const availableOptions = imgVar
-                ? imgVar.options.filter((o) => o.image_url && isOptionAvailable(p, imgVar.nom, o.value)).slice(0, 4)
+                ? imgVar.options.filter((o) => o.image_url && optAvail(p, imgVar.nom, o.value)).slice(0, 4)
                 : [];
 
               return (
