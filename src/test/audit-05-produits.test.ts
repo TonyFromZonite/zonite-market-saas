@@ -398,7 +398,8 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     expect(visibleFor("inconnue")).toEqual([]);
   });
 
-  it("5.19 snapshot — seules les options dispo de la variation image sont rendues", () => {
+  it("5.19 snapshot — seules les options dispo de la variation image sont rendues", async () => {
+    const { getImageVariation, isOptionAvailable } = await import("@/lib/variationHelpers");
     const produit: any = {
       id: "p-snap",
       nom: "Produit Snap",
