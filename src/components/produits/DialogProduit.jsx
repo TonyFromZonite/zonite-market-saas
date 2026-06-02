@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2 } from "lucide-react";
+import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2, Image as ImageIcon, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeVariations } from "@/lib/variationHelpers";
 
 export default function DialogProduit({ open, onOpenChange, produit, form, setForm, categories, onSave, enCours }) {
   const [urlImageAjout, setUrlImageAjout] = useState("");
@@ -70,48 +72,84 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     setForm((p) => ({ ...p, images: imgs }));
   };
 
-  // Variations — new structure: [{id, nom, options: []}]
-  const variations = form.variations || [];
+  // Variations — structure normalisée : [{id, nom, is_image_variation, options:[{value, image_url?, prix_gros?, prix_achat?, prix_vente_conseille?}]}]
+  const variations = normalizeVariations(form.variations || []);
+
+  const updateVariations = (next) => setForm((p) => ({ ...p, variations: next }));
 
   const ajouterVariation = () => {
     if (!newVarName.trim() || !newVarOptions.trim()) return;
-    const opts = newVarOptions.split(",").map((o) => o.trim()).filter(Boolean);
-    const newVar = { id: crypto.randomUUID(), nom: newVarName.trim(), options: opts };
-    setForm((p) => ({ ...p, variations: [...(p.variations || []), newVar] }));
+    const opts = newVarOptions.split(",").map((o) => o.trim()).filter(Boolean).map((v) => ({ value: v }));
+    // Si aucune variation porteuse d'images n'existe encore, la 1ère devient porteuse par défaut
+    const hasImageVar = variations.some((v) => v.is_image_variation);
+    const newVar = {
+      id: crypto.randomUUID(),
+      nom: newVarName.trim(),
+      is_image_variation: !hasImageVar,
+      options: opts,
+    };
+    updateVariations([...variations, newVar]);
     setNewVarName("");
     setNewVarOptions("");
     setShowVarModal(false);
   };
 
   const supprimerVariation = (varId) => {
+    const variationASupprimer = variations.find((v) => v.id === varId);
+    const next = variations.filter((v) => v.id !== varId);
+    // Si on supprime la variation porteuse d'images, promouvoir la suivante
+    if (variationASupprimer?.is_image_variation && next.length > 0 && !next.some((v) => v.is_image_variation)) {
+      next[0] = { ...next[0], is_image_variation: true };
+    }
     setForm((p) => ({
       ...p,
-      variations: (p.variations || []).filter((v) => v.id !== varId),
-      // Also clean stock references
+      variations: next,
       stocks_par_coursier: (p.stocks_par_coursier || []).map((sc) => ({
         ...sc,
         stock_par_variation: (sc.stock_par_variation || []).filter(
-          (sv) => !sv.variation_key.startsWith((p.variations || []).find((v) => v.id === varId)?.nom + ":")
+          (sv) => !sv.variation_key.includes(`${variationASupprimer?.nom}:`)
         ),
       })),
     }));
   };
 
+  const toggleImageVariation = (varId) => {
+    updateVariations(variations.map((v) => ({ ...v, is_image_variation: v.id === varId })));
+  };
+
+  const updateOption = (varId, optIndex, patch) => {
+    updateVariations(
+      variations.map((v) => {
+        if (v.id !== varId) return v;
+        const opts = v.options.map((o, i) => (i === optIndex ? { ...o, ...patch } : o));
+        return { ...v, options: opts };
+      })
+    );
+  };
+
+  const uploadOptionImage = async (varId, optIndex, file) => {
+    if (!file) return;
+    setUploadEnCours(true);
+    try {
+      const { file_url } = await uploadFile(file);
+      updateOption(varId, optIndex, { image_url: file_url });
+    } finally {
+      setUploadEnCours(false);
+    }
+  };
+
   // Generate all variation keys from defined variations
   const getVariationKeys = () => {
     if (variations.length === 0) return [];
-    // For single variation type, keys are "NomType:Option"
-    // For multiple, we do cartesian product
     if (variations.length === 1) {
-      return variations[0].options.map((opt) => `${variations[0].nom}:${opt}`);
+      return variations[0].options.map((opt) => `${variations[0].nom}:${opt.value}`);
     }
-    // Cartesian product for multiple variation types
-    let keys = variations[0].options.map((o) => `${variations[0].nom}:${o}`);
+    let keys = variations[0].options.map((o) => `${variations[0].nom}:${o.value}`);
     for (let i = 1; i < variations.length; i++) {
       const newKeys = [];
       for (const key of keys) {
         for (const opt of variations[i].options) {
-          newKeys.push(`${key} / ${variations[i].nom}:${opt}`);
+          newKeys.push(`${key} / ${variations[i].nom}:${opt.value}`);
         }
       }
       keys = newKeys;
