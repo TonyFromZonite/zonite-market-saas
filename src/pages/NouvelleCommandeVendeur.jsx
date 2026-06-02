@@ -251,7 +251,7 @@ export default function NouvelleCommandeVendeur() {
   }, [villeText, quartierText, matchedVille, coursiers, zonesLivraison, quartiers]);
 
   const qte = parseInt(form.quantite) || 1;
-  const prixGros = produitSelectionne?.prix_gros || 0;
+  const prixGros = effectivePrices.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
   const fraisLivraisonEstime = estimationLivraison
     ? Math.round((estimationLivraison.min + estimationLivraison.max) / 2)
@@ -448,18 +448,55 @@ export default function NouvelleCommandeVendeur() {
             </PopoverContent>
           </Popover>
 
-          {/* Variations */}
+          {/* Variations — sélection visuelle pour la variation image, chips sinon, options en rupture désactivées */}
           {produitSelectionne && variations.length > 0 && (
-            <div className="space-y-2">
-              {variations.map((v, idx) => (
-                <div key={v.nom || idx} className="space-y-1">
+            <div className="space-y-3">
+              {variations.map((v) => (
+                <div key={v.id || v.nom} className="space-y-1.5">
                   <Label>{v.nom} *</Label>
-                  <Select value={selectedVariations[v.nom] || ""} onValueChange={(val) => setSelectedVariations((prev) => ({ ...prev, [v.nom]: val }))}>
-                    <SelectTrigger><SelectValue placeholder={`Choisir ${v.nom}`} /></SelectTrigger>
-                    <SelectContent>
-                      {v.options.map((opt) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {v.is_image_variation ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      {v.options.map((opt) => {
+                        const available = isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            className={`relative rounded-lg border-2 overflow-hidden transition-all ${isSelected ? "border-amber-500" : "border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed grayscale" : "cursor-pointer"}`}
+                          >
+                            {opt.image_url ? (
+                              <img src={opt.image_url} alt={opt.value} className="w-full aspect-square object-cover" />
+                            ) : (
+                              <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 p-1 text-center">{opt.value}</div>
+                            )}
+                            <p className="text-[10px] text-center py-0.5 bg-white truncate">{opt.value}</p>
+                            {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">Rupture</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {v.options.map((opt) => {
+                        const available = isOptionAvailable(produitSelectionne, v.nom, opt.value);
+                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
+                          >
+                            {opt.value}{!available && " • Rupture"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
