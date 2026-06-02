@@ -397,4 +397,128 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
 
     expect(visibleFor("inconnue")).toEqual([]);
   });
+
+  it("5.19 snapshot — seules les options dispo de la variation image sont rendues", () => {
+    const produit: any = {
+      id: "p-snap",
+      nom: "Produit Snap",
+      images: ["main.jpg"],
+      variations: [
+        {
+          nom: "Couleur",
+          is_image_variation: true,
+          options: [
+            { value: "Rouge", image_url: "rouge.jpg" },
+            { value: "Bleu", image_url: "bleu.jpg" },
+            { value: "Vert", image_url: "vert.jpg" },
+          ],
+        },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 3 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+          { variation_key: "Couleur:Vert", quantite: 0 },
+        ] },
+      ],
+    };
+
+    const imgVar = getImageVariation(produit.variations)!;
+    const rendered = imgVar.options
+      .filter((o: any) => o.image_url && isOptionAvailable(produit, imgVar.nom, o.value))
+      .map((o: any) => ({ value: o.value, image_url: o.image_url }));
+
+    expect(rendered).toMatchInlineSnapshot(`
+      [
+        {
+          "image_url": "rouge.jpg",
+          "value": "Rouge",
+        },
+      ]
+    `);
+  });
+
+  it("5.20 snapshot — toutes les options indispo => aucune image variation rendue, fallback image produit", () => {
+    const produit: any = {
+      id: "p-snap2",
+      nom: "Produit Snap 2",
+      images: ["main.jpg"],
+      variations: [
+        {
+          nom: "Couleur",
+          is_image_variation: true,
+          options: [
+            { value: "Rouge", image_url: "rouge.jpg" },
+            { value: "Bleu", image_url: "bleu.jpg" },
+          ],
+        },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+      ],
+    };
+
+    const imgVar = getImageVariation(produit.variations)!;
+    const rendered = imgVar.options
+      .filter((o: any) => o.image_url && isOptionAvailable(produit, imgVar.nom, o.value));
+
+    expect(rendered).toMatchInlineSnapshot(`[]`);
+    expect(getDisplayImage(produit, {})).toMatchInlineSnapshot(`"main.jpg"`);
+  });
+
+  it("5.21 snapshot — la dispo varie selon la ville du vendeur (matrice rendue)", () => {
+    const coursiers = [
+      { id: "cD", actif: true, ville_id: "douala", zones_livraison_ids: [] },
+      { id: "cY", actif: true, ville_id: "yaounde", zones_livraison_ids: [] },
+    ];
+    const produit: any = {
+      id: "p-snap3",
+      images: ["main.jpg"],
+      variations: [
+        {
+          nom: "Couleur",
+          is_image_variation: true,
+          options: [
+            { value: "Rouge", image_url: "rouge.jpg" },
+            { value: "Bleu", image_url: "bleu.jpg" },
+          ],
+        },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "cD", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 5 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+        { coursier_id: "cY", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 7 },
+        ] },
+      ],
+    };
+
+    const imgVar = getImageVariation(produit.variations)!;
+    const renderFor = (villeId: string) => {
+      const ids = getCoursierIdsForVille(coursiers, [], [], villeId);
+      return imgVar.options
+        .filter((o: any) => o.image_url && isOptionAvailableInCoursiers(produit, imgVar.nom, o.value, ids))
+        .map((o: any) => o.value);
+    };
+
+    expect({
+      douala: renderFor("douala"),
+      yaounde: renderFor("yaounde"),
+    }).toMatchInlineSnapshot(`
+      {
+        "douala": [
+          "Rouge",
+        ],
+        "yaounde": [
+          "Bleu",
+        ],
+      }
+    `);
+  });
 });
