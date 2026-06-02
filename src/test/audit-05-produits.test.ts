@@ -439,7 +439,8 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     `);
   });
 
-  it("5.20 snapshot — toutes les options indispo => aucune image variation rendue, fallback image produit", () => {
+  it("5.20 snapshot — toutes les options indispo => aucune image variation rendue, fallback image produit", async () => {
+    const { getImageVariation, isOptionAvailable, getDisplayImage } = await import("@/lib/variationHelpers");
     const produit: any = {
       id: "p-snap2",
       nom: "Produit Snap 2",
