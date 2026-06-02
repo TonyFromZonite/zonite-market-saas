@@ -167,6 +167,20 @@ export default function NouvelleCommandeVendeur() {
     return filtered.filter((q) => q.nom.toLowerCase().includes(t)).slice(0, 8);
   }, [quartierText, quartiers, matchedVille]);
 
+  // Quartier exact dans la ville (utilisé pour filtrer dispo + livraison)
+  const matchedQuartier = useMemo(() => {
+    if (!matchedVille || !quartierText.trim()) return null;
+    return quartiers.find(
+      (q) => q.nom.toLowerCase() === quartierText.toLowerCase().trim() && q.ville_id === matchedVille.id
+    ) || null;
+  }, [quartierText, quartiers, matchedVille]);
+
+  // Coursiers qui livrent dans cette ville/quartier — filtre la dispo des variations
+  const coursierIdsForLocation = useMemo(() => {
+    if (!matchedVille) return null; // pas de ville saisie → pas de filtre, dispo globale
+    return getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, matchedVille.id, matchedQuartier?.id);
+  }, [matchedVille, matchedQuartier, coursiers, zonesLivraison, quartiers]);
+
   // --- Check stock exists in this city ---
   const stockInCity = useMemo(() => {
     if (!produitSelectionne || !villeText) return { available: false, total: 0 };
