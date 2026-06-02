@@ -471,7 +471,8 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     expect(getDisplayImage(produit, {})).toMatchInlineSnapshot(`"main.jpg"`);
   });
 
-  it("5.21 snapshot — la dispo varie selon la ville du vendeur (matrice rendue)", () => {
+  it("5.21 snapshot — la dispo varie selon la ville du vendeur (matrice rendue)", async () => {
+    const { getImageVariation, getCoursierIdsForVille, isOptionAvailableInCoursiers } = await import("@/lib/variationHelpers");
     const coursiers = [
       { id: "cD", actif: true, ville_id: "douala", zones_livraison_ids: [] },
       { id: "cY", actif: true, ville_id: "yaounde", zones_livraison_ids: [] },
