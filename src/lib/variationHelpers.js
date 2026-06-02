@@ -54,13 +54,27 @@ export function getImageVariation(variations) {
  * "Nom1:V1 / Nom2:V2" ou "Nom1:V1|Nom2:V2".
  */
 export function getOptionStock(produit, varName, value) {
+  return getOptionStockInCoursiers(produit, varName, value, null);
+}
+
+/**
+ * Variante filtrée par un Set/Array d'IDs de coursiers.
+ * Si `coursierIds` est null/undefined, agrège sur tous les coursiers.
+ */
+export function getOptionStockInCoursiers(produit, varName, value, coursierIds) {
   if (!produit || !varName || !value) return 0;
+  const filterSet =
+    coursierIds == null
+      ? null
+      : coursierIds instanceof Set
+      ? coursierIds
+      : new Set(coursierIds);
   const needle = `${varName}:${value}`;
   let total = 0;
   for (const sc of produit.stocks_par_coursier || []) {
+    if (filterSet && !filterSet.has(sc.coursier_id)) continue;
     for (const sv of sc.stock_par_variation || []) {
       const key = sv.variation_key || "";
-      // match exact ou comme segment d'une clé composée
       if (
         key === needle ||
         key.split(/\s*\/\s*|\|/).some((seg) => seg.trim() === needle)
@@ -74,6 +88,40 @@ export function getOptionStock(produit, varName, value) {
 
 export function isOptionAvailable(produit, varName, value) {
   return getOptionStock(produit, varName, value) > 0;
+}
+
+export function isOptionAvailableInCoursiers(produit, varName, value, coursierIds) {
+  return getOptionStockInCoursiers(produit, varName, value, coursierIds) > 0;
+}
+
+/**
+ * Retourne un Set des IDs de coursiers qui couvrent une ville (et un quartier si fourni).
+ * Un coursier couvre la ville si son `ville_id` correspond OU si l'une de ses
+ * `zones_livraison_ids` contient un quartier de la ville (via `zones_livraison.quartiers_ids`).
+ */
+export function getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, villeId, quartierId) {
+  const result = new Set();
+  if (!villeId) return result;
+  const villeQuartierIds = new Set(
+    (quartiers || []).filter((q) => q.ville_id === villeId).map((q) => q.id)
+  );
+  const targetQuartiers = quartierId ? new Set([quartierId]) : villeQuartierIds;
+
+  for (const c of coursiers || []) {
+    if (!quartierId && c.ville_id === villeId) {
+      result.add(c.id);
+      continue;
+    }
+    const zoneIds = Array.isArray(c.zones_livraison_ids) ? c.zones_livraison_ids : [];
+    const covers = zoneIds.some((zid) => {
+      const z = (zonesLivraison || []).find((zz) => zz.id === zid);
+      if (!z) return false;
+      const qids = Array.isArray(z.quartiers_ids) ? z.quartiers_ids : [];
+      return qids.some((qid) => targetQuartiers.has(qid));
+    });
+    if (covers) result.add(c.id);
+  }
+  return result;
 }
 
 /**
