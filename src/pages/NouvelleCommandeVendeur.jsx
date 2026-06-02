@@ -490,7 +490,7 @@ export default function NouvelleCommandeVendeur() {
                               <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 p-1 text-center">{opt.value}</div>
                             )}
                             <p className="text-[10px] text-center py-0.5 bg-white truncate">{opt.value}</p>
-                            {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">Rupture</span>}
+                            {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>}
                           </button>
                         );
                       })}
