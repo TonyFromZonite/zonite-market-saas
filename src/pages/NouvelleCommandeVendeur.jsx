@@ -669,8 +669,8 @@ export default function NouvelleCommandeVendeur() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-[#1a1f5e]">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">📋 Résumé de la commande</h2>
             <div className="flex gap-3">
-              {Array.isArray(produitSelectionne.images) && produitSelectionne.images.length > 0 ? (
-                <img src={produitSelectionne.images[0]} alt={produitSelectionne.nom} className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-slate-200" loading="lazy" />
+              {displayImage ? (
+                <img src={displayImage} alt={produitSelectionne.nom} className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-slate-200" loading="lazy" />
               ) : (
                 <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 border border-slate-200">
                   <Truck className="w-6 h-6 text-slate-400" />
