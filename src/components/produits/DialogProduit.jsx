@@ -222,8 +222,38 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     setShowStockModal(true);
   };
 
-  // Calculate global stock
-  const stockGlobal = stocksParCoursier.reduce((t, s) => t + (s.stock_total || 0), 0);
+  // Calculate global stock (dérivé)
+  const stockGlobal = computeStockGlobal(stocksParCoursier);
+
+  // Helper inline pour la matrice par option
+  const getQty = (coursierId, variationKey) => {
+    const sc = stocksParCoursier.find((s) => s.coursier_id === coursierId);
+    const sv = sc?.stock_par_variation?.find((v) => v.variation_key === variationKey);
+    return sv?.quantite ?? 0;
+  };
+  const setQty = (coursierId, variationKey, qty) => {
+    const coursier = coursiers.find((c) => c.id === coursierId);
+    const ville = villes.find((v) => v.id === coursier?.ville_id);
+    setForm((p) => ({
+      ...p,
+      stocks_par_coursier: setStockForKey(
+        p.stocks_par_coursier || [],
+        coursierId,
+        variationKey,
+        qty,
+        { coursier_nom: coursier?.nom || "", ville: ville?.nom || "" }
+      ),
+    }));
+  };
+  // Pour une option donnée d'une variation, renvoie toutes les variation_key correspondantes
+  const keysForOption = (varName, value) => {
+    const seg = `${varName}:${value}`;
+    if (variationKeys.length === 0) return [seg];
+    return variationKeys.filter((k) =>
+      k.split(/\s*\/\s*|\|/).some((s) => s.trim() === seg)
+    );
+  };
+
 
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
