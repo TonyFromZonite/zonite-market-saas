@@ -560,9 +560,21 @@ export default function NouvelleCommandeVendeur() {
           {/* Variations — sélection visuelle pour la variation image, chips sinon, options en rupture désactivées */}
           {produitSelectionne && variations.length > 0 && (
             <div className="space-y-3">
-              {variations.map((v) => (
+              {variations.map((v) => {
+                const selArr = getSelectedArray(v.nom);
+                const manquante = tentativeEnvoi && selArr.length === 0;
+                return (
                 <div key={v.id || v.nom} className="space-y-1.5">
-                  <Label>{v.nom} *</Label>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <Label className={manquante ? "text-red-600" : ""}>{v.nom} *</Label>
+                    {multiSelectAutorise && (
+                      <span className="text-[11px] text-slate-500">
+                        {selArr.length > 0
+                          ? `${selArr.length} ${v.nom.toLowerCase()}${selArr.length > 1 ? "s" : ""} cochée${selArr.length > 1 ? "s" : ""}`
+                          : `Cochez 1 ou plusieurs ${v.nom.toLowerCase()}s (total ≤ ${qteCommande})`}
+                      </span>
+                    )}
+                  </div>
                   {v.is_image_variation ? (
                     <div className="grid grid-cols-4 gap-2">
                       {v.options.map((opt) => {
@@ -570,13 +582,13 @@ export default function NouvelleCommandeVendeur() {
                           ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
                           : isOptionAvailable(produitSelectionne, v.nom, opt.value);
                         const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
-                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        const isSelected = selArr.includes(opt.value);
                         return (
                           <button
                             key={opt.value}
                             type="button"
                             disabled={!available}
-                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            onClick={() => toggleOption(v.nom, opt.value)}
                             className={`relative rounded-lg border-2 overflow-hidden transition-all ${isSelected ? "border-amber-500" : "border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed grayscale" : "cursor-pointer"}`}
                           >
                             {opt.image_url ? (
@@ -585,6 +597,7 @@ export default function NouvelleCommandeVendeur() {
                               <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 p-1 text-center">{opt.value}</div>
                             )}
                             <p className="text-[10px] text-center py-0.5 bg-white truncate">{opt.value}</p>
+                            {isSelected && <span className="absolute top-0.5 left-0.5 text-[10px] bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>}
                             {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>}
                           </button>
                         );
@@ -597,25 +610,38 @@ export default function NouvelleCommandeVendeur() {
                           ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
                           : isOptionAvailable(produitSelectionne, v.nom, opt.value);
                         const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
-                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        const isSelected = selArr.includes(opt.value);
                         return (
                           <button
                             key={opt.value}
                             type="button"
                             disabled={!available}
-                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            onClick={() => toggleOption(v.nom, opt.value)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                           >
-                            {opt.value}{!available && ` • ${ruptureLabel}`}
+                            {isSelected && "✓ "}{opt.value}{!available && ` • ${ruptureLabel}`}
                           </button>
                         );
                       })}
                     </div>
                   )}
+                  {manquante && (
+                    <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Sélectionnez au moins une {v.nom.toLowerCase()} avant d'envoyer la commande.
+                    </p>
+                  )}
                 </div>
-              ))}
+                );
+              })}
+              {multiSelectAutorise && (
+                <p className="text-[11px] text-slate-500 italic">
+                  Vous pouvez combiner plusieurs options ({totalOptionsCochees}/{qteCommande} cochée{totalOptionsCochees > 1 ? "s" : ""}). Une commande sera créée par option.
+                </p>
+              )}
             </div>
           )}
+
 
           {produitSelectionne && (
             <div className="bg-slate-50 rounded-xl p-3 text-sm">
