@@ -17,7 +17,10 @@ import {
   getOptionStock,
   getEffectivePrices,
   getDisplayImage,
+  getGalleryImages,
+  findOptionByImageUrl,
 } from "@/lib/variationHelpers";
+
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
