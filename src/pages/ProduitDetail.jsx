@@ -98,12 +98,16 @@ export default function ProduitDetail() {
   const imageVar = useMemo(() => getImageVariation(produit?.variations), [produit]);
   const prices = useMemo(() => getEffectivePrices(produit, selected), [produit, selected]);
 
-  // Image affichée : option image sélectionnée > galerie produit
+  // Image affichée : option image sélectionnée > miniature gallery courante
+  const galleryImages = useMemo(
+    () => getGalleryImages(produit, coursierIdsForVendeur),
+    [produit, coursierIdsForVendeur]
+  );
   const mainImage = useMemo(() => {
-    const fromOption = getDisplayImage(produit, selected);
-    if (imageVar && selected[imageVar.nom]) return fromOption;
-    return (produit?.images || [])[galleryIdx] || fromOption;
-  }, [produit, selected, imageVar, galleryIdx]);
+    if (imageVar && selected[imageVar.nom]) return getDisplayImage(produit, selected);
+    return galleryImages[galleryIdx] || galleryImages[0] || null;
+  }, [produit, selected, imageVar, galleryIdx, galleryImages]);
+
 
   if (isLoading) {
     return (
