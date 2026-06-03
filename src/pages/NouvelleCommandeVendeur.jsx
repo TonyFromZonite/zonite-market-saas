@@ -74,7 +74,11 @@ export default function NouvelleCommandeVendeur() {
       if (prefilledProduct?.produit_id) {
         setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
         if (prefilledProduct.selected_variations && typeof prefilledProduct.selected_variations === "object") {
-          setSelectedVariations(prefilledProduct.selected_variations);
+          const wrapped = {};
+          for (const [k, v] of Object.entries(prefilledProduct.selected_variations)) {
+            wrapped[k] = Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+          }
+          setSelectedVariations(wrapped);
         }
       } else {
         const params = new URLSearchParams(window.location.search);
