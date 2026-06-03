@@ -156,19 +156,30 @@ export default function ProduitDetail() {
             alt={produit.nom}
             className="w-full h-64 sm:h-80 object-contain bg-slate-50"
           />
-          {images.length > 1 && !(imageVar && selected[imageVar.nom]) && (
+          {images.length > 1 && (
             <div className="flex gap-2 p-3 overflow-x-auto">
-              {images.map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt={`${produit.nom} ${i + 1}`}
-                  onClick={() => setGalleryIdx(i)}
-                  className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${i === galleryIdx ? 'border-amber-500' : 'border-transparent'}`}
-                />
-              ))}
+              {images.map((img, i) => {
+                const match = findOptionByImageUrl(produit, img);
+                const isActive = imageVar && selected[imageVar.nom] && match
+                  ? selected[match.varName] === match.value
+                  : !(imageVar && selected[imageVar.nom]) && i === galleryIdx;
+                return (
+                  <img
+                    key={`${img}-${i}`}
+                    src={img}
+                    alt={`${produit.nom} ${i + 1}`}
+                    onClick={() => {
+                      setGalleryIdx(i);
+                      if (match) setSelected((p) => ({ ...p, [match.varName]: match.value }));
+                      else if (imageVar) setSelected((p) => { const n = { ...p }; delete n[imageVar.nom]; return n; });
+                    }}
+                    className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${isActive ? 'border-amber-500' : 'border-transparent'}`}
+                  />
+                );
+              })}
             </div>
           )}
+
         </div>
       ) : (
         <div className="h-48 bg-slate-100 flex items-center justify-center">
