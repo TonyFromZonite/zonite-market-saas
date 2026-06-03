@@ -218,16 +218,17 @@ export default function NouvelleCommandeVendeur() {
     if (variations.length === 0) return [];
     const out = [];
     for (const v of variations) {
-      const sel = selectedVariations[v.nom];
-      if (!sel) continue;
-      const ok = isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation);
-      if (ok) continue;
+      const selArr = getSelectedArray(v.nom);
+      if (selArr.length === 0) continue;
+      const indispo = selArr.filter((sel) => !isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation));
+      if (indispo.length === 0) continue;
       const disponibles = v.options
         .map((o) => o.value)
-        .filter((val) => val !== sel && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
-      out.push({ varName: v.nom, selected: sel, disponibles });
+        .filter((val) => !selArr.includes(val) && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
+      out.push({ varName: v.nom, selected: indispo.join(", "), indispoList: indispo, disponibles });
     }
     return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produitSelectionne, variations, selectedVariations, coursierIdsForLocation, matchedVille]);
 
 
