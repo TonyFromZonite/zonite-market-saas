@@ -312,6 +312,9 @@ export default function NouvelleCommandeVendeur() {
     }
 
     // Validate stock exists in city (if ville is known)
+    if (matchedVille && variationsIndispo.length > 0) {
+      return setErreur("Une ou plusieurs variations sélectionnées ne sont pas disponibles dans cette ville. Choisissez une variation disponible.");
+    }
     if (matchedVille && !stockInCity.available) {
       return setErreur("Stock insuffisant dans cette ville. Aucun coursier n'a du stock disponible.");
     }
