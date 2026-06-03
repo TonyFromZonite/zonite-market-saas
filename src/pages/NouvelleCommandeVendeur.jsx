@@ -36,7 +36,10 @@ export default function NouvelleCommandeVendeur() {
   const [quartierText, setQuartierText] = useState("");
   const [showVilleSuggestions, setShowVilleSuggestions] = useState(false);
   const [showQuartierSuggestions, setShowQuartierSuggestions] = useState(false);
+  // Chaque variation peut avoir 1 ou plusieurs options sélectionnées (multi si quantité > 1).
+  // Format : { [varName]: string[] }
   const [selectedVariations, setSelectedVariations] = useState({});
+  const [tentativeEnvoi, setTentativeEnvoi] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [localStorageDisponible] = useState(() => {
