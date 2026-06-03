@@ -690,38 +690,54 @@ export default function NouvelleCommandeVendeur() {
 
           {/* Variations sélectionnées indisponibles à cette localisation */}
           {matchedVille && variationsIndispo.length > 0 && (
-            <div className="rounded-lg p-3 text-sm bg-red-50 border border-red-200 text-red-700 space-y-2">
+            <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 text-sm text-red-800 space-y-3 shadow-sm">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <div className="space-y-2 flex-1">
-                  {variationsIndispo.map((vi) => (
-                    <div key={vi.varName} className="space-y-1">
-                      <p>
-                        ❌ La <strong>{vi.varName.toLowerCase()}</strong> «&nbsp;<em>{vi.selected}</em>&nbsp;» n'est pas disponible à <strong>{matchedVille.nom}</strong>{matchedQuartier ? `, ${matchedQuartier.nom}` : ""}.
-                      </p>
-                      {vi.disponibles.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-xs text-red-700">Disponibles :</span>
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
+                <div className="space-y-1">
+                  <p className="font-bold text-red-800">
+                    Variation indisponible à {matchedQuartier ? `${matchedQuartier.nom}, ` : ""}{matchedVille.nom}
+                  </p>
+                  <p className="text-xs text-red-700">
+                    Veuillez choisir une autre variation parmi celles disponibles ci-dessous pour pouvoir envoyer la commande.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {variationsIndispo.map((vi) => (
+                  <div key={vi.varName} className="rounded-lg bg-white border border-red-200 p-3 space-y-2">
+                    <p className="text-sm">
+                      <span className="font-semibold capitalize">{vi.varName}</span> «&nbsp;<span className="line-through">{vi.selected}</span>&nbsp;» n'est pas livrable à <strong>{matchedQuartier ? `${matchedQuartier.nom}, ` : ""}{matchedVille.nom}</strong>.
+                    </p>
+                    {vi.disponibles.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-emerald-700">
+                          ✅ {vi.disponibles.length} {vi.varName.toLowerCase()}{vi.disponibles.length > 1 ? "s" : ""} disponible{vi.disponibles.length > 1 ? "s" : ""} à {matchedVille.nom} :
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
                           {vi.disponibles.map((val) => (
                             <button
                               key={val}
                               type="button"
                               onClick={() => setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }))}
-                              className="px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors"
+                              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-colors"
                             >
                               {val}
                             </button>
                           ))}
                         </div>
-                      ) : (
-                        <p className="text-xs">Aucune autre option n'est disponible ici. Essayez une autre ville ou un autre quartier.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-red-700 font-medium">
+                        Aucune autre {vi.varName.toLowerCase()} n'est disponible dans cette localisation. Essayez une autre ville ou un autre quartier.
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
+
 
           {villeText.trim() && produitSelectionne && !matchedVille && (
             <div className="rounded-lg p-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
