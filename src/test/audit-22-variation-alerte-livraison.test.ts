@@ -12,6 +12,8 @@ import {
   normalizeVariations,
   isOptionAvailableInCoursiers,
   getCoursierIdsForVille,
+  getEffectivePrices,
+  getDisplayImage,
 } from "@/lib/variationHelpers";
 
 // --- Référentiel logistique minimal ---
