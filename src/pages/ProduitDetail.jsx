@@ -131,7 +131,7 @@ export default function ProduitDetail() {
     );
   }
 
-  const images = produit.images || [];
+  const images = galleryImages;
   const stockDispo = produit.stock_global || 0;
   const stockOk = stockDispo > 0;
   const categorieName = produit.categories?.nom;
