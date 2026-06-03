@@ -36,7 +36,10 @@ export default function NouvelleCommandeVendeur() {
   const [quartierText, setQuartierText] = useState("");
   const [showVilleSuggestions, setShowVilleSuggestions] = useState(false);
   const [showQuartierSuggestions, setShowQuartierSuggestions] = useState(false);
+  // Chaque variation peut avoir 1 ou plusieurs options sélectionnées (multi si quantité > 1).
+  // Format : { [varName]: string[] }
   const [selectedVariations, setSelectedVariations] = useState({});
+  const [tentativeEnvoi, setTentativeEnvoi] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [localStorageDisponible] = useState(() => {
@@ -71,7 +74,11 @@ export default function NouvelleCommandeVendeur() {
       if (prefilledProduct?.produit_id) {
         setForm((f) => ({ ...f, produit_id: prefilledProduct.produit_id }));
         if (prefilledProduct.selected_variations && typeof prefilledProduct.selected_variations === "object") {
-          setSelectedVariations(prefilledProduct.selected_variations);
+          const wrapped = {};
+          for (const [k, v] of Object.entries(prefilledProduct.selected_variations)) {
+            wrapped[k] = Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+          }
+          setSelectedVariations(wrapped);
         }
       } else {
         const params = new URLSearchParams(window.location.search);
@@ -131,19 +138,84 @@ export default function NouvelleCommandeVendeur() {
   };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = useMemo(() => normalizeVariations(produitSelectionne?.variations), [produitSelectionne]);
-  const effectivePrices = useMemo(() => getEffectivePrices(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
-  const displayImage = useMemo(() => getDisplayImage(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
 
-  // Build variation key — empty string until ALL variations are selected,
-  // so stock checks fall back to stock_total instead of looking up an
-  // incomplete variation_key (which would always return 0 stock).
-  const getVariationKey = () => {
-    if (variations.length === 0) return "";
-    const allSelected = variations.every((v) => selectedVariations[v.nom]);
-    if (!allSelected) return "";
-    return variations.map((v) => `${v.nom}:${selectedVariations[v.nom]}`).join("|");
+  // Helpers de sélection (toujours en tableau côté state, premier élément utilisé pour les helpers existants)
+  const getSelectedArray = (varName) => {
+    const v = selectedVariations[varName];
+    if (Array.isArray(v)) return v.filter(Boolean);
+    return v ? [v] : [];
   };
-  const variationKey = getVariationKey();
+  const primarySelection = useMemo(() => {
+    const out = {};
+    for (const v of variations) {
+      const arr = getSelectedArray(v.nom);
+      if (arr[0]) out[v.nom] = arr[0];
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variations, selectedVariations]);
+
+  const effectivePrices = useMemo(() => getEffectivePrices(produitSelectionne, primarySelection), [produitSelectionne, primarySelection]);
+  const displayImage = useMemo(() => getDisplayImage(produitSelectionne, primarySelection), [produitSelectionne, primarySelection]);
+
+  // Toutes les combinaisons sélectionnées (produit cartésien des options choisies par variation).
+  const selectedCombinations = useMemo(() => {
+    if (variations.length === 0) return [];
+    let combos = [[]];
+    for (const v of variations) {
+      const arr = getSelectedArray(v.nom);
+      if (arr.length === 0) return [];
+      const next = [];
+      for (const c of combos) for (const val of arr) next.push([...c, { varName: v.nom, value: val }]);
+      combos = next;
+    }
+    return combos.map((c) => c.map((s) => `${s.varName}:${s.value}`).join("|"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variations, selectedVariations]);
+
+  // Clé représentative (la 1ère combinaison) — utilisée pour les vérifs stock simples / affichages.
+  const variationKey = selectedCombinations[0] || "";
+
+  // Quantité commandée (1 par défaut). Multi-sélection autorisée si > 1.
+  const qteCommande = parseInt(form.quantite) || 1;
+  const multiSelectAutorise = qteCommande > 1;
+  const totalOptionsCochees = useMemo(
+    () => variations.reduce((sum, v) => sum + getSelectedArray(v.nom).length, 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [variations, selectedVariations]
+  );
+
+  const toggleOption = (varName, value) => {
+    setSelectedVariations((prev) => {
+      const current = Array.isArray(prev[varName]) ? prev[varName] : (prev[varName] ? [prev[varName]] : []);
+      if (!multiSelectAutorise) return { ...prev, [varName]: [value] };
+      if (current.includes(value)) return { ...prev, [varName]: current.filter((x) => x !== value) };
+      // Limite globale : nombre total d'options cochées ≤ quantité
+      const totalAutres = variations.reduce((s, vv) => {
+        if (vv.nom === varName) return s;
+        const arr = Array.isArray(prev[vv.nom]) ? prev[vv.nom] : (prev[vv.nom] ? [prev[vv.nom]] : []);
+        return s + arr.length;
+      }, 0);
+      if (totalAutres + current.length + 1 > qteCommande) return prev;
+      return { ...prev, [varName]: [...current, value] };
+    });
+    setErreur("");
+    setTentativeEnvoi(false);
+  };
+
+  // Si la quantité redescend à 1, ne garder qu'une option par variation
+  useEffect(() => {
+    if (qteCommande > 1) return;
+    setSelectedVariations((prev) => {
+      let changed = false;
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) {
+        const arr = Array.isArray(v) ? v : (v ? [v] : []);
+        if (arr.length > 1) { next[k] = [arr[0]]; changed = true; } else next[k] = arr;
+      }
+      return changed ? next : prev;
+    });
+  }, [qteCommande]);
 
   // --- Ville suggestions ---
   const villeSuggestions = useMemo(() => {
@@ -187,16 +259,17 @@ export default function NouvelleCommandeVendeur() {
     if (variations.length === 0) return [];
     const out = [];
     for (const v of variations) {
-      const sel = selectedVariations[v.nom];
-      if (!sel) continue;
-      const ok = isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation);
-      if (ok) continue;
+      const selArr = getSelectedArray(v.nom);
+      if (selArr.length === 0) continue;
+      const indispo = selArr.filter((sel) => !isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation));
+      if (indispo.length === 0) continue;
       const disponibles = v.options
         .map((o) => o.value)
-        .filter((val) => val !== sel && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
-      out.push({ varName: v.nom, selected: sel, disponibles });
+        .filter((val) => !selArr.includes(val) && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
+      out.push({ varName: v.nom, selected: indispo.join(", "), indispoList: indispo, disponibles });
     }
     return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produitSelectionne, variations, selectedVariations, coursierIdsForLocation, matchedVille]);
 
 
@@ -283,7 +356,7 @@ export default function NouvelleCommandeVendeur() {
     };
   }, [villeText, quartierText, matchedVille, coursiers, zonesLivraison, quartiers]);
 
-  const qte = parseInt(form.quantite) || 1;
+  const qte = qteCommande;
   const prixGros = effectivePrices.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
   const fraisLivraisonEstime = estimationLivraison
@@ -299,7 +372,16 @@ export default function NouvelleCommandeVendeur() {
   const soumettre = async () => {
     if (!compteVendeur) return setErreur("Compte vendeur non chargé.");
     if (!form.produit_id) return setErreur("Sélectionnez un produit.");
-    if (variations.length > 0 && Object.values(selectedVariations).some((v) => !v)) return setErreur("Sélectionnez toutes les variations.");
+
+    // Validation explicite des variations — nom-par-nom
+    if (variations.length > 0) {
+      const manquantes = variations.filter((v) => getSelectedArray(v.nom).length === 0).map((v) => v.nom);
+      if (manquantes.length > 0) {
+        setTentativeEnvoi(true);
+        return setErreur(`Veuillez sélectionner au moins une option pour : ${manquantes.join(", ")} avant d'envoyer la commande.`);
+      }
+    }
+
     if (!villeText.trim()) return setErreur("Renseignez la ville du client.");
     if (qte < 1) return setErreur("La quantité doit être au moins 1.");
     if (!prixFinal || prixFinal < prixGros) return setErreur(`Le prix final doit être ≥ ${formater(prixGros)}`);
@@ -322,22 +404,33 @@ export default function NouvelleCommandeVendeur() {
       return setErreur(`Stock insuffisant dans cette ville. Disponible: ${stockInCity.total} unité(s).`);
     }
 
+    // Construction des lignes de commande (1 ligne par combinaison cochée)
+    const combos = selectedCombinations.length > 0 ? selectedCombinations : [variationKey || ""];
+    const nbCombos = combos.length;
+    const baseQte = Math.floor(qte / nbCombos);
+    const reste = qte - baseQte * nbCombos;
+    const lignes = combos.map((key, idx) => {
+      const q = baseQte + (idx < reste ? 1 : 0);
+      return { variation: key || null, quantite: Math.max(1, q) };
+    }).filter((l) => l.quantite > 0);
+
     setEnCours(true);
     setErreur("");
+    setTentativeEnvoi(false);
 
     try {
-      const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
-      const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
+      const baseRef = `CMD-${Date.now().toString(36).toUpperCase()}`;
+      const payloads = lignes.map((l, i) => ({
         vendeur_id: compteVendeur.id,
         vendeur_email: compteVendeur.email,
         produit_id: form.produit_id,
         produit_nom: produitSelectionne.nom,
         produit_reference: produitSelectionne.reference || null,
-        variation: variationKey || null,
-        quantite: qte,
+        variation: l.variation,
+        quantite: l.quantite,
         prix_unitaire: prixGros,
         prix_final_client: prixFinal,
-        montant_total: prixFinal * qte,
+        montant_total: prixFinal * l.quantite,
         frais_livraison: fraisLivraisonEstime,
         livraison_incluse: livraisonIncluse,
         coursier_id: null,
@@ -347,21 +440,22 @@ export default function NouvelleCommandeVendeur() {
         client_quartier: quartierText.trim() || null,
         client_adresse: form.client_adresse,
         notes: form.notes,
-        reference_commande: ref,
+        reference_commande: lignes.length > 1 ? `${baseRef}-${i + 1}` : baseRef,
         statut: "en_attente_validation_admin",
         stock_reserve: false,
         stock_retire_definitif: false,
-      }).select().single();
+      }));
 
+      const { data: newOrders, error: orderError } = await supabase.from("commandes_vendeur").insert(payloads).select();
       if (orderError) throw orderError;
 
-      // Admin notification
+      const resume = lignes.map((l) => `${l.variation || "standard"}×${l.quantite}`).join(", ");
       await supabase.from("notifications_admin").insert({
-        titre: "🛒 Nouvelle commande",
-        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey || "standard"}) pour ${form.client_nom} à ${villeText.trim()}`,
+        titre: lignes.length > 1 ? "🛒 Nouvelles commandes" : "🛒 Nouvelle commande",
+        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${resume}) pour ${form.client_nom} à ${villeText.trim()}`,
         type: "commande",
         vendeur_email: compteVendeur.email,
-        reference_id: newOrder.id,
+        reference_id: newOrders?.[0]?.id || null,
       });
 
       queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
@@ -487,9 +581,21 @@ export default function NouvelleCommandeVendeur() {
           {/* Variations — sélection visuelle pour la variation image, chips sinon, options en rupture désactivées */}
           {produitSelectionne && variations.length > 0 && (
             <div className="space-y-3">
-              {variations.map((v) => (
+              {variations.map((v) => {
+                const selArr = getSelectedArray(v.nom);
+                const manquante = tentativeEnvoi && selArr.length === 0;
+                return (
                 <div key={v.id || v.nom} className="space-y-1.5">
-                  <Label>{v.nom} *</Label>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <Label className={manquante ? "text-red-600" : ""}>{v.nom} *</Label>
+                    {multiSelectAutorise && (
+                      <span className="text-[11px] text-slate-500">
+                        {selArr.length > 0
+                          ? `${selArr.length} ${v.nom.toLowerCase()}${selArr.length > 1 ? "s" : ""} cochée${selArr.length > 1 ? "s" : ""}`
+                          : `Cochez 1 ou plusieurs ${v.nom.toLowerCase()}s (total ≤ ${qteCommande})`}
+                      </span>
+                    )}
+                  </div>
                   {v.is_image_variation ? (
                     <div className="grid grid-cols-4 gap-2">
                       {v.options.map((opt) => {
@@ -497,13 +603,13 @@ export default function NouvelleCommandeVendeur() {
                           ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
                           : isOptionAvailable(produitSelectionne, v.nom, opt.value);
                         const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
-                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        const isSelected = selArr.includes(opt.value);
                         return (
                           <button
                             key={opt.value}
                             type="button"
                             disabled={!available}
-                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            onClick={() => toggleOption(v.nom, opt.value)}
                             className={`relative rounded-lg border-2 overflow-hidden transition-all ${isSelected ? "border-amber-500" : "border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed grayscale" : "cursor-pointer"}`}
                           >
                             {opt.image_url ? (
@@ -512,6 +618,7 @@ export default function NouvelleCommandeVendeur() {
                               <div className="w-full aspect-square bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 p-1 text-center">{opt.value}</div>
                             )}
                             <p className="text-[10px] text-center py-0.5 bg-white truncate">{opt.value}</p>
+                            {isSelected && <span className="absolute top-0.5 left-0.5 text-[10px] bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>}
                             {!available && <span className="absolute top-0.5 right-0.5 text-[8px] bg-red-500 text-white rounded px-1">{ruptureLabel}</span>}
                           </button>
                         );
@@ -524,25 +631,38 @@ export default function NouvelleCommandeVendeur() {
                           ? isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)
                           : isOptionAvailable(produitSelectionne, v.nom, opt.value);
                         const ruptureLabel = coursierIdsForLocation ? `Rupture à ${matchedVille?.nom || ""}`.trim() : "Rupture";
-                        const isSelected = selectedVariations[v.nom] === opt.value;
+                        const isSelected = selArr.includes(opt.value);
                         return (
                           <button
                             key={opt.value}
                             type="button"
                             disabled={!available}
-                            onClick={() => setSelectedVariations((prev) => ({ ...prev, [v.nom]: opt.value }))}
+                            onClick={() => toggleOption(v.nom, opt.value)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isSelected ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-slate-200"} ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                           >
-                            {opt.value}{!available && ` • ${ruptureLabel}`}
+                            {isSelected && "✓ "}{opt.value}{!available && ` • ${ruptureLabel}`}
                           </button>
                         );
                       })}
                     </div>
                   )}
+                  {manquante && (
+                    <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Sélectionnez au moins une {v.nom.toLowerCase()} avant d'envoyer la commande.
+                    </p>
+                  )}
                 </div>
-              ))}
+                );
+              })}
+              {multiSelectAutorise && (
+                <p className="text-[11px] text-slate-500 italic">
+                  Vous pouvez combiner plusieurs options ({totalOptionsCochees}/{qteCommande} cochée{totalOptionsCochees > 1 ? "s" : ""}). Une commande sera créée par option.
+                </p>
+              )}
             </div>
           )}
+
 
           {produitSelectionne && (
             <div className="bg-slate-50 rounded-xl p-3 text-sm">
@@ -719,7 +839,7 @@ export default function NouvelleCommandeVendeur() {
                                 key={val}
                                 type="button"
                                 onClick={() => {
-                                  setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }));
+                                  setSelectedVariations((prev) => ({ ...prev, [vi.varName]: [val] }));
                                   setErreur("");
                                 }}
                                 className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 active:scale-95 transition-all"
