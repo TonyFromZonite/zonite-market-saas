@@ -356,7 +356,7 @@ export default function NouvelleCommandeVendeur() {
     };
   }, [villeText, quartierText, matchedVille, coursiers, zonesLivraison, quartiers]);
 
-  const qte = parseInt(form.quantite) || 1;
+  const qte = qteCommande;
   const prixGros = effectivePrices.prix_gros || 0;
   const prixFinal = parseFloat(form.prix_final_client) || 0;
   const fraisLivraisonEstime = estimationLivraison
@@ -372,7 +372,16 @@ export default function NouvelleCommandeVendeur() {
   const soumettre = async () => {
     if (!compteVendeur) return setErreur("Compte vendeur non chargé.");
     if (!form.produit_id) return setErreur("Sélectionnez un produit.");
-    if (variations.length > 0 && Object.values(selectedVariations).some((v) => !v)) return setErreur("Sélectionnez toutes les variations.");
+
+    // Validation explicite des variations — nom-par-nom
+    if (variations.length > 0) {
+      const manquantes = variations.filter((v) => getSelectedArray(v.nom).length === 0).map((v) => v.nom);
+      if (manquantes.length > 0) {
+        setTentativeEnvoi(true);
+        return setErreur(`Veuillez sélectionner au moins une option pour : ${manquantes.join(", ")} avant d'envoyer la commande.`);
+      }
+    }
+
     if (!villeText.trim()) return setErreur("Renseignez la ville du client.");
     if (qte < 1) return setErreur("La quantité doit être au moins 1.");
     if (!prixFinal || prixFinal < prixGros) return setErreur(`Le prix final doit être ≥ ${formater(prixGros)}`);
@@ -395,22 +404,33 @@ export default function NouvelleCommandeVendeur() {
       return setErreur(`Stock insuffisant dans cette ville. Disponible: ${stockInCity.total} unité(s).`);
     }
 
+    // Construction des lignes de commande (1 ligne par combinaison cochée)
+    const combos = selectedCombinations.length > 0 ? selectedCombinations : [variationKey || ""];
+    const nbCombos = combos.length;
+    const baseQte = Math.floor(qte / nbCombos);
+    const reste = qte - baseQte * nbCombos;
+    const lignes = combos.map((key, idx) => {
+      const q = baseQte + (idx < reste ? 1 : 0);
+      return { variation: key || null, quantite: Math.max(1, q) };
+    }).filter((l) => l.quantite > 0);
+
     setEnCours(true);
     setErreur("");
+    setTentativeEnvoi(false);
 
     try {
-      const ref = `CMD-${Date.now().toString(36).toUpperCase()}`;
-      const { data: newOrder, error: orderError } = await supabase.from("commandes_vendeur").insert({
+      const baseRef = `CMD-${Date.now().toString(36).toUpperCase()}`;
+      const payloads = lignes.map((l, i) => ({
         vendeur_id: compteVendeur.id,
         vendeur_email: compteVendeur.email,
         produit_id: form.produit_id,
         produit_nom: produitSelectionne.nom,
         produit_reference: produitSelectionne.reference || null,
-        variation: variationKey || null,
-        quantite: qte,
+        variation: l.variation,
+        quantite: l.quantite,
         prix_unitaire: prixGros,
         prix_final_client: prixFinal,
-        montant_total: prixFinal * qte,
+        montant_total: prixFinal * l.quantite,
         frais_livraison: fraisLivraisonEstime,
         livraison_incluse: livraisonIncluse,
         coursier_id: null,
@@ -420,21 +440,22 @@ export default function NouvelleCommandeVendeur() {
         client_quartier: quartierText.trim() || null,
         client_adresse: form.client_adresse,
         notes: form.notes,
-        reference_commande: ref,
+        reference_commande: lignes.length > 1 ? `${baseRef}-${i + 1}` : baseRef,
         statut: "en_attente_validation_admin",
         stock_reserve: false,
         stock_retire_definitif: false,
-      }).select().single();
+      }));
 
+      const { data: newOrders, error: orderError } = await supabase.from("commandes_vendeur").insert(payloads).select();
       if (orderError) throw orderError;
 
-      // Admin notification
+      const resume = lignes.map((l) => `${l.variation || "standard"}×${l.quantite}`).join(", ");
       await supabase.from("notifications_admin").insert({
-        titre: "🛒 Nouvelle commande",
-        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${variationKey || "standard"}) pour ${form.client_nom} à ${villeText.trim()}`,
+        titre: lignes.length > 1 ? "🛒 Nouvelles commandes" : "🛒 Nouvelle commande",
+        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${resume}) pour ${form.client_nom} à ${villeText.trim()}`,
         type: "commande",
         vendeur_email: compteVendeur.email,
-        reference_id: newOrder.id,
+        reference_id: newOrders?.[0]?.id || null,
       });
 
       queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
