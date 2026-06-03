@@ -719,8 +719,11 @@ export default function NouvelleCommandeVendeur() {
                             <button
                               key={val}
                               type="button"
-                              onClick={() => setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }))}
-                              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-colors"
+                              onClick={() => {
+                                setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }));
+                                setErreur("");
+                              }}
+                              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 active:scale-95 transition-all"
                             >
                               {val}
                             </button>
