@@ -893,7 +893,13 @@ export default function NouvelleCommandeVendeur() {
                 </div>
               )}
               <div className="space-y-1 text-sm flex-1 min-w-0">
-                <p>Produit: <strong>{produitSelectionne.nom}</strong> {variationKey && `(${variationKey})`}</p>
+                <p>Produit: <strong>{produitSelectionne.nom}</strong></p>
+                {selectedCombinations.length > 0 && (
+                  <p className="text-xs text-slate-600">
+                    Variation{selectedCombinations.length > 1 ? "s" : ""} :{" "}
+                    <strong>{selectedCombinations.join(" • ")}</strong>
+                  </p>
+                )}
                 <p>Quantité: <strong>{qte}</strong></p>
                 <p>Prix unitaire: <strong>{formater(prixFinal)}</strong></p>
                 <p>Montant total: <strong>{formater(prixFinal * qte)}</strong></p>
@@ -938,7 +944,11 @@ export default function NouvelleCommandeVendeur() {
                   )}
                   <div className="flex-1 min-w-0 text-sm">
                     <p className="font-semibold text-slate-900 truncate">{produitSelectionne.nom}</p>
-                    {variationKey && <p className="text-xs text-slate-500">{variationKey}</p>}
+                    {selectedCombinations.length > 0 && (
+                      <p className="text-xs text-slate-500">
+                        {selectedCombinations.join(" • ")}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-600 mt-1">Quantité : <strong>{qte}</strong></p>
                     <p className="text-xs text-slate-600">Total : <strong>{formater(prixFinal * qte)}</strong></p>
                   </div>
