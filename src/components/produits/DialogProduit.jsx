@@ -453,7 +453,47 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                               onChange={(e) => updateOption(v.id, idx, { prix_vente_conseille: e.target.value === "" ? null : Number(e.target.value) })}
                             />
                           </div>
+                          {/* Stock par coursier pour cette option */}
+                          {coursiers.length > 0 && (() => {
+                            const keys = keysForOption(v.nom, opt.value);
+                            // Si la variation est combinée à d'autres, on saisit par combinaison
+                            const combos = keys.length > 0 ? keys : [`${v.nom}:${opt.value}`];
+                            return (
+                              <div className="border rounded-md bg-slate-50/50 p-2 space-y-1.5">
+                                <p className="text-[10px] uppercase tracking-wide text-slate-500 font-medium">
+                                  Stock par coursier {variations.length > 1 ? "(par combinaison)" : ""}
+                                </p>
+                                {combos.map((vk) => (
+                                  <div key={vk}>
+                                    {variations.length > 1 && (
+                                      <p className="text-[10px] text-slate-500 mb-1 truncate">{vk}</p>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {coursiers.map((c) => {
+                                        const ville = villes.find((vv) => vv.id === c.ville_id);
+                                        return (
+                                          <div key={c.id} className="flex items-center gap-1.5">
+                                            <span className="text-[11px] text-slate-600 flex-1 truncate" title={`${c.nom} • ${ville?.nom || ""}`}>
+                                              {c.nom}
+                                            </span>
+                                            <Input
+                                              type="number" min="0"
+                                              className="h-7 w-16 text-xs"
+                                              value={getQty(c.id, vk)}
+                                              onFocus={(e) => { if (e.target.value === "0") e.target.value = ""; }}
+                                              onChange={(e) => setQty(c.id, vk, e.target.value === "" ? 0 : parseInt(e.target.value, 10))}
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
+
                       </div>
                     ))}
                     <div className="p-2 bg-slate-50">
