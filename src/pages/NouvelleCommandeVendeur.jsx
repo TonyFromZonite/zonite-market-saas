@@ -704,39 +704,39 @@ export default function NouvelleCommandeVendeur() {
               </div>
 
               <div className="space-y-3">
-                {variationsIndispo.map((vi) => (
-                  <div key={vi.varName} className="rounded-lg bg-white border border-red-200 p-3 space-y-2">
-                    <p className="text-sm">
-                      <span className="font-semibold capitalize">{vi.varName}</span> «&nbsp;<span className="line-through">{vi.selected}</span>&nbsp;» n'est pas livrable à <strong>{matchedQuartier ? `${matchedQuartier.nom}, ` : ""}{matchedVille.nom}</strong>.
-                    </p>
-                    {vi.disponibles.length > 0 ? (
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-emerald-700">
-                          ✅ {vi.disponibles.length} {vi.varName.toLowerCase()}{vi.disponibles.length > 1 ? "s" : ""} disponible{vi.disponibles.length > 1 ? "s" : ""} à {matchedVille.nom} :
+                {variationsIndispo.map((vi) => {
+                  const lieu = matchedQuartier ? `${matchedQuartier.nom}, ${matchedVille.nom}` : matchedVille.nom;
+                  return (
+                    <div key={vi.varName} className="rounded-lg bg-white border border-red-200 p-3 space-y-2">
+                      {vi.disponibles.length > 0 ? (
+                        <>
+                          <p className="text-xs font-semibold text-emerald-700">
+                            ✅ {vi.varName} disponible{vi.disponibles.length > 1 ? "s" : ""} à <strong>{lieu}</strong> :
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {vi.disponibles.map((val) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }));
+                                  setErreur("");
+                                }}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 active:scale-95 transition-all"
+                              >
+                                {val}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-red-700 font-medium">
+                          Aucune <span className="lowercase">{vi.varName}</span> n'est disponible à <strong>{lieu}</strong>. Essayez une autre ville ou un autre quartier.
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {vi.disponibles.map((val) => (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => {
-                                setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }));
-                                setErreur("");
-                              }}
-                              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 border-2 border-emerald-400 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 active:scale-95 transition-all"
-                            >
-                              {val}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-red-700 font-medium">
-                        Aucune autre {vi.varName.toLowerCase()} n'est disponible dans cette localisation. Essayez une autre ville ou un autre quartier.
-                      </p>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
