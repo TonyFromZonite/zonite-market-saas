@@ -162,3 +162,109 @@ export function getDisplayImage(produit, selectedVariations) {
   }
   return (produit?.images || [])[0] || null;
 }
+
+/**
+ * Galerie d'images fusionnée : images produit puis images des options
+ * disponibles de la variation porteuse d'images (dédupliquées).
+ * Si `coursierIds` est fourni, ne garde que les options dispo chez ces coursiers.
+ */
+export function getGalleryImages(produit, coursierIds) {
+  const result = [];
+  const seen = new Set();
+  const push = (url) => {
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    result.push(url);
+  };
+  for (const url of produit?.images || []) push(url);
+  const imgVar = getImageVariation(produit?.variations);
+  if (imgVar) {
+    for (const opt of imgVar.options) {
+      if (!opt.image_url) continue;
+      const available = coursierIds
+        ? isOptionAvailableInCoursiers(produit, imgVar.nom, opt.value, coursierIds)
+        : isOptionAvailable(produit, imgVar.nom, opt.value);
+      if (available) push(opt.image_url);
+    }
+  }
+  return result;
+}
+
+/**
+ * Trouve la première option de la variation porteuse d'images dont l'URL
+ * correspond. Retourne `{ varName, value } | null`.
+ */
+export function findOptionByImageUrl(produit, url) {
+  if (!url) return null;
+  const imgVar = getImageVariation(produit?.variations);
+  if (!imgVar) return null;
+  const opt = imgVar.options.find((o) => o.image_url === url);
+  return opt ? { varName: imgVar.nom, value: opt.value } : null;
+}
+
+/* ============================================================
+ * Helpers de mutation (éditeur admin / stocks_par_coursier)
+ * ============================================================ */
+
+/** Recalcule `stock_total` par coursier à partir de `stock_par_variation`. */
+export function recomputeCoursierTotals(stocksParCoursier) {
+  return (stocksParCoursier || []).map((sc) => ({
+    ...sc,
+    stock_total: (sc.stock_par_variation || []).reduce(
+      (s, sv) => s + (parseInt(sv.quantite, 10) || 0),
+      0
+    ),
+  }));
+}
+
+/** Somme totale = stock_global. */
+export function computeStockGlobal(stocksParCoursier) {
+  return (stocksParCoursier || []).reduce(
+    (t, sc) =>
+      t +
+      (sc.stock_par_variation || []).reduce(
+        (s, sv) => s + (parseInt(sv.quantite, 10) || 0),
+        0
+      ),
+    0
+  );
+}
+
+/** Définit la quantité pour un (coursier, variation_key), crée l'entrée si absente. */
+export function setStockForKey(stocksParCoursier, coursierId, variationKey, quantite, coursierMeta) {
+  const list = [...(stocksParCoursier || [])];
+  let idx = list.findIndex((s) => s.coursier_id === coursierId);
+  if (idx === -1) {
+    list.push({
+      coursier_id: coursierId,
+      coursier_nom: coursierMeta?.coursier_nom || "",
+      ville: coursierMeta?.ville || "",
+      stock_total: 0,
+      stock_par_variation: [],
+    });
+    idx = list.length - 1;
+  }
+  const sc = { ...list[idx], stock_par_variation: [...(list[idx].stock_par_variation || [])] };
+  const vIdx = sc.stock_par_variation.findIndex((v) => v.variation_key === variationKey);
+  const q = Math.max(0, parseInt(quantite, 10) || 0);
+  if (vIdx === -1) sc.stock_par_variation.push({ variation_key: variationKey, quantite: q });
+  else sc.stock_par_variation[vIdx] = { ...sc.stock_par_variation[vIdx], quantite: q };
+  list[idx] = sc;
+  return recomputeCoursierTotals(list);
+}
+
+/** Renomme une option (varName, oldValue -> newValue) dans toutes les `variation_key`. */
+export function renameOptionInKeys(stocksParCoursier, varName, oldValue, newValue) {
+  if (!varName || !oldValue || !newValue || oldValue === newValue) return stocksParCoursier || [];
+  const oldSeg = `${varName}:${oldValue}`;
+  const newSeg = `${varName}:${newValue}`;
+  return (stocksParCoursier || []).map((sc) => ({
+    ...sc,
+    stock_par_variation: (sc.stock_par_variation || []).map((sv) => {
+      const segs = (sv.variation_key || "").split(/\s*\/\s*|\|/).map((s) => s.trim());
+      const updated = segs.map((s) => (s === oldSeg ? newSeg : s));
+      return { ...sv, variation_key: updated.join(" / ") };
+    }),
+  }));
+}
+

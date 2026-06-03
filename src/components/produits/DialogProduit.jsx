@@ -11,7 +11,14 @@ import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2, Image as Ima
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeVariations } from "@/lib/variationHelpers";
+import {
+  normalizeVariations,
+  setStockForKey,
+  renameOptionInKeys,
+  recomputeCoursierTotals,
+  computeStockGlobal,
+} from "@/lib/variationHelpers";
+
 
 export default function DialogProduit({ open, onOpenChange, produit, form, setForm, categories, onSave, enCours }) {
   const [urlImageAjout, setUrlImageAjout] = useState("");
@@ -118,14 +125,26 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   };
 
   const updateOption = (varId, optIndex, patch) => {
+    const v = variations.find((vv) => vv.id === varId);
+    const oldVal = v?.options[optIndex]?.value;
     updateVariations(
-      variations.map((v) => {
-        if (v.id !== varId) return v;
-        const opts = v.options.map((o, i) => (i === optIndex ? { ...o, ...patch } : o));
-        return { ...v, options: opts };
+      variations.map((vv) => {
+        if (vv.id !== varId) return vv;
+        const opts = vv.options.map((o, i) => (i === optIndex ? { ...o, ...patch } : o));
+        return { ...vv, options: opts };
       })
     );
+    // Si la valeur change, propager dans toutes les variation_key des coursiers
+    if (patch.value !== undefined && v && oldVal && patch.value !== oldVal) {
+      setForm((p) => ({
+        ...p,
+        stocks_par_coursier: recomputeCoursierTotals(
+          renameOptionInKeys(p.stocks_par_coursier || [], v.nom, oldVal, patch.value)
+        ),
+      }));
+    }
   };
+
 
   const uploadOptionImage = async (varId, optIndex, file) => {
     if (!file) return;
@@ -203,8 +222,38 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     setShowStockModal(true);
   };
 
-  // Calculate global stock
-  const stockGlobal = stocksParCoursier.reduce((t, s) => t + (s.stock_total || 0), 0);
+  // Calculate global stock (dérivé)
+  const stockGlobal = computeStockGlobal(stocksParCoursier);
+
+  // Helper inline pour la matrice par option
+  const getQty = (coursierId, variationKey) => {
+    const sc = stocksParCoursier.find((s) => s.coursier_id === coursierId);
+    const sv = sc?.stock_par_variation?.find((v) => v.variation_key === variationKey);
+    return sv?.quantite ?? 0;
+  };
+  const setQty = (coursierId, variationKey, qty) => {
+    const coursier = coursiers.find((c) => c.id === coursierId);
+    const ville = villes.find((v) => v.id === coursier?.ville_id);
+    setForm((p) => ({
+      ...p,
+      stocks_par_coursier: setStockForKey(
+        p.stocks_par_coursier || [],
+        coursierId,
+        variationKey,
+        qty,
+        { coursier_nom: coursier?.nom || "", ville: ville?.nom || "" }
+      ),
+    }));
+  };
+  // Pour une option donnée d'une variation, renvoie toutes les variation_key correspondantes
+  const keysForOption = (varName, value) => {
+    const seg = `${varName}:${value}`;
+    if (variationKeys.length === 0) return [seg];
+    return variationKeys.filter((k) =>
+      k.split(/\s*\/\s*|\|/).some((s) => s.trim() === seg)
+    );
+  };
+
 
   const formater = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 
@@ -404,7 +453,47 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                               onChange={(e) => updateOption(v.id, idx, { prix_vente_conseille: e.target.value === "" ? null : Number(e.target.value) })}
                             />
                           </div>
+                          {/* Stock par coursier pour cette option */}
+                          {coursiers.length > 0 && (() => {
+                            const keys = keysForOption(v.nom, opt.value);
+                            // Si la variation est combinée à d'autres, on saisit par combinaison
+                            const combos = keys.length > 0 ? keys : [`${v.nom}:${opt.value}`];
+                            return (
+                              <div className="border rounded-md bg-slate-50/50 p-2 space-y-1.5">
+                                <p className="text-[10px] uppercase tracking-wide text-slate-500 font-medium">
+                                  Stock par coursier {variations.length > 1 ? "(par combinaison)" : ""}
+                                </p>
+                                {combos.map((vk) => (
+                                  <div key={vk}>
+                                    {variations.length > 1 && (
+                                      <p className="text-[10px] text-slate-500 mb-1 truncate">{vk}</p>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {coursiers.map((c) => {
+                                        const ville = villes.find((vv) => vv.id === c.ville_id);
+                                        return (
+                                          <div key={c.id} className="flex items-center gap-1.5">
+                                            <span className="text-[11px] text-slate-600 flex-1 truncate" title={`${c.nom} • ${ville?.nom || ""}`}>
+                                              {c.nom}
+                                            </span>
+                                            <Input
+                                              type="number" min="0"
+                                              className="h-7 w-16 text-xs"
+                                              value={getQty(c.id, vk)}
+                                              onFocus={(e) => { if (e.target.value === "0") e.target.value = ""; }}
+                                              onChange={(e) => setQty(c.id, vk, e.target.value === "" ? 0 : parseInt(e.target.value, 10))}
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
+
                       </div>
                     ))}
                     <div className="p-2 bg-slate-50">

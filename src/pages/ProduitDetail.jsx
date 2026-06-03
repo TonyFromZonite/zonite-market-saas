@@ -17,7 +17,10 @@ import {
   getOptionStock,
   getEffectivePrices,
   getDisplayImage,
+  getGalleryImages,
+  findOptionByImageUrl,
 } from "@/lib/variationHelpers";
+
 
 export default function ProduitDetail() {
   const { produitId } = useParams();
@@ -95,12 +98,16 @@ export default function ProduitDetail() {
   const imageVar = useMemo(() => getImageVariation(produit?.variations), [produit]);
   const prices = useMemo(() => getEffectivePrices(produit, selected), [produit, selected]);
 
-  // Image affichée : option image sélectionnée > galerie produit
+  // Image affichée : option image sélectionnée > miniature gallery courante
+  const galleryImages = useMemo(
+    () => getGalleryImages(produit, coursierIdsForVendeur),
+    [produit, coursierIdsForVendeur]
+  );
   const mainImage = useMemo(() => {
-    const fromOption = getDisplayImage(produit, selected);
-    if (imageVar && selected[imageVar.nom]) return fromOption;
-    return (produit?.images || [])[galleryIdx] || fromOption;
-  }, [produit, selected, imageVar, galleryIdx]);
+    if (imageVar && selected[imageVar.nom]) return getDisplayImage(produit, selected);
+    return galleryImages[galleryIdx] || galleryImages[0] || null;
+  }, [produit, selected, imageVar, galleryIdx, galleryImages]);
+
 
   if (isLoading) {
     return (
@@ -124,7 +131,7 @@ export default function ProduitDetail() {
     );
   }
 
-  const images = produit.images || [];
+  const images = galleryImages;
   const stockDispo = produit.stock_global || 0;
   const stockOk = stockDispo > 0;
   const categorieName = produit.categories?.nom;
@@ -149,19 +156,30 @@ export default function ProduitDetail() {
             alt={produit.nom}
             className="w-full h-64 sm:h-80 object-contain bg-slate-50"
           />
-          {images.length > 1 && !(imageVar && selected[imageVar.nom]) && (
+          {images.length > 1 && (
             <div className="flex gap-2 p-3 overflow-x-auto">
-              {images.map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt={`${produit.nom} ${i + 1}`}
-                  onClick={() => setGalleryIdx(i)}
-                  className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${i === galleryIdx ? 'border-amber-500' : 'border-transparent'}`}
-                />
-              ))}
+              {images.map((img, i) => {
+                const match = findOptionByImageUrl(produit, img);
+                const isActive = imageVar && selected[imageVar.nom] && match
+                  ? selected[match.varName] === match.value
+                  : !(imageVar && selected[imageVar.nom]) && i === galleryIdx;
+                return (
+                  <img
+                    key={`${img}-${i}`}
+                    src={img}
+                    alt={`${produit.nom} ${i + 1}`}
+                    onClick={() => {
+                      setGalleryIdx(i);
+                      if (match) setSelected((p) => ({ ...p, [match.varName]: match.value }));
+                      else if (imageVar) setSelected((p) => { const n = { ...p }; delete n[imageVar.nom]; return n; });
+                    }}
+                    className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 cursor-pointer border-2 ${isActive ? 'border-amber-500' : 'border-transparent'}`}
+                  />
+                );
+              })}
             </div>
           )}
+
         </div>
       ) : (
         <div className="h-48 bg-slate-100 flex items-center justify-center">

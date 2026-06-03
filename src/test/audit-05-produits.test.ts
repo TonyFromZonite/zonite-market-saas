@@ -524,4 +524,119 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
       }
     `);
   });
+
+  it("5.22 getGalleryImages liste les images produit puis les options dispo", async () => {
+    const { getGalleryImages } = await import("@/lib/variationHelpers");
+    const produit: any = {
+      images: ["main.jpg", "alt1.jpg"],
+      variations: [
+        {
+          nom: "Couleur",
+          is_image_variation: true,
+          options: [
+            { value: "Rouge", image_url: "rouge.jpg" },
+            { value: "Bleu", image_url: "bleu.jpg" },
+            { value: "Vert", image_url: "vert.jpg" },
+          ],
+        },
+      ],
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 2 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+          { variation_key: "Couleur:Vert", quantite: 5 },
+        ] },
+      ],
+    };
+    expect(getGalleryImages(produit)).toEqual(["main.jpg", "alt1.jpg", "rouge.jpg", "vert.jpg"]);
+  });
+
+  it("5.23 getGalleryImages retire l'image d'une option en rupture globale", async () => {
+    const { getGalleryImages } = await import("@/lib/variationHelpers");
+    const produit: any = {
+      images: ["main.jpg"],
+      variations: [{ nom: "Couleur", is_image_variation: true, options: [
+        { value: "Rouge", image_url: "rouge.jpg" },
+        { value: "Bleu", image_url: "bleu.jpg" },
+      ] }],
+      stocks_par_coursier: [
+        { coursier_id: "c1", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 3 },
+        ] },
+      ],
+    };
+    const out = getGalleryImages(produit);
+    expect(out).toContain("bleu.jpg");
+    expect(out).not.toContain("rouge.jpg");
+  });
+
+  it("5.24 getGalleryImages filtre par coursierIds (ville vendeur)", async () => {
+    const { getGalleryImages } = await import("@/lib/variationHelpers");
+    const produit: any = {
+      images: ["main.jpg"],
+      variations: [{ nom: "Couleur", is_image_variation: true, options: [
+        { value: "Rouge", image_url: "rouge.jpg" },
+        { value: "Bleu", image_url: "bleu.jpg" },
+      ] }],
+      stocks_par_coursier: [
+        { coursier_id: "cD", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 5 },
+          { variation_key: "Couleur:Bleu", quantite: 0 },
+        ] },
+        { coursier_id: "cY", stock_par_variation: [
+          { variation_key: "Couleur:Rouge", quantite: 0 },
+          { variation_key: "Couleur:Bleu", quantite: 7 },
+        ] },
+      ],
+    };
+    expect(getGalleryImages(produit, new Set(["cD"]))).toEqual(["main.jpg", "rouge.jpg"]);
+    expect(getGalleryImages(produit, new Set(["cY"]))).toEqual(["main.jpg", "bleu.jpg"]);
+  });
+
+  it("5.25 computeStockGlobal == somme des quantités par coursier", async () => {
+    const { computeStockGlobal, recomputeCoursierTotals } = await import("@/lib/variationHelpers");
+    const stocks = recomputeCoursierTotals([
+      { coursier_id: "c1", stock_par_variation: [
+        { variation_key: "Couleur:Rouge", quantite: 2 },
+        { variation_key: "Couleur:Bleu", quantite: 3 },
+      ] },
+      { coursier_id: "c2", stock_par_variation: [
+        { variation_key: "Couleur:Rouge", quantite: 4 },
+        { variation_key: "Couleur:Bleu", quantite: 1 },
+      ] },
+    ]);
+    expect(stocks[0].stock_total).toBe(5);
+    expect(stocks[1].stock_total).toBe(5);
+    expect(computeStockGlobal(stocks)).toBe(10);
+  });
+
+  it("5.26 renameOptionInKeys propage le renommage dans les variation_key", async () => {
+    const { renameOptionInKeys } = await import("@/lib/variationHelpers");
+    const before = [
+      { coursier_id: "c1", stock_par_variation: [
+        { variation_key: "Couleur:Rouge", quantite: 3 },
+        { variation_key: "Couleur:Rouge / Taille:M", quantite: 2 },
+        { variation_key: "Couleur:Bleu", quantite: 5 },
+      ] },
+    ];
+    const after = renameOptionInKeys(before, "Couleur", "Rouge", "Carmin");
+    const keys = after[0].stock_par_variation.map((v: any) => v.variation_key);
+    expect(keys).toContain("Couleur:Carmin");
+    expect(keys).toContain("Couleur:Carmin / Taille:M");
+    expect(keys).toContain("Couleur:Bleu");
+  });
+
+  it("5.27 setStockForKey crée l'entrée coursier et recalcule stock_total", async () => {
+    const { setStockForKey } = await import("@/lib/variationHelpers");
+    let stocks: any[] = [];
+    stocks = setStockForKey(stocks, "c1", "Couleur:Rouge", 4, { coursier_nom: "Jean", ville: "Douala" });
+    stocks = setStockForKey(stocks, "c1", "Couleur:Bleu", 6);
+    expect(stocks).toHaveLength(1);
+    expect(stocks[0].coursier_nom).toBe("Jean");
+    expect(stocks[0].stock_total).toBe(10);
+    stocks = setStockForKey(stocks, "c1", "Couleur:Rouge", 0);
+    expect(stocks[0].stock_total).toBe(6);
+  });
 });
+

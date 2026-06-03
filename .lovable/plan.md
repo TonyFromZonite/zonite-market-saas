@@ -1,54 +1,110 @@
+
 ## Objectif
 
-Rendre la disponibilité d'une variation **dépendante du coursier / ville / quartier** de livraison, pas seulement du stock global produit.
+Deux problèmes côté admin & vendeur, liés à la nouvelle gestion des variations enrichies (image + prix par option) :
 
-## Constat
+1. **Stock non cohérent** : quand on ajoute une variation, on ne peut pas saisir directement le nombre de pièces par option, par coursier / ville / quartier, et le stock global n'est pas garanti cohérent avec la somme par coursier.
+2. **Images des variations absentes de la galerie** : les images attachées aux options de la variation porteuse d'images ne s'affichent pas dans la liste d'images du produit. Elles doivent suivre l'image principale et disparaître quand l'option correspondante est en rupture (stock 0).
 
-Aujourd'hui dans `variationHelpers.js`, `getOptionStock(produit, varName, value)` **additionne le stock de toutes les agences**. Donc :
-- Côté `ProduitDetail.jsx`, `CatalogueVendeur.jsx`, `NouvelleCommandeVendeur.jsx`, une couleur/taille apparaît "disponible" même si elle n'existe que chez un coursier d'une autre ville.
-- Seul `SelecteurLocalisation.jsx` (utilisé dans la vente directe admin) calcule déjà par coursier.
+## Périmètre
 
-L'écran admin `DialogProduit.jsx` permet bien d'éditer `stocks_par_coursier[*].stock_par_variation[*].quantite` par coursier — le modèle de données est donc correct, c'est uniquement la **lecture côté vendeur** qui ne segmente pas.
+- `src/components/produits/DialogProduit.jsx` (édition admin)
+- `src/lib/variationHelpers.js` (helpers de lecture)
+- `src/pages/ProduitDetail.jsx` (vue vendeur)
+- `src/pages/CatalogueVendeur.jsx` (vignettes catalogue — image principale uniquement, vérification)
+- Tests : `src/test/audit-05-produits.test.ts`
 
-## Changements (frontend uniquement, aucune migration SQL)
+Aucune migration base de données : on continue d'utiliser `produits.variations` (JSONB) et `produits.stocks_par_coursier` (JSONB) existants. `stock_global` reste recalculé à partir de `stocks_par_coursier`.
 
-### 1. `src/lib/variationHelpers.js`
-Ajouter deux helpers, sans casser l'API actuelle :
-- `getOptionStockInCoursiers(produit, varName, value, coursierIds)` — comme `getOptionStock` mais filtré sur un `Set` de `coursier_id`. Si `coursierIds` est `null`/`undefined`, retombe sur le comportement global existant.
-- `isOptionAvailableInCoursiers(produit, varName, value, coursierIds)` — booléen équivalent.
-- Helper utilitaire `getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, villeId, quartierId?)` qui renvoie le `Set` des coursiers couvrant une ville (via `ville_id` direct) ou un quartier (via `zones_livraison.quartiers_ids` + `coursiers.zones_livraison_ids`). Si `quartierId` fourni, restreindre aux coursiers couvrant ce quartier exact.
+---
 
-### 2. `src/pages/NouvelleCommandeVendeur.jsx`
-- Calculer `coursierIdsForLocation` à partir de `matchedVille` (+ `matchedQuartier` quand connu), via le nouveau helper.
-- Dans les deux `v.options.map(...)` (lignes ~459 et ~483), remplacer `isOptionAvailable(produitSelectionne, v.nom, opt.value)` par `isOptionAvailableInCoursiers(produitSelectionne, v.nom, opt.value, coursierIdsForLocation)` **dès qu'une ville est saisie**. Tant qu'aucune ville n'est saisie, garder le comportement actuel (global) pour ne pas bloquer la sélection préalable.
-- Afficher le badge "Rupture dans {ville}" plutôt que "Rupture" générique quand le filtre est actif.
-- Le `stockInCity` existant (lignes 170-199) continue d'agir comme garde finale au submit — inchangé.
+## 1. Stock par variation cohérent (admin)
 
-### 3. `src/pages/ProduitDetail.jsx`
-- Récupérer `coursiers`, `zones_livraison`, `quartiers`, `villes` via `useQuery`.
-- Lire la ville/quartier du vendeur depuis `compteVendeur` (`session` → table `sellers` → `ville`, `quartier`).
-- Calculer `coursierIdsForVendeur` et passer aux appels `isOptionAvailable` (lignes 179 et 215). Si le vendeur n'a pas de ville renseignée, fallback global.
-- Afficher sous chaque option image en rupture locale : `Indisponible à {ville}` au lieu de juste "Rupture".
+### 1.a Matrice stock directement dans l'onglet « Variations »
 
-### 4. `src/pages/CatalogueVendeur.jsx`
-- Même approche : utiliser la ville du vendeur pour filtrer les vignettes couleurs (lignes 317, 353, 354). Fallback global si pas de ville.
+Sous chaque option d'une variation, ajouter une **mini-matrice "Stock par coursier"** :
+- Une ligne par coursier actif, avec un input numérique (qté).
+- Lecture/écriture vers `stocks_par_coursier[].stock_par_variation[]` en utilisant la `variation_key` canonique (`Nom1:Val1 / Nom2:Val2` quand plusieurs variations existent — déjà géré par `getVariationKeys`).
+- Sous-total option = somme des coursiers.
+- Affichage en lecture seule du sous-total ville (groupage des coursiers par `ville_id`).
 
-### 5. Tests — `src/test/audit-05-produits.test.ts`
-Ajouter 3 cas :
-- Une option présente uniquement chez coursier A est **disponible** quand `coursierIds = {A}`, **indisponible** quand `coursierIds = {B}`.
-- Une option dont le stock est 0 chez tous les coursiers d'une ville est indisponible même si elle existe dans une autre ville.
-- `getCoursierIdsForVille` renvoie l'union (coursiers via `ville_id` + coursiers via `zones_livraison_ids` couvrant un quartier de la ville).
+L'onglet « Stock / Coursiers » existant reste disponible comme vue tableau complète, mais l'édition principale se fait désormais option par option (plus intuitif quand on ajoute une variation).
 
-## Hors scope
+### 1.b Stock global toujours dérivé
 
-- Aucune modification de schéma DB, RLS, edge function ou logique de réservation/déduction de stock (toujours réservation à la création + sortie définitive à la livraison).
-- `DialogProduit.jsx` (admin) inchangé : le modèle de données autorise déjà des stocks différents par coursier et par variation.
-- `SelecteurLocalisation.jsx` inchangé (déjà correct).
+- `stock_global` du produit = somme des `quantite` sur tout `stocks_par_coursier[].stock_par_variation[]`.
+- Recalcul à chaque modification de la matrice et au save (`onSave`). Le champ n'est plus saisissable manuellement (déjà le cas).
+- `stock_total` par coursier également recalculé automatiquement.
 
-## Fichiers touchés
+### 1.c Synchronisation des clés
 
-- `src/lib/variationHelpers.js`
-- `src/pages/NouvelleCommandeVendeur.jsx`
-- `src/pages/ProduitDetail.jsx`
-- `src/pages/CatalogueVendeur.jsx`
-- `src/test/audit-05-produits.test.ts`
+Quand on renomme une option (`updateOption(..., {value})`) ou une variation, ou qu'on en supprime une :
+- Mettre à jour toutes les `variation_key` dans `stocks_par_coursier` (replace / drop).
+- Quand une nouvelle option est ajoutée, créer automatiquement des entrées `quantite: 0` pour chaque coursier déjà présent.
+- Cela existe partiellement pour la suppression, à compléter pour rename + add option.
+
+### 1.d Validation au save
+
+- Bloquer la sauvegarde si une option n'a pas de nom.
+- Avertissement (non bloquant) si `stock_global = 0` alors que le produit est `actif=true`.
+
+---
+
+## 2. Galerie produit fusionnée avec images de variation disponibles
+
+### 2.a Helper
+
+Dans `variationHelpers.js`, ajouter :
+
+```js
+getGalleryImages(produit, coursierIds?) -> string[]
+```
+
+Logique :
+1. Démarrer avec `produit.images` (image principale en `[0]`, suivie des autres images produit).
+2. Récupérer `getImageVariation(variations)`. Pour chaque option de cette variation, si `image_url` existe ET l'option est disponible (`isOptionAvailable` ou `isOptionAvailableInCoursiers` si `coursierIds` fourni), ajouter `image_url` à la suite.
+3. Dédupliquer (Set sur URL) tout en préservant l'ordre.
+
+### 2.b ProduitDetail.jsx
+
+- Remplacer `images = produit.images || []` par `images = getGalleryImages(produit, coursierIdsForVendeur)`.
+- La bande de miniatures utilise cette liste fusionnée.
+- Cliquer sur une miniature d'image de variation :
+  - met à jour `galleryIdx` (affichage), 
+  - **et** présélectionne automatiquement l'option correspondante (`setSelected`) pour que prix & disponibilité reflètent l'image.
+- Quand une option est sélectionnée via les chips couleur, faire défiler / marquer la miniature correspondante comme active.
+- Retirer la condition `!(imageVar && selected[imageVar.nom])` qui masquait la bande dès qu'une option image était choisie — la bande reste visible.
+
+### 2.c Catalogue (vérification)
+
+`CatalogueVendeur.jsx` continue d'afficher uniquement `produit.images[0]` (vitrine). Aucune fusion là, conforme à la mémoire actuelle. À vérifier rapidement, pas de changement attendu.
+
+---
+
+## 3. Tests
+
+Ajouts dans `src/test/audit-05-produits.test.ts` :
+
+- **5.22** `getGalleryImages` : image principale puis images des options disponibles, dans l'ordre, sans doublons.
+- **5.23** `getGalleryImages` : retire l'image d'une option dont le stock global est 0.
+- **5.24** `getGalleryImages` avec `coursierIds` : retire l'image d'une option non disponible chez les coursiers couvrant la ville du vendeur, même si stock global > 0 ailleurs.
+- **5.25** Cohérence stock : pour un produit avec 2 coursiers et 2 options, somme des `stock_par_variation.quantite` == `produit.stock_global` recalculé.
+- **5.26** Renommage d'option propage la nouvelle `variation_key` dans `stocks_par_coursier` (test du helper de migration de clés extrait du dialog).
+
+Lancer `bunx vitest run` à la fin pour valider la suite complète.
+
+---
+
+## Détails techniques
+
+- Toutes les modifications de `stocks_par_coursier` passent par un helper unique `setStockForKey(stocksParCoursier, coursierId, variationKey, quantite)` (à introduire en haut du dialog), pour éviter les écritures incohérentes éparpillées.
+- Recalcul `stock_global` et `stock_total` centralisé dans `recomputeTotals(stocksParCoursier)` appelé à chaque mutation.
+- Les `variation_key` continuent d'utiliser `"Nom:Val"` simple si une seule variation, et `"Nom1:V1 / Nom2:V2"` pour combinaisons. La logique de matching souple existante (`split(/\s*\/\s*|\|/)`) dans `getOptionStockInCoursiers` reste valable.
+- Aucun changement de schéma SQL. Aucun changement RLS.
+- Aucun changement aux routes / pages publiques.
+
+## Hors périmètre
+
+- Pas de refonte UI globale du dialog produit.
+- Pas de modification du flux de commande / réservation de stock (déjà OK avec les `variation_key`).
+- Pas de changement côté `NouvelleCommandeVendeur.jsx` (consomme déjà `getOptionStock`).
