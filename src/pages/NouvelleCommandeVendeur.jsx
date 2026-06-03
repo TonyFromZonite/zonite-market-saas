@@ -181,6 +181,25 @@ export default function NouvelleCommandeVendeur() {
     return getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, matchedVille.id, matchedQuartier?.id);
   }, [matchedVille, matchedQuartier, coursiers, zonesLivraison, quartiers]);
 
+  // --- Variations sélectionnées mais indispo à la localisation du client ---
+  const variationsIndispo = useMemo(() => {
+    if (!produitSelectionne || !matchedVille || !coursierIdsForLocation) return [];
+    if (variations.length === 0) return [];
+    const out = [];
+    for (const v of variations) {
+      const sel = selectedVariations[v.nom];
+      if (!sel) continue;
+      const ok = isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation);
+      if (ok) continue;
+      const disponibles = v.options
+        .map((o) => o.value)
+        .filter((val) => val !== sel && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
+      out.push({ varName: v.nom, selected: sel, disponibles });
+    }
+    return out;
+  }, [produitSelectionne, variations, selectedVariations, coursierIdsForLocation, matchedVille]);
+
+
   // --- Check stock exists in this city ---
   const stockInCity = useMemo(() => {
     if (!produitSelectionne || !villeText) return { available: false, total: 0 };
@@ -293,6 +312,9 @@ export default function NouvelleCommandeVendeur() {
     }
 
     // Validate stock exists in city (if ville is known)
+    if (matchedVille && variationsIndispo.length > 0) {
+      return setErreur("Une ou plusieurs variations sélectionnées ne sont pas disponibles dans cette ville. Choisissez une variation disponible.");
+    }
     if (matchedVille && !stockInCity.available) {
       return setErreur("Stock insuffisant dans cette ville. Aucun coursier n'a du stock disponible.");
     }
@@ -663,6 +685,41 @@ export default function NouvelleCommandeVendeur() {
                 ? `✅ Stock disponible dans cette ville : ${stockInCity.total} unité(s)`
                 : "❌ Aucun stock disponible dans cette ville pour ce produit/variation."
               }
+            </div>
+          )}
+
+          {/* Variations sélectionnées indisponibles à cette localisation */}
+          {matchedVille && variationsIndispo.length > 0 && (
+            <div className="rounded-lg p-3 text-sm bg-red-50 border border-red-200 text-red-700 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="space-y-2 flex-1">
+                  {variationsIndispo.map((vi) => (
+                    <div key={vi.varName} className="space-y-1">
+                      <p>
+                        ❌ La <strong>{vi.varName.toLowerCase()}</strong> «&nbsp;<em>{vi.selected}</em>&nbsp;» n'est pas disponible à <strong>{matchedVille.nom}</strong>{matchedQuartier ? `, ${matchedQuartier.nom}` : ""}.
+                      </p>
+                      {vi.disponibles.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs text-red-700">Disponibles :</span>
+                          {vi.disponibles.map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setSelectedVariations((prev) => ({ ...prev, [vi.varName]: val }))}
+                              className="px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            >
+                              {val}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs">Aucune autre option n'est disponible ici. Essayez une autre ville ou un autre quartier.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
