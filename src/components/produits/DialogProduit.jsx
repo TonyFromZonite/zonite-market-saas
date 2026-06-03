@@ -11,7 +11,14 @@ import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2, Image as Ima
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeVariations } from "@/lib/variationHelpers";
+import {
+  normalizeVariations,
+  setStockForKey,
+  renameOptionInKeys,
+  recomputeCoursierTotals,
+  computeStockGlobal,
+} from "@/lib/variationHelpers";
+
 
 export default function DialogProduit({ open, onOpenChange, produit, form, setForm, categories, onSave, enCours }) {
   const [urlImageAjout, setUrlImageAjout] = useState("");
