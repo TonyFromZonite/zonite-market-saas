@@ -125,14 +125,26 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   };
 
   const updateOption = (varId, optIndex, patch) => {
+    const v = variations.find((vv) => vv.id === varId);
+    const oldVal = v?.options[optIndex]?.value;
     updateVariations(
-      variations.map((v) => {
-        if (v.id !== varId) return v;
-        const opts = v.options.map((o, i) => (i === optIndex ? { ...o, ...patch } : o));
-        return { ...v, options: opts };
+      variations.map((vv) => {
+        if (vv.id !== varId) return vv;
+        const opts = vv.options.map((o, i) => (i === optIndex ? { ...o, ...patch } : o));
+        return { ...vv, options: opts };
       })
     );
+    // Si la valeur change, propager dans toutes les variation_key des coursiers
+    if (patch.value !== undefined && v && oldVal && patch.value !== oldVal) {
+      setForm((p) => ({
+        ...p,
+        stocks_par_coursier: recomputeCoursierTotals(
+          renameOptionInKeys(p.stocks_par_coursier || [], v.nom, oldVal, patch.value)
+        ),
+      }));
+    }
   };
+
 
   const uploadOptionImage = async (varId, optIndex, file) => {
     if (!file) return;
