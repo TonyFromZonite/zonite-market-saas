@@ -86,9 +86,39 @@ export default function Produits() {
   const sauvegarder = async () => {
     if (!form.nom?.trim()) { toast({ title: "Erreur", description: "Nom requis", variant: "destructive" }); return; }
 
+    // Validation : refuser les variations / options avec value vide
+    const variationsRaw = Array.isArray(form.variations) ? form.variations : [];
+    for (const v of variationsRaw) {
+      const nomVar = (v?.nom || "").trim();
+      if (!nomVar) {
+        toast({ title: "Variation invalide", description: "Une variation n'a pas de nom.", variant: "destructive" });
+        return;
+      }
+      const opts = Array.isArray(v?.options) ? v.options : [];
+      const hasEmpty = opts.some((o) => {
+        const val = typeof o === "string" ? o : (o?.value ?? o?.nom ?? o?.label ?? "");
+        return !String(val).trim();
+      });
+      if (hasEmpty) {
+        toast({
+          title: "Option vide",
+          description: `Renseignez toutes les options de la variation « ${nomVar} » ou supprimez celles qui sont vides avant d'enregistrer.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      const values = opts.map((o) => String((typeof o === "string" ? o : (o?.value ?? "")) || "").trim().toLowerCase());
+      const dup = values.find((val, i) => val && values.indexOf(val) !== i);
+      if (dup) {
+        toast({ title: "Option en doublon", description: `La variation « ${nomVar} » contient deux fois la valeur « ${dup} ».`, variant: "destructive" });
+        return;
+      }
+    }
+
     setEnCours(true);
     try {
       const stockGlobal = (form.stocks_par_coursier || []).reduce((t, s) => t + (s.stock_total || 0), 0);
+
       const data = {
         nom: form.nom,
         description: form.description || null,
