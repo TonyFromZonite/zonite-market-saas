@@ -1,39 +1,23 @@
-## Objectif
+## Problème
 
-Lorsque le vendeur a choisi un produit + une (ou plusieurs) variation(s), et qu'il saisit ensuite la ville/quartier du client, afficher un **message rouge bien visible** dès qu'une des variations actuellement sélectionnées n'est pas disponible chez les coursiers couvrant cette localisation, en listant les **options disponibles** pour la même variation (ex: « ❌ La couleur **Rouge** n'est pas disponible à **Douala**. Disponibles : **Bleu**, **Vert**. »).
+Dans l'éditeur de produit (onglet Variations), cliquer sur **"+ Ajouter une option"** ne fait rien visuellement. La cause : `normalizeVariations()` (`src/lib/variationHelpers.js`) filtre toutes les options dont `value` est vide, donc la nouvelle option `{ value: "" }` ajoutée à `form.variations` est supprimée à la relecture immédiate.
 
-Le bouton "Envoyer la commande" reste bloqué tant qu'au moins une variation sélectionnée est indisponible localement.
+## Correctif (minimal, ciblé)
 
-## Fichier modifié
+**Fichier : `src/components/produits/DialogProduit.jsx`**
 
-`src/pages/NouvelleCommandeVendeur.jsx` uniquement (logique UI + validation côté vendeur). Pas de modif backend, pas de SQL, pas de changement des helpers.
+Remplacer l'utilisation directe de `normalizeVariations(form.variations)` par un normaliseur local qui **ne filtre pas** les options vides (nécessaire pendant l'édition). Le filtre reste appliqué côté lecture publique (catalogue, commande) puisque `normalizeVariations` n'est pas modifié.
 
-## Détails techniques
+Concrètement :
+- Ajouter en haut du composant une fonction `normalizeForEditor(variations)` identique à `normalizeVariations` mais **sans** le `.filter((o) => o.value)`.
+- Remplacer ligne 83 : `const variations = normalizeForEditor(form.variations || []);`
 
-1. **Nouveau memo `variationsIndispo`** calculé après `coursierIdsForLocation` et `selectedVariations` :
-   - Si pas de produit, pas de variations, pas de ville matchée → `[]`.
-   - Pour chaque variation `v` du produit dont une option est sélectionnée :
-     - Vérifier `isOptionAvailableInCoursiers(produit, v.nom, selectedValue, coursierIdsForLocation)`.
-     - Si indisponible : récupérer la liste des `opt.value` disponibles via `isOptionAvailableInCoursiers` pour chaque option.
-     - Pousser `{ varName, selected, disponibles: [...] }`.
+## Vérification
 
-2. **Bloc d'alerte rouge** rendu juste sous la section "Livraison" (après le bloc `stockInCity`) quand `variationsIndispo.length > 0` :
-   - Icône `AlertCircle`, fond `bg-red-50 border-red-200 text-red-700`.
-   - Pour chaque entrée : phrase « La **{varName}** "*{selected}*" n'est pas disponible à **{ville}**{quartier ? `, ${quartier}` : ''}. »
-   - Sous-ligne : si `disponibles.length > 0` → « Disponibles : *liste*. » sous forme de **chips cliquables** qui font `setSelectedVariations(prev => ({...prev, [varName]: value}))` (réutiliser le style des chips existants).
-   - Sinon → « Aucune autre option n'est disponible dans cette ville. Choisissez une autre ville/quartier. »
+- Ouvrir un produit existant avec une variation Couleur (3 options).
+- Cliquer "+ Ajouter une option" → un 4ᵉ champ vide apparaît.
+- Saisir "Jaune" → la valeur est conservée et apparaît dans le bloc Stock par coursier.
+- Le bouton 🗑️ supprime toujours correctement une option.
+- Sauvegarder : la 4ᵉ couleur est bien persistée.
 
-3. **Validation `soumettre`** : ajouter en tête de la validation stock un check :
-   ```js
-   if (matchedVille && variationsIndispo.length > 0) {
-     return setErreur("Une ou plusieurs variations sélectionnées ne sont pas disponibles dans cette ville. Choisissez une variation disponible.");
-   }
-   ```
-
-4. **Comportement existant conservé** : les options déjà désactivées/grisées dans le sélecteur de variations (via `isOptionAvailableInCoursiers`) restent en place ; le nouveau bloc agit comme une alerte synthétique + suggestion explicite, utile quand la sélection a été faite **avant** la saisie de la ville (cas du `prefilledProduct` ou clic depuis le catalogue).
-
-## Hors scope
-
-- Pas de changement de `SelecteurLocalisation.jsx` (admin) ni de la fiche produit publique.
-- Pas de modification de `variationHelpers.js` (les helpers existants suffisent).
-- Pas de nouveau test (existant déjà couvert ; un test ciblé pourra être ajouté ensuite si demandé).
+Aucune autre modification : pas de changement du helper partagé, pas de refactor, pas de changement du layout.

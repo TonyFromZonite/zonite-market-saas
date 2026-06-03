@@ -80,7 +80,32 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   };
 
   // Variations — structure normalisée : [{id, nom, is_image_variation, options:[{value, image_url?, prix_gros?, prix_achat?, prix_vente_conseille?}]}]
-  const variations = normalizeVariations(form.variations || []);
+  // En édition on garde les options à valeur vide (sinon impossible d'ajouter une nouvelle option : elle serait filtrée avant l'affichage).
+  const normalizeForEditor = (vars) => {
+    if (!Array.isArray(vars)) return [];
+    return vars.map((v) => ({
+      id: v.id || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Math.random())),
+      nom: v.nom || "",
+      is_image_variation: !!v.is_image_variation,
+      options: Array.isArray(v.options)
+        ? v.options.map((opt) => {
+            if (opt == null) return { value: "" };
+            if (typeof opt === "string") return { value: opt };
+            return {
+              value: opt.value ?? opt.nom ?? opt.label ?? "",
+              image_url: opt.image_url || opt.image || null,
+              prix_gros: opt.prix_gros != null && opt.prix_gros !== "" ? Number(opt.prix_gros) : null,
+              prix_achat: opt.prix_achat != null && opt.prix_achat !== "" ? Number(opt.prix_achat) : null,
+              prix_vente_conseille:
+                opt.prix_vente_conseille != null && opt.prix_vente_conseille !== ""
+                  ? Number(opt.prix_vente_conseille)
+                  : null,
+            };
+          })
+        : [],
+    }));
+  };
+  const variations = normalizeForEditor(form.variations || []);
 
   const updateVariations = (next) => setForm((p) => ({ ...p, variations: next }));
 
