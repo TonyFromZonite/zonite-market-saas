@@ -181,4 +181,74 @@ describe("Audit 22 — Alerte variation indisponible + Livraison", () => {
     expect(indispo).toHaveLength(1);
     expect(indispo[0].disponibles).toEqual([]);
   });
+
+  describe("22.b — effectivePrices & displayImage recalculés à chaque clic de chip", () => {
+    const produitPrix = {
+      id: "p2",
+      nom: "T-shirt premium",
+      prix_gros: 5000,
+      prix_achat: 3000,
+      prix_vente: 8000,
+      images: ["https://img/base.jpg"],
+      variations: [
+        {
+          id: "v-couleur",
+          nom: "Couleur",
+          is_image_variation: true,
+          options: [
+            { value: "Rouge", image_url: "https://img/rouge.jpg", prix_gros: 5500, prix_vente_conseille: 8500 },
+            { value: "Bleu", image_url: "https://img/bleu.jpg", prix_gros: 6000, prix_vente_conseille: 9000 },
+            { value: "Vert", image_url: "https://img/vert.jpg" },
+          ],
+        },
+      ],
+      stocks_par_coursier: [],
+    };
+
+    it("22.8 base : pas de sélection → prix produit + image principale", () => {
+      const p = getEffectivePrices(produitPrix, {});
+      expect(p.prix_gros).toBe(5000);
+      expect(p.prix_vente).toBe(8000);
+      expect(getDisplayImage(produitPrix, {})).toBe("https://img/base.jpg");
+    });
+
+    it("22.9 clic chip Rouge → prix override Rouge + image Rouge", () => {
+      const sel = { Couleur: "Rouge" };
+      const p = getEffectivePrices(produitPrix, sel);
+      expect(p.prix_gros).toBe(5500);
+      expect(p.prix_vente).toBe(8500);
+      expect(getDisplayImage(produitPrix, sel)).toBe("https://img/rouge.jpg");
+    });
+
+    it("22.10 clic chip Bleu recalcule prix + image (différents de Rouge)", () => {
+      const sel = { Couleur: "Bleu" };
+      const p = getEffectivePrices(produitPrix, sel);
+      expect(p.prix_gros).toBe(6000);
+      expect(p.prix_vente).toBe(9000);
+      expect(getDisplayImage(produitPrix, sel)).toBe("https://img/bleu.jpg");
+    });
+
+    it("22.11 clic chip Vert (sans override prix) → fallback prix produit, image Vert", () => {
+      const sel = { Couleur: "Vert" };
+      const p = getEffectivePrices(produitPrix, sel);
+      expect(p.prix_gros).toBe(5000); // fallback car pas d'override
+      expect(p.prix_vente).toBe(8000);
+      expect(getDisplayImage(produitPrix, sel)).toBe("https://img/vert.jpg");
+    });
+
+    it("22.12 séquence Rouge → Bleu → Vert : chaque sélection donne un résultat distinct", () => {
+      const seq = ["Rouge", "Bleu", "Vert"].map((val) => {
+        const sel = { Couleur: val };
+        return {
+          val,
+          prix: getEffectivePrices(produitPrix, sel),
+          img: getDisplayImage(produitPrix, sel),
+        };
+      });
+      expect(seq[0].img).not.toBe(seq[1].img);
+      expect(seq[1].img).not.toBe(seq[2].img);
+      expect(seq[0].prix.prix_gros).not.toBe(seq[1].prix.prix_gros);
+    });
+  });
 });
+
