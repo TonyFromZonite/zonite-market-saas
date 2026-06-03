@@ -638,5 +638,115 @@ describe("Audit 5 — Variations enrichies (image + prix par option)", () => {
     stocks = setStockForKey(stocks, "c1", "Couleur:Rouge", 0);
     expect(stocks[0].stock_total).toBe(6);
   });
+
+  it("5.28 Cohérence stock après ajout d'options : total = somme par coursier = somme par ville", async () => {
+    const { setStockForKey, computeStockGlobal, getOptionStockInCoursiers } = await import("@/lib/variationHelpers");
+    // 2 coursiers dans 2 villes
+    const meta = {
+      cD: { coursier_nom: "Dla1", ville: "Douala" },
+      cY: { coursier_nom: "Yde1", ville: "Yaoundé" },
+    };
+    let stocks: any[] = [];
+    // Ajout option Rouge
+    stocks = setStockForKey(stocks, "cD", "Couleur:Rouge", 5, meta.cD);
+    stocks = setStockForKey(stocks, "cY", "Couleur:Rouge", 3, meta.cY);
+    expect(computeStockGlobal(stocks)).toBe(8);
+    // Ajout option Bleu
+    stocks = setStockForKey(stocks, "cD", "Couleur:Bleu", 2, meta.cD);
+    stocks = setStockForKey(stocks, "cY", "Couleur:Bleu", 4, meta.cY);
+    expect(computeStockGlobal(stocks)).toBe(14);
+    // Cohérence par coursier
+    expect(stocks.find((s) => s.coursier_id === "cD").stock_total).toBe(7);
+    expect(stocks.find((s) => s.coursier_id === "cY").stock_total).toBe(7);
+    // Cohérence par ville (somme des coursiers de la ville)
+    const sumByVille = stocks.reduce((acc: any, s: any) => {
+      acc[s.ville] = (acc[s.ville] || 0) + s.stock_total;
+      return acc;
+    }, {});
+    expect(sumByVille["Douala"] + sumByVille["Yaoundé"]).toBe(computeStockGlobal(stocks));
+    // Cohérence par option/coursier
+    const produit = { stocks_par_coursier: stocks };
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Rouge", ["cD"])).toBe(5);
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Rouge", ["cY"])).toBe(3);
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Rouge", null)).toBe(8);
+  });
+
+  it("5.29 Cohérence stock après renommage d'option : total et répartition inchangés", async () => {
+    const { setStockForKey, renameOptionInKeys, recomputeCoursierTotals, computeStockGlobal, getOptionStockInCoursiers } =
+      await import("@/lib/variationHelpers");
+    let stocks: any[] = [];
+    stocks = setStockForKey(stocks, "cD", "Couleur:Rouge", 5, { coursier_nom: "D", ville: "Douala" });
+    stocks = setStockForKey(stocks, "cY", "Couleur:Rouge", 3, { coursier_nom: "Y", ville: "Yaoundé" });
+    stocks = setStockForKey(stocks, "cD", "Couleur:Bleu", 2);
+    const totalAvant = computeStockGlobal(stocks);
+    const dlaAvant = stocks.find((s) => s.coursier_id === "cD").stock_total;
+
+    stocks = recomputeCoursierTotals(renameOptionInKeys(stocks, "Couleur", "Rouge", "Carmin"));
+
+    expect(computeStockGlobal(stocks)).toBe(totalAvant);
+    expect(stocks.find((s) => s.coursier_id === "cD").stock_total).toBe(dlaAvant);
+    const produit = { stocks_par_coursier: stocks };
+    // L'ancienne valeur n'a plus de stock
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Rouge", null)).toBe(0);
+    // La nouvelle valeur reprend l'intégralité
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Carmin", null)).toBe(8);
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Carmin", ["cD"])).toBe(5);
+    expect(getOptionStockInCoursiers(produit, "Couleur", "Carmin", ["cY"])).toBe(3);
+  });
+
+  it("5.30 Cohérence stock après suppression d'option : total = total - stock retiré", async () => {
+    const { setStockForKey, recomputeCoursierTotals, computeStockGlobal } = await import("@/lib/variationHelpers");
+    let stocks: any[] = [];
+    stocks = setStockForKey(stocks, "cD", "Couleur:Rouge", 5, { coursier_nom: "D", ville: "Douala" });
+    stocks = setStockForKey(stocks, "cY", "Couleur:Rouge", 3, { coursier_nom: "Y", ville: "Yaoundé" });
+    stocks = setStockForKey(stocks, "cD", "Couleur:Bleu", 2);
+    stocks = setStockForKey(stocks, "cY", "Couleur:Bleu", 4);
+    const totalAvant = computeStockGlobal(stocks); // 14
+    expect(totalAvant).toBe(14);
+
+    // Simule la suppression de l'option "Rouge" (logique du dialog : filter sur la clé)
+    const apresSuppression = recomputeCoursierTotals(
+      stocks.map((sc: any) => ({
+        ...sc,
+        stock_par_variation: sc.stock_par_variation.filter(
+          (sv: any) => !sv.variation_key.split(/\s*\/\s*|\|/).some((seg: string) => seg.trim() === "Couleur:Rouge")
+        ),
+      }))
+    );
+    expect(computeStockGlobal(apresSuppression)).toBe(6); // 14 - (5+3)
+    expect(apresSuppression.find((s: any) => s.coursier_id === "cD").stock_total).toBe(2);
+    expect(apresSuppression.find((s: any) => s.coursier_id === "cY").stock_total).toBe(4);
+  });
+
+  it("5.31 Cycle complet add → rename → add → delete : invariants préservés", async () => {
+    const { setStockForKey, renameOptionInKeys, recomputeCoursierTotals, computeStockGlobal } =
+      await import("@/lib/variationHelpers");
+    const meta = { coursier_nom: "C", ville: "Douala" };
+    let stocks: any[] = [];
+
+    // Add S
+    stocks = setStockForKey(stocks, "c1", "Taille:S", 4, meta);
+    expect(computeStockGlobal(stocks)).toBe(4);
+
+    // Rename S -> Small
+    stocks = recomputeCoursierTotals(renameOptionInKeys(stocks, "Taille", "S", "Small"));
+    expect(computeStockGlobal(stocks)).toBe(4);
+
+    // Add M
+    stocks = setStockForKey(stocks, "c1", "Taille:M", 6, meta);
+    expect(computeStockGlobal(stocks)).toBe(10);
+    expect(stocks[0].stock_total).toBe(10);
+
+    // Delete Small
+    stocks = recomputeCoursierTotals(
+      stocks.map((sc: any) => ({
+        ...sc,
+        stock_par_variation: sc.stock_par_variation.filter((sv: any) => sv.variation_key !== "Taille:Small"),
+      }))
+    );
+    expect(computeStockGlobal(stocks)).toBe(6);
+    expect(stocks[0].stock_total).toBe(6);
+  });
 });
+
 
