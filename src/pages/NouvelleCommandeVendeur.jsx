@@ -181,6 +181,25 @@ export default function NouvelleCommandeVendeur() {
     return getCoursierIdsForVille(coursiers, zonesLivraison, quartiers, matchedVille.id, matchedQuartier?.id);
   }, [matchedVille, matchedQuartier, coursiers, zonesLivraison, quartiers]);
 
+  // --- Variations sélectionnées mais indispo à la localisation du client ---
+  const variationsIndispo = useMemo(() => {
+    if (!produitSelectionne || !matchedVille || !coursierIdsForLocation) return [];
+    if (variations.length === 0) return [];
+    const out = [];
+    for (const v of variations) {
+      const sel = selectedVariations[v.nom];
+      if (!sel) continue;
+      const ok = isOptionAvailableInCoursiers(produitSelectionne, v.nom, sel, coursierIdsForLocation);
+      if (ok) continue;
+      const disponibles = v.options
+        .map((o) => o.value)
+        .filter((val) => val !== sel && isOptionAvailableInCoursiers(produitSelectionne, v.nom, val, coursierIdsForLocation));
+      out.push({ varName: v.nom, selected: sel, disponibles });
+    }
+    return out;
+  }, [produitSelectionne, variations, selectedVariations, coursierIdsForLocation, matchedVille]);
+
+
   // --- Check stock exists in this city ---
   const stockInCity = useMemo(() => {
     if (!produitSelectionne || !villeText) return { available: false, total: 0 };
