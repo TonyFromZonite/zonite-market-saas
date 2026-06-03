@@ -176,6 +176,47 @@ export default function NouvelleCommandeVendeur() {
   // Clé représentative (la 1ère combinaison) — utilisée pour les vérifs stock simples / affichages.
   const variationKey = selectedCombinations[0] || "";
 
+  // Quantité commandée (1 par défaut). Multi-sélection autorisée si > 1.
+  const qteCommande = parseInt(form.quantite) || 1;
+  const multiSelectAutorise = qteCommande > 1;
+  const totalOptionsCochees = useMemo(
+    () => variations.reduce((sum, v) => sum + getSelectedArray(v.nom).length, 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [variations, selectedVariations]
+  );
+
+  const toggleOption = (varName, value) => {
+    setSelectedVariations((prev) => {
+      const current = Array.isArray(prev[varName]) ? prev[varName] : (prev[varName] ? [prev[varName]] : []);
+      if (!multiSelectAutorise) return { ...prev, [varName]: [value] };
+      if (current.includes(value)) return { ...prev, [varName]: current.filter((x) => x !== value) };
+      // Limite globale : nombre total d'options cochées ≤ quantité
+      const totalAutres = variations.reduce((s, vv) => {
+        if (vv.nom === varName) return s;
+        const arr = Array.isArray(prev[vv.nom]) ? prev[vv.nom] : (prev[vv.nom] ? [prev[vv.nom]] : []);
+        return s + arr.length;
+      }, 0);
+      if (totalAutres + current.length + 1 > qteCommande) return prev;
+      return { ...prev, [varName]: [...current, value] };
+    });
+    setErreur("");
+    setTentativeEnvoi(false);
+  };
+
+  // Si la quantité redescend à 1, ne garder qu'une option par variation
+  useEffect(() => {
+    if (qteCommande > 1) return;
+    setSelectedVariations((prev) => {
+      let changed = false;
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) {
+        const arr = Array.isArray(v) ? v : (v ? [v] : []);
+        if (arr.length > 1) { next[k] = [arr[0]]; changed = true; } else next[k] = arr;
+      }
+      return changed ? next : prev;
+    });
+  }, [qteCommande]);
+
   // --- Ville suggestions ---
   const villeSuggestions = useMemo(() => {
     if (!villeText || villeText.length < 1) return [];
