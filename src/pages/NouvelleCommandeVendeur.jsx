@@ -944,7 +944,11 @@ export default function NouvelleCommandeVendeur() {
                   )}
                   <div className="flex-1 min-w-0 text-sm">
                     <p className="font-semibold text-slate-900 truncate">{produitSelectionne.nom}</p>
-                    {variationKey && <p className="text-xs text-slate-500">{variationKey}</p>}
+                    {selectedCombinations.length > 0 && (
+                      <p className="text-xs text-slate-500">
+                        {selectedCombinations.join(" • ")}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-600 mt-1">Quantité : <strong>{qte}</strong></p>
                     <p className="text-xs text-slate-600">Total : <strong>{formater(prixFinal * qte)}</strong></p>
                   </div>
