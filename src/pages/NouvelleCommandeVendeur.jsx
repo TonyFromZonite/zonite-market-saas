@@ -138,19 +138,43 @@ export default function NouvelleCommandeVendeur() {
   };
   const produitSelectionne = produits.find((p) => p.id === form.produit_id);
   const variations = useMemo(() => normalizeVariations(produitSelectionne?.variations), [produitSelectionne]);
-  const effectivePrices = useMemo(() => getEffectivePrices(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
-  const displayImage = useMemo(() => getDisplayImage(produitSelectionne, selectedVariations), [produitSelectionne, selectedVariations]);
 
-  // Build variation key — empty string until ALL variations are selected,
-  // so stock checks fall back to stock_total instead of looking up an
-  // incomplete variation_key (which would always return 0 stock).
-  const getVariationKey = () => {
-    if (variations.length === 0) return "";
-    const allSelected = variations.every((v) => selectedVariations[v.nom]);
-    if (!allSelected) return "";
-    return variations.map((v) => `${v.nom}:${selectedVariations[v.nom]}`).join("|");
+  // Helpers de sélection (toujours en tableau côté state, premier élément utilisé pour les helpers existants)
+  const getSelectedArray = (varName) => {
+    const v = selectedVariations[varName];
+    if (Array.isArray(v)) return v.filter(Boolean);
+    return v ? [v] : [];
   };
-  const variationKey = getVariationKey();
+  const primarySelection = useMemo(() => {
+    const out = {};
+    for (const v of variations) {
+      const arr = getSelectedArray(v.nom);
+      if (arr[0]) out[v.nom] = arr[0];
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variations, selectedVariations]);
+
+  const effectivePrices = useMemo(() => getEffectivePrices(produitSelectionne, primarySelection), [produitSelectionne, primarySelection]);
+  const displayImage = useMemo(() => getDisplayImage(produitSelectionne, primarySelection), [produitSelectionne, primarySelection]);
+
+  // Toutes les combinaisons sélectionnées (produit cartésien des options choisies par variation).
+  const selectedCombinations = useMemo(() => {
+    if (variations.length === 0) return [];
+    let combos = [[]];
+    for (const v of variations) {
+      const arr = getSelectedArray(v.nom);
+      if (arr.length === 0) return [];
+      const next = [];
+      for (const c of combos) for (const val of arr) next.push([...c, { varName: v.nom, value: val }]);
+      combos = next;
+    }
+    return combos.map((c) => c.map((s) => `${s.varName}:${s.value}`).join("|"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variations, selectedVariations]);
+
+  // Clé représentative (la 1ère combinaison) — utilisée pour les vérifs stock simples / affichages.
+  const variationKey = selectedCombinations[0] || "";
 
   // --- Ville suggestions ---
   const villeSuggestions = useMemo(() => {
