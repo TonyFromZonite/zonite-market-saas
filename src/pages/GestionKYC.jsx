@@ -226,25 +226,25 @@ export default function GestionKYC() {
                   {compteSelectionne.kyc_document_recto_url && (
                     <div>
                       <p className="text-xs text-slate-400 mb-1">CNI Recto</p>
-                      <img src={compteSelectionne.kyc_document_recto_url} alt="Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} />
+                      <KycImage url={compteSelectionne.kyc_document_recto_url} alt="Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" />
                     </div>
                   )}
                   {compteSelectionne.kyc_document_verso_url && (
                     <div>
                       <p className="text-xs text-slate-400 mb-1">CNI Verso</p>
-                      <img src={compteSelectionne.kyc_document_verso_url} alt="Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} />
+                      <KycImage url={compteSelectionne.kyc_document_verso_url} alt="Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" />
                     </div>
                   )}
                   {compteSelectionne.kyc_passeport_url && (
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Page photo passeport</p>
-                      <img src={compteSelectionne.kyc_passeport_url} alt="Passeport" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_passeport_url)} />
+                      <KycImage url={compteSelectionne.kyc_passeport_url} alt="Passeport" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" />
                     </div>
                   )}
                   {compteSelectionne.kyc_selfie_url && (
                     <div>
                       <p className="text-xs text-slate-400 mb-1">Selfie avec document</p>
-                      <img src={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" onClick={() => window.open(compteSelectionne.kyc_selfie_url)} />
+                      <KycImage url={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer border border-slate-200" />
                     </div>
                   )}
                 </div>
