@@ -68,7 +68,7 @@ export default function NouvelleCommandeVendeur() {
       const { data: seller } = await supabase
         .from("sellers").select("*").eq("id", session.id).maybeSingle();
       if (seller) {
-        setCompteVendeur(seller);
+        setCompteVendeur(applyKycSimOverride(seller));
       } else {
         setErreur("Compte vendeur introuvable. Veuillez vous reconnecter.");
       }
