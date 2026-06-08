@@ -86,7 +86,7 @@ export default function ProfilVendeur() {
         const code = `${prefix}${seller.id?.slice(0, 4).toUpperCase() || '0000'}`;
         await supabase.from('sellers').update({ code_parrainage: code }).eq('id', seller.id);
         seller.code_parrainage = code;
-        setCompteVendeur({ ...seller });
+        setCompteVendeur(applyKycSimOverride({ ...seller }));
       }
 
       // Fetch sales count
