@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog, Users, Trash, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import KycImage from "@/components/KycImage";
 import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
 import DialogAjustementCommission from "@/components/commissions/DialogAjustementCommission";
@@ -535,13 +536,13 @@ function ValidationKYC() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {compteSelectionne.kyc_document_recto_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (recto)</p><img src={compteSelectionne.kyc_document_recto_url} alt="ID Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_recto_url)} /></div>
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (recto)</p><KycImage url={compteSelectionne.kyc_document_recto_url} alt="ID Recto" className="w-full rounded-lg object-cover h-32 cursor-pointer" /></div>
                 )}
                 {compteSelectionne.kyc_document_verso_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (verso)</p><img src={compteSelectionne.kyc_document_verso_url} alt="ID Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_document_verso_url)} /></div>
+                  <div><p className="text-xs text-slate-400 mb-1">Pièce d'identité (verso)</p><KycImage url={compteSelectionne.kyc_document_verso_url} alt="ID Verso" className="w-full rounded-lg object-cover h-32 cursor-pointer" /></div>
                 )}
                 {compteSelectionne.kyc_selfie_url && (
-                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><img src={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" onClick={() => window.open(compteSelectionne.kyc_selfie_url)} /></div>
+                  <div><p className="text-xs text-slate-400 mb-1">Selfie</p><KycImage url={compteSelectionne.kyc_selfie_url} alt="Selfie" className="w-full rounded-lg object-cover h-32 cursor-pointer" /></div>
                 )}
               </div>
               <div className="space-y-1">
