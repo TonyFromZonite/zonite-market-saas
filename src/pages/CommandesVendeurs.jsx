@@ -9,7 +9,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw } from "lucide-react";
+import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw, Copy } from "lucide-react";
+import { toast } from "sonner";
+
+function copierInfosCommande(cmd) {
+  if (!cmd) return;
+  const livraisonIncluse = !!cmd.livraison_incluse;
+  const frais = Number(cmd.frais_livraison) || 0;
+  const prixClient = Number(cmd.prix_final_client) || 0;
+  const total = livraisonIncluse ? prixClient : prixClient + frais;
+  const adresse = [cmd.client_ville, cmd.client_quartier].filter(Boolean).join(", ")
+    + (cmd.client_adresse ? ` – ${cmd.client_adresse}` : "");
+  const texte =
+`Commande : ${cmd.produit_nom || "—"}
+
+Nom : ${cmd.client_nom || "—"}
+Adresse : ${adresse || "—"}
+Numéro : ${cmd.client_telephone || "—"}
+Montant total à payer : ${total.toLocaleString("fr-FR").replace(/,/g, " ")} FCFA${livraisonIncluse ? " (livraison incluse)" : ` (dont ${frais.toLocaleString("fr-FR").replace(/,/g, " ")} FCFA de livraison)`}
+Notes vendeur : ${cmd.notes || "—"}`;
+
+  const ok = () => toast.success("Informations copiées ✅");
+  const ko = () => toast.error("Impossible de copier");
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(texte).then(ok).catch(() => fallback());
+    } else {
+      fallback();
+    }
+  } catch { fallback(); }
+  function fallback() {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = texte;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      ok();
+    } catch { ko(); }
+  }
+}
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -557,8 +599,17 @@ export default function CommandesVendeurs() {
                     <Truck className="w-8 h-8 text-slate-400" />
                   </div>
                 )}
-                <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
+                 <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
               </div>
+
+              <Button
+                type="button"
+                onClick={() => copierInfosCommande(commandeSelectionnee)}
+                variant="outline"
+                className="w-full gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                <Copy className="w-4 h-4" /> Copier les infos de la commande
+              </Button>
 
 
               <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
