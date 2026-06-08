@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { getAdminSession, getSousAdminSession } from "@/components/useSessionGuard";
+
 
 const ICONES_TYPE_VENDEUR = {
   kyc: "👤", info: "ℹ️", succes: "✅", alerte: "⚠️",
@@ -44,7 +44,7 @@ export default function NotificationCenter() {
   const [ouvert, setOuvert] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+
 
   // Detect role
   const adminSession = getAdminSession();
@@ -85,31 +85,11 @@ export default function NotificationCenter() {
     enabled: isAdmin || !!vendeurId,
   });
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!isAdmin && !vendeurId) return;
-    const filter = !isAdmin && vendeurId ? `vendeur_id=eq.${vendeurId}` : undefined;
-    const channel = supabase
-      .channel(`notifs_${tableName}_realtime`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: tableName,
-        ...(filter ? { filter } : {}),
-      }, (payload) => {
-        queryClient.invalidateQueries({ queryKey: [...queryKey, "count"] });
-        queryClient.invalidateQueries({ queryKey });
-        if (isAdmin && payload.new) {
-          toast({
-            title: payload.new.titre,
-            description: payload.new.message,
-            duration: 4000,
-          });
-        }
-      })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [isAdmin, vendeurId, tableName, queryClient, toast]);
+  // Realtime is handled globally by NotificationManager (sound + push + in-app toast).
+  // It invalidates ["notifications_admin"] / ["notifications_vendeur"] on insert, which
+  // refreshes this bell automatically via React Query prefix matching — no need for a
+  // second channel or a second toast here.
+
 
   // Mark single as read
   const marquerCommeLueMutation = useMutation({
