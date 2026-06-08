@@ -266,7 +266,7 @@ export default function EspaceVendeur() {
             .maybeSingle();
           
           if (sellerByEmail) {
-            setCompteVendeur(sellerByEmail);
+            setCompteVendeurWithSim(sellerByEmail);
           } else {
             window.location.href = createPageUrl("Connexion");
             return;
