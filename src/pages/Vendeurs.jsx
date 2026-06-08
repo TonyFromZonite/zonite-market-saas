@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Pencil, Trash2, Loader2, Search, Wallet, DollarSign, AlertCircle, CheckCircle2, XCircle, Eye, UserCog, Users, Trash, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import KycImage from "@/components/KycImage";
 import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
 import DialogAjustementCommission from "@/components/commissions/DialogAjustementCommission";

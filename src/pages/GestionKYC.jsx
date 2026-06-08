@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, XCircle, Eye } from "lucide-react";
+import KycImage from "@/components/KycImage";
 
 const STATUTS_KYC = {
   non_soumis: { label: "Non soumis", couleur: "bg-slate-100 text-slate-600" },
