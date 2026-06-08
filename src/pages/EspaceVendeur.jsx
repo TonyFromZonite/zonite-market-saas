@@ -563,27 +563,79 @@ export default function EspaceVendeur() {
         </div>
       )}
 
-      {/* KYC rejected banner (non-blocking) */}
-      {(compteVendeur.statut_kyc === "rejete" || compteVendeur.seller_status === SELLER_STATUSES.KYC_REJECTED) && (
-        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-          <div className="flex items-start gap-3 mb-2">
-            <span className="text-2xl">🪪</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-red-700 font-semibold text-sm">KYC rejeté</p>
-              <p className="text-red-500 text-xs">{compteVendeur.kyc_raison_rejet || "Veuillez resoumettre vos documents."}</p>
+      {/* Indicateur de statut KYC (toujours visible, mis à jour en temps réel) */}
+      {compteVendeur && (() => {
+        const statut = compteVendeur.statut_kyc;
+        const sellerStatus = compteVendeur.seller_status;
+        const isRejected = statut === "rejete" || sellerStatus === SELLER_STATUSES.KYC_REJECTED;
+        const isValidated = statut === "valide" || statut === "approuve" || sellerStatus === SELLER_STATUSES.ACTIVE;
+        const isPending = statut === "en_attente" || sellerStatus === SELLER_STATUSES.KYC_PENDING;
+        const notSubmitted = !statut || statut === "non_soumis";
+
+        if (isRejected) {
+          return (
+            <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <div className="flex items-start gap-3 mb-2">
+                <span className="text-2xl">❌</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-700 font-bold text-sm">Statut KYC : Rejeté</p>
+                  <p className="text-red-500 text-xs mt-0.5">{compteVendeur.kyc_raison_rejet || "Veuillez resoumettre vos documents."}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/ResoumissionKYC')}
+                className="w-full px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                🔄 Resoumettre mon KYC maintenant
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => navigate('/ResoumissionKYC')}
-            className="w-full px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-          >
-            🔄 Resoumettre mon KYC maintenant
-          </button>
-        </div>
-      )}
+          );
+        }
+        if (isPending) {
+          return (
+            <div className="mx-4 mt-3 mb-2 p-3 bg-yellow-50 border border-yellow-300 rounded-xl flex items-center gap-3">
+              <span className="text-2xl">⏳</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-yellow-800 font-bold text-sm">Statut KYC : En attente de validation</p>
+                <p className="text-yellow-700 text-xs mt-0.5">Notre équipe examine votre dossier (24 à 48h).</p>
+              </div>
+            </div>
+          );
+        }
+        if (isValidated) {
+          return (
+            <div className="mx-4 mt-3 mb-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+              <span className="text-2xl">✅</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-emerald-700 font-bold text-sm">Statut KYC : Validé</p>
+                <p className="text-emerald-600 text-xs mt-0.5">Votre identité a été vérifiée avec succès.</p>
+              </div>
+            </div>
+          );
+        }
+        if (notSubmitted) {
+          return (
+            <div className="mx-4 mt-3 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <div className="flex items-start gap-3 mb-2">
+                <span className="text-2xl">📋</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-orange-700 font-bold text-sm">Statut KYC : Non soumis</p>
+                  <p className="text-orange-600 text-xs mt-0.5">Soumettez vos documents pour activer toutes les fonctionnalités.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/ResoumissionKYC')}
+                className="w-full px-3 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                📤 Soumettre mon KYC
+              </button>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
 
-      {compteVendeur.seller_status === SELLER_STATUSES.KYC_PENDING && <BanniereKycPending />}
 
       {/* Header with logout */}
       <div className="bg-[#1a1f5e] text-white px-3 pt-4 pb-8 sm:px-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}>
