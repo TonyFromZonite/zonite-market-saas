@@ -96,8 +96,45 @@ export async function uploadFile(file) {
   const fileName = `${Date.now()}_${file.name}`;
   const { data, error } = await supabase.storage.from("kyc-documents").upload(fileName, file);
   if (error) throw error;
-  const { data: urlData } = supabase.storage.from("kyc-documents").getPublicUrl(data.path);
-  return { file_url: urlData.publicUrl };
+  // Bucket is private — return a URL that points to the public proxy Edge Function.
+  return { file_url: getProductImageUrl(data.path) };
+}
+
+/**
+ * Returns a publicly accessible URL for a product image.
+ * - Accepts either a bare path ("1234_foo.jpg") or a legacy public URL
+ *   (".../storage/v1/object/public/kyc-documents/1234_foo.jpg").
+ * - Rewrites it to the serve-product-image Edge Function so that the
+ *   underlying private bucket stays private.
+ * - Leaves unrelated URLs (http(s) to other hosts, data:, blob:) untouched.
+ */
+export function getProductImageUrl(url) {
+  if (!url || typeof url !== "string") return url;
+  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
+
+  const projectId = "jpopxydfttoseckcakqp";
+  const proxyBase = `https://${projectId}.supabase.co/functions/v1/serve-product-image`;
+
+  // Already pointing at the proxy
+  if (url.includes("/serve-product-image")) return url;
+
+  // Legacy public/sign URL for the kyc-documents bucket
+  const marker = "/kyc-documents/";
+  const idx = url.indexOf(marker);
+  if (idx !== -1) {
+    let path = url.slice(idx + marker.length).split("?")[0].replace(/^\/+/, "");
+    // KYC paths must never be served by this proxy
+    if (!path || path.startsWith("kyc/")) return url;
+    return `${proxyBase}?path=${encodeURIComponent(path)}`;
+  }
+
+  // Bare path
+  if (!url.startsWith("http") && !url.startsWith("/")) {
+    if (url.startsWith("kyc/")) return url;
+    return `${proxyBase}?path=${encodeURIComponent(url)}`;
+  }
+
+  return url;
 }
 
 export async function getCurrentUser() {
