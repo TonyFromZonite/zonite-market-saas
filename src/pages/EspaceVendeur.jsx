@@ -103,12 +103,8 @@ export default function EspaceVendeur() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // KYC modal state
-  const [typeDocument, setTypeDocument] = useState("cni");
-  const [kycForm, setKycForm] = useState({ photo_identite_url: "", photo_identite_verso_url: "", selfie_url: "" });
-  const [kycUpload, setKycUpload] = useState({ id: false, idVerso: false, selfie: false });
-  const [kycErreur, setKycErreur] = useState("");
-  const [kycEnCours, setKycEnCours] = useState(false);
+  // KYC : la soumission/resoumission se fait exclusivement sur /ResoumissionKYC.
+  // L'ancien formulaire inline + handlers ont été retirés (doublon avec ResoumissionKYC).
 
   // Transaction history
   const [historyFilter, setHistoryFilter] = useState("tout");
@@ -154,80 +150,12 @@ export default function EspaceVendeur() {
       return applyKycSimOverride(next);
     });
   };
-  const uploadKycFile = async (fichier, champ) => {
-    const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
-    setKycUpload(p => ({ ...p, [key]: true }));
-    try {
-      if (fichier.size > 5 * 1024 * 1024) { setKycErreur("Fichier trop volumineux (max 5MB)"); setKycUpload(p => ({ ...p, [key]: false })); return; }
-      if (!fichier.type.startsWith('image/')) { setKycErreur("Seules les images sont acceptées"); setKycUpload(p => ({ ...p, [key]: false })); return; }
-      const fileName = `kyc/${compteVendeur.id}/${key}_${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from('kyc-documents').upload(fileName, fichier, { upsert: true, contentType: fichier.type });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('kyc-documents').getPublicUrl(fileName);
-      setKycForm(p => ({ ...p, [champ]: urlData.publicUrl }));
-    } catch (err) {
-      setKycErreur("Erreur upload : " + (err.message || "Réessayez"));
-    } finally {
-      setKycUpload(p => ({ ...p, [key]: false }));
-    }
-  };
+  // Les anciens handlers (uploadKycFile, isKycComplete, getKycMissingCount,
+  // soumettreKyc) ont été retirés : la soumission/resoumission KYC se fait
+  // exclusivement sur la page /ResoumissionKYC pour éviter la double
+  // soumission et la double notification admin.
 
-  // KYC validation helpers
-  const isKycComplete = () => {
-    if (typeDocument === "cni") return !!kycForm.photo_identite_url && !!kycForm.photo_identite_verso_url && !!kycForm.selfie_url;
-    if (typeDocument === "passeport") return !!kycForm.photo_identite_url && !!kycForm.selfie_url;
-    return false;
-  };
-  const getKycMissingCount = () => {
-    if (typeDocument === "cni") return [kycForm.photo_identite_url, kycForm.photo_identite_verso_url, kycForm.selfie_url].filter(x => !x).length;
-    if (typeDocument === "passeport") return [kycForm.photo_identite_url, kycForm.selfie_url].filter(x => !x).length;
-    return 3;
-  };
 
-  const soumettreKyc = async () => {
-    // Strict validation - block if any document missing
-    if (!kycForm.photo_identite_url) { setKycErreur("❌ Veuillez uploader votre pièce d'identité (recto)."); return; }
-    if (typeDocument === "cni" && !kycForm.photo_identite_verso_url) { setKycErreur("❌ Veuillez uploader le verso de votre CNI."); return; }
-    if (!kycForm.selfie_url) { setKycErreur("❌ Veuillez uploader votre selfie avec la pièce d'identité."); return; }
-
-    // Double-check URLs are real uploaded URLs (not empty strings)
-    const urls = [kycForm.photo_identite_url, kycForm.selfie_url];
-    if (typeDocument === "cni") urls.push(kycForm.photo_identite_verso_url);
-    if (urls.some(u => !u || !u.startsWith('http'))) {
-      setKycErreur("❌ Documents non uploadés correctement. Réessayez.");
-      return;
-    }
-
-    setKycEnCours(true);
-    setKycErreur("");
-    const { error } = await supabase
-      .from('sellers')
-      .update({
-        kyc_document_recto_url: kycForm.photo_identite_url,
-        kyc_document_verso_url: kycForm.photo_identite_verso_url || null,
-        kyc_selfie_url: kycForm.selfie_url,
-        kyc_type_document: typeDocument,
-        statut_kyc: 'en_attente',
-        seller_status: 'kyc_pending',
-        kyc_submitted_at: new Date().toISOString(),
-      })
-      .eq('id', compteVendeur.id);
-
-    setKycEnCours(false);
-
-    if (!error) {
-      await supabase.from('notifications_admin').insert({
-        titre: '🪪 Nouveau KYC à valider',
-        message: `${compteVendeur.full_name} (${compteVendeur.email}) a soumis son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}`,
-        type: 'kyc',
-        vendeur_email: compteVendeur.email,
-        reference_id: compteVendeur.id,
-      });
-      setCompteVendeurWithSim(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
-    } else {
-      setKycErreur(error.message || "Erreur lors de la soumission.");
-    }
-  };
 
   const handleLogout = async () => {
     clearAllSessions();
