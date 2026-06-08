@@ -26,7 +26,7 @@ export default function SelecteurLocalisation({ produit, value, onChange, disabl
   const { data: coursiers = [] } = useQuery({
     queryKey: ["coursiers"],
     queryFn: async () => {
-      const { data } = await supabase.from("coursiers").select("*").eq("actif", true).order("nom");
+      const { data } = await supabase.from("coursiers_public").select("*").eq("actif", true).order("nom");
       return data || [];
     },
   });

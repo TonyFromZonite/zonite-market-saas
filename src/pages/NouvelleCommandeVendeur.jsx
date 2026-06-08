@@ -95,7 +95,7 @@ export default function NouvelleCommandeVendeur() {
   const { data: produits = [] } = useQuery({
     queryKey: ["produits_actifs"],
     queryFn: async () => {
-      const { data } = await supabase.from("produits").select("*").eq("actif", true);
+      const { data } = await supabase.from("produits_public").select("*").eq("actif", true);
       return data || [];
     },
   });
@@ -119,7 +119,7 @@ export default function NouvelleCommandeVendeur() {
   const { data: coursiers = [] } = useQuery({
     queryKey: ["coursiers"],
     queryFn: async () => {
-      const { data } = await supabase.from("coursiers").select("*").eq("actif", true);
+      const { data } = await supabase.from("coursiers_public").select("*").eq("actif", true);
       return data || [];
     },
   });
