@@ -140,6 +140,20 @@ export default function EspaceVendeur() {
     });
     return unsub;
   }, []);
+  // Capture les valeurs RÉELLES et applique l'override de simulation si actif
+  const setCompteVendeurWithSim = (sellerOrUpdater) => {
+    setCompteVendeur(prev => {
+      const next = typeof sellerOrUpdater === 'function' ? sellerOrUpdater(prev) : sellerOrUpdater;
+      if (!next) return next;
+      realKycRef.current = {
+        statut_kyc: next.statut_kyc ?? null,
+        seller_status: next.seller_status ?? null,
+        kyc_raison_rejet: next.kyc_raison_rejet ?? null,
+        catalogue_debloque: next.catalogue_debloque ?? null,
+      };
+      return applyKycSimOverride(next);
+    });
+  };
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
