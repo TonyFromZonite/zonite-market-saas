@@ -256,7 +256,7 @@ export default function EspaceVendeur() {
           .maybeSingle();
         
         if (freshSeller) {
-          setCompteVendeur(freshSeller);
+          setCompteVendeurWithSim(freshSeller);
         } else {
           // Fallback: try by email
           const { data: sellerByEmail } = await supabase
