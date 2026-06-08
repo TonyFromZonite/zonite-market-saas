@@ -119,16 +119,24 @@ export default function EspaceVendeur() {
   // Mode test admin : simulation locale du statut KYC (persistée + synchronisée entre écrans)
   const [adminTestKyc, _setAdminTestKyc] = useState(() => getKycSimOverride());
   const isAdminViewer = isAdminViewerHelper();
+  // Référence vers les valeurs RÉELLES (non simulées) pour pouvoir restaurer
+  const realKycRef = React.useRef({ statut_kyc: null, seller_status: null, kyc_raison_rejet: null, catalogue_debloque: null });
+  const reapplyOverride = () => {
+    setCompteVendeur(prev => {
+      if (!prev) return prev;
+      const base = { ...prev, ...realKycRef.current };
+      return applyKycSimOverride(base);
+    });
+  };
   const setAdminTestKyc = (value) => {
     setKycSimOverride(value);
     _setAdminTestKyc(value);
-    // Force la ré-application sur l'objet vendeur déjà chargé
-    setCompteVendeur(prev => prev ? applyKycSimOverride({ ...prev, statut_kyc: prev.statut_kyc, seller_status: prev.seller_status }) : prev);
+    reapplyOverride();
   };
   useEffect(() => {
     const unsub = subscribeKycSim((val) => {
       _setAdminTestKyc(val);
-      setCompteVendeur(prev => prev ? applyKycSimOverride({ ...prev }) : prev);
+      reapplyOverride();
     });
     return unsub;
   }, []);
