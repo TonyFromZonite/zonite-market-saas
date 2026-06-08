@@ -584,15 +584,7 @@ export default function EspaceVendeur() {
           );
         }
         if (isPending) {
-          return (
-            <div className="mx-4 mt-3 mb-2 p-3 bg-yellow-50 border border-yellow-300 rounded-xl flex items-center gap-3">
-              <span className="text-2xl">⏳</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-yellow-800 font-bold text-sm">Statut KYC : En attente de validation</p>
-                <p className="text-yellow-700 text-xs mt-0.5">Notre équipe examine votre dossier (24 à 48h).</p>
-              </div>
-            </div>
-          );
+          return <BanniereKycPending variant="card" />;
         }
         if (isValidated) {
           return (
