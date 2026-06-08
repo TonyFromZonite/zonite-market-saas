@@ -35,7 +35,7 @@ export default function ProduitDetail() {
     queryKey: ["produit_detail", produitId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("produits")
+        .from("produits_public")
         .select("*, categories(nom, emoji)")
         .eq("id", produitId)
         .single();
@@ -57,7 +57,7 @@ export default function ProduitDetail() {
   });
   const { data: coursiersList = [] } = useQuery({
     queryKey: ["coursiers_for_detail"],
-    queryFn: async () => (await supabase.from("coursiers").select("*").eq("actif", true)).data || [],
+    queryFn: async () => (await supabase.from("coursiers_public").select("*").eq("actif", true)).data || [],
   });
   const { data: zonesLivList = [] } = useQuery({
     queryKey: ["zones_livraison_for_detail"],

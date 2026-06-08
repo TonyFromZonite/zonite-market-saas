@@ -297,6 +297,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commandes_vendeur_coursier_id_fkey"
+            columns: ["coursier_id"]
+            isOneToOne: false
+            referencedRelation: "coursiers_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commandes_vendeur_livreur_id_fkey"
             columns: ["livreur_id"]
             isOneToOne: false
@@ -308,6 +315,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commandes_vendeur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_public"
             referencedColumns: ["id"]
           },
           {
@@ -734,6 +748,13 @@ export type Database = {
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mouvements_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications_admin: {
@@ -1071,6 +1092,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retours_produit_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_public"
             referencedColumns: ["id"]
           },
           {
@@ -1496,6 +1524,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ventes_vendeur_id_fkey"
             columns: ["vendeur_id"]
             isOneToOne: false
@@ -1589,7 +1624,124 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      coursiers_public: {
+        Row: {
+          actif: boolean | null
+          adresse_entrepot: string | null
+          created_at: string | null
+          frais_livraison_defaut: number | null
+          id: string | null
+          nom: string | null
+          ville_id: string | null
+          zones_livraison_ids: Json | null
+        }
+        Insert: {
+          actif?: boolean | null
+          adresse_entrepot?: string | null
+          created_at?: string | null
+          frais_livraison_defaut?: number | null
+          id?: string | null
+          nom?: string | null
+          ville_id?: string | null
+          zones_livraison_ids?: Json | null
+        }
+        Update: {
+          actif?: boolean | null
+          adresse_entrepot?: string | null
+          created_at?: string | null
+          frais_livraison_defaut?: number | null
+          id?: string | null
+          nom?: string | null
+          ville_id?: string | null
+          zones_livraison_ids?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coursiers_ville_id_fkey"
+            columns: ["ville_id"]
+            isOneToOne: false
+            referencedRelation: "villes_cameroun"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produits_public: {
+        Row: {
+          actif: boolean | null
+          categorie_id: string | null
+          created_at: string | null
+          description: string | null
+          details: string | null
+          featured: boolean | null
+          fournisseur: string | null
+          id: string | null
+          images: Json | null
+          lien_telegram: string | null
+          nom: string | null
+          prix_gros: number | null
+          prix_vente: number | null
+          reference: string | null
+          seuil_alerte_stock: number | null
+          stock_global: number | null
+          stocks_par_coursier: Json | null
+          stocks_par_localisation: Json | null
+          updated_at: string | null
+          variations: Json | null
+        }
+        Insert: {
+          actif?: boolean | null
+          categorie_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          details?: string | null
+          featured?: boolean | null
+          fournisseur?: string | null
+          id?: string | null
+          images?: Json | null
+          lien_telegram?: string | null
+          nom?: string | null
+          prix_gros?: number | null
+          prix_vente?: number | null
+          reference?: string | null
+          seuil_alerte_stock?: number | null
+          stock_global?: number | null
+          stocks_par_coursier?: Json | null
+          stocks_par_localisation?: Json | null
+          updated_at?: string | null
+          variations?: Json | null
+        }
+        Update: {
+          actif?: boolean | null
+          categorie_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          details?: string | null
+          featured?: boolean | null
+          fournisseur?: string | null
+          id?: string | null
+          images?: Json | null
+          lien_telegram?: string | null
+          nom?: string | null
+          prix_gros?: number | null
+          prix_vente?: number | null
+          reference?: string | null
+          seuil_alerte_stock?: number | null
+          stock_global?: number | null
+          stocks_par_coursier?: Json | null
+          stocks_par_localisation?: Json | null
+          updated_at?: string | null
+          variations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_categorie_id_fkey"
+            columns: ["categorie_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       adjust_seller_commission: {
