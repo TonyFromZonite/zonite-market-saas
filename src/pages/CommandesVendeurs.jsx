@@ -599,14 +599,19 @@ export default function CommandesVendeurs() {
                     <Truck className="w-8 h-8 text-slate-400" />
                   </div>
                 )}
-                <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
+                 <Badge className={`${STATUTS[commandeSelectionnee.statut]?.couleur} border`}>{STATUTS[commandeSelectionnee.statut]?.label}</Badge>
               </div>
 
+              <Button
+                type="button"
+                onClick={() => copierInfosCommande(commandeSelectionnee)}
+                variant="outline"
+                className="w-full gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                <Copy className="w-4 h-4" /> Copier les infos de la commande
+              </Button>
 
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
-                <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
-                <div><p className="text-slate-400 text-xs">Quantité</p><p className="font-medium">{commandeSelectionnee.quantite}</p></div>
-                <div>
+
                   <p className="text-slate-400 text-xs">Prix client</p>
                   <p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p>
                   {commandeSelectionnee.livraison_incluse ? (
