@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import { useToast } from "@/components/ui/use-toast";
 
 const STATUTS_PAIEMENT = {
