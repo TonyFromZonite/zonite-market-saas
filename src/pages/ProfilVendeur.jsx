@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import PullToRefresh from "@/components/PullToRefresh";
 import ProfileProgress from "@/components/vendor/ProfileProgress";
 import EmailVerificationDialog from "@/components/EmailVerificationDialog";
