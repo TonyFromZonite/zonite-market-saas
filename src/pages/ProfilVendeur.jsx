@@ -54,6 +54,8 @@ export default function ProfilVendeur() {
 
   useEffect(() => {
     chargerDonnees();
+    const unsub = subscribeKycSim(() => chargerDonnees());
+    return unsub;
   }, []);
 
   const chargerDonnees = async () => {
