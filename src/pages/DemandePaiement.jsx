@@ -57,7 +57,10 @@ export default function DemandePaiement() {
       }));
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
+
 
   const { data: demandes = [] } = useQuery({
     queryKey: ["demandes_paiement", compteVendeur?.id],
