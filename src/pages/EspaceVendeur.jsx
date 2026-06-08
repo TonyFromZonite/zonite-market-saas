@@ -442,7 +442,7 @@ export default function EspaceVendeur() {
   const handlePullRefresh = useCallback(async () => {
     queryClient.invalidateQueries();
     const { data: freshSeller } = await supabase.from("sellers").select("*").eq("id", compteVendeur?.id).maybeSingle();
-    if (freshSeller) setCompteVendeur(freshSeller);
+    if (freshSeller) setCompteVendeurWithSim(freshSeller);
   }, [compteVendeur?.id, queryClient]);
 
   if (loadingCompte && !compteActualise) {
