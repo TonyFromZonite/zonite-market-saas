@@ -223,7 +223,7 @@ export default function EspaceVendeur() {
         vendeur_email: compteVendeur.email,
         reference_id: compteVendeur.id,
       });
-      setCompteVendeur(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
+      setCompteVendeurWithSim(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
     } else {
       setKycErreur(error.message || "Erreur lors de la soumission.");
     }
