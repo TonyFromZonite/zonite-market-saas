@@ -147,16 +147,9 @@ export default function DemandePaiement() {
         _amount: montant,
       });
 
-      // Notify vendor (non-blocking)
-      try {
-        await supabase.from("notifications_vendeur").insert({
-          vendeur_id: compteVendeur.id,
-          vendeur_email: compteVendeur.email,
-          titre: "⏳ Demande de paiement envoyée",
-          message: `Votre demande de retrait de ${montant.toLocaleString("fr-FR")} FCFA a été envoyée.\n\n💳 Opérateur : ${form.operateur}\n📱 Numéro : ${form.numero_mobile_money}\n👤 Titulaire : ${form.nom_titulaire}\n\n💰 Solde temporairement réservé : ${montant.toLocaleString("fr-FR")} FCFA`,
-          type: "info",
-        });
-      } catch (_) {}
+      // Note: pas de notif auto pour le vendeur — il a déjà le toast + l'écran de succès +
+      // la demande apparaît dans l'historique. La notif persistante arrive uniquement quand
+      // l'admin approuve ("✅ Paiement effectué") ou rejette ("❌ Demande rejetée"), voir Vendeurs.jsx.
 
       // Notify admin (non-blocking)
       try {
