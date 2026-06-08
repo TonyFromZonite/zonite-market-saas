@@ -45,10 +45,12 @@ export default function MesCommandesVendeur() {
         .eq("id", session.id)
         .maybeSingle();
       
-      setCompteVendeur(seller || session);
+      setCompteVendeur(applyKycSimOverride(seller || session));
       setSessionLoading(false);
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
 
   const { data: commandes = [], isLoading } = useQuery({
