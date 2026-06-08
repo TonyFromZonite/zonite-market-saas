@@ -103,12 +103,8 @@ export default function EspaceVendeur() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // KYC modal state
-  const [typeDocument, setTypeDocument] = useState("cni");
-  const [kycForm, setKycForm] = useState({ photo_identite_url: "", photo_identite_verso_url: "", selfie_url: "" });
-  const [kycUpload, setKycUpload] = useState({ id: false, idVerso: false, selfie: false });
-  const [kycErreur, setKycErreur] = useState("");
-  const [kycEnCours, setKycEnCours] = useState(false);
+  // KYC : la soumission/resoumission se fait exclusivement sur /ResoumissionKYC.
+  // L'ancien formulaire inline + handlers ont été retirés (doublon avec ResoumissionKYC).
 
   // Transaction history
   const [historyFilter, setHistoryFilter] = useState("tout");
