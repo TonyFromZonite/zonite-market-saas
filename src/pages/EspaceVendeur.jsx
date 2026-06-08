@@ -571,10 +571,29 @@ export default function EspaceVendeur() {
         </div>
       )}
 
+      {/* Mode test admin : simulation rapide des 4 statuts KYC (visible uniquement pour admin/sous-admin) */}
+      {isAdminViewer && (
+        <div className="mx-4 mt-3 mb-1 p-3 bg-slate-900 text-white rounded-xl">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold tracking-wide">🧪 MODE TEST ADMIN — Simulation statut KYC</p>
+            {adminTestKyc && (
+              <button onClick={() => setAdminTestKyc(null)} className="text-[11px] underline text-slate-300 hover:text-white">Réinitialiser</button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setAdminTestKyc("non_soumis")} className={`px-2 py-1.5 rounded-lg text-xs font-semibold ${adminTestKyc==="non_soumis" ? "bg-orange-500" : "bg-slate-700 hover:bg-slate-600"}`}>📋 Non soumis</button>
+            <button onClick={() => setAdminTestKyc("en_attente")} className={`px-2 py-1.5 rounded-lg text-xs font-semibold ${adminTestKyc==="en_attente" ? "bg-yellow-500" : "bg-slate-700 hover:bg-slate-600"}`}>⏳ En attente</button>
+            <button onClick={() => setAdminTestKyc("valide")} className={`px-2 py-1.5 rounded-lg text-xs font-semibold ${adminTestKyc==="valide" ? "bg-emerald-500" : "bg-slate-700 hover:bg-slate-600"}`}>✅ Validé</button>
+            <button onClick={() => setAdminTestKyc("rejete")} className={`px-2 py-1.5 rounded-lg text-xs font-semibold ${adminTestKyc==="rejete" ? "bg-red-500" : "bg-slate-700 hover:bg-slate-600"}`}>❌ Rejeté</button>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2">Affichage local uniquement — aucune donnée modifiée en base.</p>
+        </div>
+      )}
+
       {/* Indicateur de statut KYC (toujours visible, mis à jour en temps réel) */}
       {compteVendeur && (() => {
-        const statut = compteVendeur.statut_kyc;
-        const sellerStatus = compteVendeur.seller_status;
+        const statut = adminTestKyc ?? compteVendeur.statut_kyc;
+        const sellerStatus = adminTestKyc ? null : compteVendeur.seller_status;
         const isRejected = statut === "rejete" || sellerStatus === SELLER_STATUSES.KYC_REJECTED;
         const isValidated = statut === "valide" || statut === "approuve" || sellerStatus === SELLER_STATUSES.ACTIVE;
         const isPending = statut === "en_attente" || sellerStatus === SELLER_STATUSES.KYC_PENDING;
