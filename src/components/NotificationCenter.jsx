@@ -44,7 +44,7 @@ export default function NotificationCenter() {
   const [ouvert, setOuvert] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+
 
   // Detect role
   const adminSession = getAdminSession();
