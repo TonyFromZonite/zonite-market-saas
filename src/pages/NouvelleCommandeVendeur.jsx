@@ -88,6 +88,8 @@ export default function NouvelleCommandeVendeur() {
       }
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
 
   const { data: produits = [] } = useQuery({
