@@ -11,6 +11,7 @@ import { Search, ChevronLeft, ShoppingBag } from "lucide-react";
 import BanniereKycPending from "@/components/BanniereKycPending";
 
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 
 const STATUTS = {
   en_attente_validation_admin: { label: "⏳ En attente validation", couleur: "bg-yellow-100 text-yellow-800" },
