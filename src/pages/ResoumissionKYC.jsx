@@ -139,7 +139,20 @@ export default function ResoumissionKYC() {
         vendeur_email: vendeur.email,
         reference_id: vendeur.id,
       });
+      await supabase.from('notifications_vendeur').insert({
+        vendeur_id: vendeur.id,
+        vendeur_email: vendeur.email,
+        titre: isResubmission ? '✅ KYC resoumis avec succès' : '✅ KYC soumis avec succès',
+        message: `Votre dossier KYC (${typeDocument === 'cni' ? 'CNI' : 'Passeport'}) a bien été ${isResubmission ? 'resoumis' : 'soumis'} et est en attente de validation par notre équipe sous 24 à 48h.`,
+        type: 'success',
+        action_url: '/EspaceVendeur',
+      });
+      toast({
+        title: isResubmission ? '✅ KYC resoumis' : '✅ KYC soumis',
+        description: 'Votre dossier est en attente de validation (24-48h).',
+      });
       setSucces(true);
+
     } catch (error) {
       setErreur(error.message || "Erreur lors de la resoumission.");
     } finally {
