@@ -12,6 +12,7 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import { getImageVariation, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille } from "@/lib/variationHelpers";
 
 export default function CatalogueVendeur() {
