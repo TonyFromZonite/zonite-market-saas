@@ -116,14 +116,22 @@ export default function EspaceVendeur() {
   // Welcome wizard state — MUST be before any early return
   const [showWizard, setShowWizard] = useState(false);
   const [showEmailVerifyDialog, setShowEmailVerifyDialog] = useState(false);
-  // Mode test admin : simulation locale d'un statut KYC (n'écrit rien en base)
-  const [adminTestKyc, setAdminTestKyc] = useState(null);
-  const isAdminViewer = (() => {
-    try {
-      const s = JSON.parse(localStorage.getItem("admin_session") || "null");
-      return !!(s?.email && (s?.role === "admin" || s?.role === "sous_admin"));
-    } catch { return false; }
-  })();
+  // Mode test admin : simulation locale du statut KYC (persistée + synchronisée entre écrans)
+  const [adminTestKyc, _setAdminTestKyc] = useState(() => getKycSimOverride());
+  const isAdminViewer = isAdminViewerHelper();
+  const setAdminTestKyc = (value) => {
+    setKycSimOverride(value);
+    _setAdminTestKyc(value);
+    // Force la ré-application sur l'objet vendeur déjà chargé
+    setCompteVendeur(prev => prev ? applyKycSimOverride({ ...prev, statut_kyc: prev.statut_kyc, seller_status: prev.seller_status }) : prev);
+  };
+  useEffect(() => {
+    const unsub = subscribeKycSim((val) => {
+      _setAdminTestKyc(val);
+      setCompteVendeur(prev => prev ? applyKycSimOverride({ ...prev }) : prev);
+    });
+    return unsub;
+  }, []);
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
