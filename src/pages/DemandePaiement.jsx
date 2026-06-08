@@ -48,7 +48,7 @@ export default function DemandePaiement() {
         .maybeSingle();
       
       const seller = freshSeller || session;
-      setCompteVendeur(seller);
+      setCompteVendeur(applyKycSimOverride(seller));
       setForm(f => ({
         ...f,
         numero_mobile_money: seller.numero_mobile_money || "",
