@@ -565,15 +565,23 @@ export default function EspaceVendeur() {
 
       {/* KYC rejected banner (non-blocking) */}
       {(compteVendeur.statut_kyc === "rejete" || compteVendeur.seller_status === SELLER_STATUSES.KYC_REJECTED) && (
-        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-          <span className="text-2xl">🪪</span>
-          <div className="flex-1">
-            <p className="text-red-700 font-semibold text-sm">KYC rejeté</p>
-            <p className="text-red-500 text-xs">{compteVendeur.kyc_raison_rejet || "Resoumettre vos documents."}</p>
+        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-start gap-3 mb-2">
+            <span className="text-2xl">🪪</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-red-700 font-semibold text-sm">KYC rejeté</p>
+              <p className="text-red-500 text-xs">{compteVendeur.kyc_raison_rejet || "Veuillez resoumettre vos documents."}</p>
+            </div>
           </div>
-          <button onClick={() => navigate('/ResoumissionKYC')} className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">Corriger</button>
+          <button
+            onClick={() => navigate('/ResoumissionKYC')}
+            className="w-full px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+          >
+            🔄 Resoumettre mon KYC maintenant
+          </button>
         </div>
       )}
+
 
       {compteVendeur.seller_status === SELLER_STATUSES.KYC_PENDING && <BanniereKycPending />}
 
