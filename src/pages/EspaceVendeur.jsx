@@ -22,6 +22,13 @@ import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/co
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  applyKycSimOverride,
+  getKycSimOverride,
+  setKycSimOverride,
+  subscribeKycSim,
+  isAdminViewer as isAdminViewerHelper,
+} from "@/lib/kycSimulator";
 import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
 import ObjectifMensuel from "@/components/ObjectifMensuel";
 import ParrainageSection from "@/components/ParrainageSection";
