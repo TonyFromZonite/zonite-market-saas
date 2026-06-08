@@ -139,14 +139,8 @@ export default function ResoumissionKYC() {
         vendeur_email: vendeur.email,
         reference_id: vendeur.id,
       });
-      await supabase.from('notifications_vendeur').insert({
-        vendeur_id: vendeur.id,
-        vendeur_email: vendeur.email,
-        titre: isResubmission ? '✅ KYC resoumis avec succès' : '✅ KYC soumis avec succès',
-        message: `Votre dossier KYC (${typeDocument === 'cni' ? 'CNI' : 'Passeport'}) a bien été ${isResubmission ? 'resoumis' : 'soumis'} et est en attente de validation par notre équipe sous 24 à 48h.`,
-        type: 'success',
-        action_url: '/EspaceVendeur',
-      });
+      // Note: pas de notif auto pour le vendeur — il a déjà le toast + l'écran de succès + la bannière "en attente".
+      // La notif persistante arrive uniquement quand l'admin valide/rejette (voir GestionKYC.jsx).
       toast({
         title: isResubmission ? '✅ KYC resoumis' : '✅ KYC soumis',
         description: 'Votre dossier est en attente de validation (24-48h).',
