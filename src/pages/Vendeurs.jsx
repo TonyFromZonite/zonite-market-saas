@@ -969,7 +969,14 @@ function PaiementsTab() {
 
 // ─── Page principale ─────────────────────────────────────────────────────────
 export default function Vendeurs() {
-  const [ongletActif, setOngletActif] = useState("liste");
+  // Onglet initial : lit ?onglet=paiements|kyc|commissions|liste depuis l'URL
+  const initialTab = (() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('onglet');
+      return ['liste', 'kyc', 'commissions', 'paiements'].includes(p) ? p : 'liste';
+    } catch { return 'liste'; }
+  })();
+  const [ongletActif, setOngletActif] = useState(initialTab);
   const queryClient = useQueryClient();
 
   useEffect(() => {
