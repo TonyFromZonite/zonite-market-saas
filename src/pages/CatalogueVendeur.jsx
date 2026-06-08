@@ -131,7 +131,7 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
       const withCount = await Promise.all(
         (cats || []).map(async (cat) => {
           const { count } = await supabase
-            .from("produits")
+            .from("produits_public")
             .select("*", { count: "exact", head: true })
             .eq("categorie_id", cat.id)
             .eq("actif", true);
@@ -254,7 +254,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
     queryKey: ["produits_categorie", categorieId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("produits")
+        .from("produits_public")
         .select("*")
         .eq("categorie_id", categorieId)
         .eq("actif", true)
@@ -266,7 +266,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
   // Logistique pour filtrer la dispo des vignettes par ville du vendeur
   const { data: coursiersList = [] } = useQuery({
     queryKey: ["coursiers_for_catalogue"],
-    queryFn: async () => (await supabase.from("coursiers").select("*").eq("actif", true)).data || [],
+    queryFn: async () => (await supabase.from("coursiers_public").select("*").eq("actif", true)).data || [],
   });
   const { data: zonesLivList = [] } = useQuery({
     queryKey: ["zones_livraison_for_catalogue"],
