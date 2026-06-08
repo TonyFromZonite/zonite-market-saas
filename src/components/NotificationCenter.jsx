@@ -85,31 +85,11 @@ export default function NotificationCenter() {
     enabled: isAdmin || !!vendeurId,
   });
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!isAdmin && !vendeurId) return;
-    const filter = !isAdmin && vendeurId ? `vendeur_id=eq.${vendeurId}` : undefined;
-    const channel = supabase
-      .channel(`notifs_${tableName}_realtime`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: tableName,
-        ...(filter ? { filter } : {}),
-      }, (payload) => {
-        queryClient.invalidateQueries({ queryKey: [...queryKey, "count"] });
-        queryClient.invalidateQueries({ queryKey });
-        if (isAdmin && payload.new) {
-          toast({
-            title: payload.new.titre,
-            description: payload.new.message,
-            duration: 4000,
-          });
-        }
-      })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [isAdmin, vendeurId, tableName, queryClient, toast]);
+  // Realtime is handled globally by NotificationManager (sound + push + in-app toast).
+  // It invalidates ["notifications_admin"] / ["notifications_vendeur"] on insert, which
+  // refreshes this bell automatically via React Query prefix matching — no need for a
+  // second channel or a second toast here.
+
 
   // Mark single as read
   const marquerCommeLueMutation = useMutation({
