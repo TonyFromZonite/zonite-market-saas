@@ -78,7 +78,7 @@ export default function ProfilVendeur() {
     }
 
     if (seller) {
-      setCompteVendeur(seller);
+      setCompteVendeur(applyKycSimOverride(seller));
 
       // Ensure referral code exists
       if (!seller.code_parrainage) {
