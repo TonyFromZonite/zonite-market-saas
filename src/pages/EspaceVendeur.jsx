@@ -22,6 +22,13 @@ import { SELLER_STATUSES, canAccessFeature, shouldShowTrainingModal } from "@/co
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable, getCurrentUser, subscribeToTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  applyKycSimOverride,
+  getKycSimOverride,
+  setKycSimOverride,
+  subscribeKycSim,
+  isAdminViewer as isAdminViewerHelper,
+} from "@/lib/kycSimulator";
 import BadgeVendeur, { BadgeProgression, getBadgeForVentes } from "@/components/BadgeVendeur";
 import ObjectifMensuel from "@/components/ObjectifMensuel";
 import ParrainageSection from "@/components/ParrainageSection";
@@ -109,14 +116,44 @@ export default function EspaceVendeur() {
   // Welcome wizard state — MUST be before any early return
   const [showWizard, setShowWizard] = useState(false);
   const [showEmailVerifyDialog, setShowEmailVerifyDialog] = useState(false);
-  // Mode test admin : simulation locale d'un statut KYC (n'écrit rien en base)
-  const [adminTestKyc, setAdminTestKyc] = useState(null);
-  const isAdminViewer = (() => {
-    try {
-      const s = JSON.parse(localStorage.getItem("admin_session") || "null");
-      return !!(s?.email && (s?.role === "admin" || s?.role === "sous_admin"));
-    } catch { return false; }
-  })();
+  // Mode test admin : simulation locale du statut KYC (persistée + synchronisée entre écrans)
+  const [adminTestKyc, _setAdminTestKyc] = useState(() => getKycSimOverride());
+  const isAdminViewer = isAdminViewerHelper();
+  // Référence vers les valeurs RÉELLES (non simulées) pour pouvoir restaurer
+  const realKycRef = React.useRef({ statut_kyc: null, seller_status: null, kyc_raison_rejet: null, catalogue_debloque: null });
+  const reapplyOverride = () => {
+    setCompteVendeur(prev => {
+      if (!prev) return prev;
+      const base = { ...prev, ...realKycRef.current };
+      return applyKycSimOverride(base);
+    });
+  };
+  const setAdminTestKyc = (value) => {
+    setKycSimOverride(value);
+    _setAdminTestKyc(value);
+    reapplyOverride();
+  };
+  useEffect(() => {
+    const unsub = subscribeKycSim((val) => {
+      _setAdminTestKyc(val);
+      reapplyOverride();
+    });
+    return unsub;
+  }, []);
+  // Capture les valeurs RÉELLES et applique l'override de simulation si actif
+  const setCompteVendeurWithSim = (sellerOrUpdater) => {
+    setCompteVendeur(prev => {
+      const next = typeof sellerOrUpdater === 'function' ? sellerOrUpdater(prev) : sellerOrUpdater;
+      if (!next) return next;
+      realKycRef.current = {
+        statut_kyc: next.statut_kyc ?? null,
+        seller_status: next.seller_status ?? null,
+        kyc_raison_rejet: next.kyc_raison_rejet ?? null,
+        catalogue_debloque: next.catalogue_debloque ?? null,
+      };
+      return applyKycSimOverride(next);
+    });
+  };
   const uploadKycFile = async (fichier, champ) => {
     const key = champ === "photo_identite_url" ? "id" : champ === "photo_identite_verso_url" ? "idVerso" : "selfie";
     setKycUpload(p => ({ ...p, [key]: true }));
@@ -186,7 +223,7 @@ export default function EspaceVendeur() {
         vendeur_email: compteVendeur.email,
         reference_id: compteVendeur.id,
       });
-      setCompteVendeur(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
+      setCompteVendeurWithSim(prev => ({ ...prev, seller_status: 'kyc_pending', statut_kyc: 'en_attente' }));
     } else {
       setKycErreur(error.message || "Erreur lors de la soumission.");
     }
@@ -219,7 +256,7 @@ export default function EspaceVendeur() {
           .maybeSingle();
         
         if (freshSeller) {
-          setCompteVendeur(freshSeller);
+          setCompteVendeurWithSim(freshSeller);
         } else {
           // Fallback: try by email
           const { data: sellerByEmail } = await supabase
@@ -229,7 +266,7 @@ export default function EspaceVendeur() {
             .maybeSingle();
           
           if (sellerByEmail) {
-            setCompteVendeur(sellerByEmail);
+            setCompteVendeurWithSim(sellerByEmail);
           } else {
             window.location.href = createPageUrl("Connexion");
             return;
@@ -405,7 +442,7 @@ export default function EspaceVendeur() {
   const handlePullRefresh = useCallback(async () => {
     queryClient.invalidateQueries();
     const { data: freshSeller } = await supabase.from("sellers").select("*").eq("id", compteVendeur?.id).maybeSingle();
-    if (freshSeller) setCompteVendeur(freshSeller);
+    if (freshSeller) setCompteVendeurWithSim(freshSeller);
   }, [compteVendeur?.id, queryClient]);
 
   if (loadingCompte && !compteActualise) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getVendeurSessionAsync } from "@/components/useSessionGuard";
 import { createPageUrl } from "@/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 
 /**
  * Hook centralisé pour récupérer le compte vendeur et calculer les droits d'accès.
@@ -23,15 +24,14 @@ export function useSellerAccess() {
         .select("*")
         .eq("id", session.id)
         .maybeSingle();
-      
-      if (freshSeller) {
-        setSeller(freshSeller);
-      } else {
-        setSeller(session);
-      }
+
+      const base = freshSeller || session;
+      setSeller(applyKycSimOverride(base));
       setLoading(false);
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
 
   const status = seller?.seller_status;

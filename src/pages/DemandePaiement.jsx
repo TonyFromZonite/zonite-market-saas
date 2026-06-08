@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import BanniereKycPending from "@/components/BanniereKycPending";
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import { useToast } from "@/components/ui/use-toast";
 
 const STATUTS_PAIEMENT = {
@@ -47,7 +48,7 @@ export default function DemandePaiement() {
         .maybeSingle();
       
       const seller = freshSeller || session;
-      setCompteVendeur(seller);
+      setCompteVendeur(applyKycSimOverride(seller));
       setForm(f => ({
         ...f,
         numero_mobile_money: seller.numero_mobile_money || "",
@@ -56,7 +57,10 @@ export default function DemandePaiement() {
       }));
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
+
 
   const { data: demandes = [] } = useQuery({
     queryKey: ["demandes_paiement", compteVendeur?.id],

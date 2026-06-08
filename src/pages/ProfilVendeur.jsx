@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
 import BanniereKycPending from "@/components/BanniereKycPending";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import PullToRefresh from "@/components/PullToRefresh";
 import ProfileProgress from "@/components/vendor/ProfileProgress";
 import EmailVerificationDialog from "@/components/EmailVerificationDialog";
@@ -53,6 +54,8 @@ export default function ProfilVendeur() {
 
   useEffect(() => {
     chargerDonnees();
+    const unsub = subscribeKycSim(() => chargerDonnees());
+    return unsub;
   }, []);
 
   const chargerDonnees = async () => {
@@ -75,7 +78,7 @@ export default function ProfilVendeur() {
     }
 
     if (seller) {
-      setCompteVendeur(seller);
+      setCompteVendeur(applyKycSimOverride(seller));
 
       // Ensure referral code exists
       if (!seller.code_parrainage) {
@@ -83,7 +86,7 @@ export default function ProfilVendeur() {
         const code = `${prefix}${seller.id?.slice(0, 4).toUpperCase() || '0000'}`;
         await supabase.from('sellers').update({ code_parrainage: code }).eq('id', seller.id);
         seller.code_parrainage = code;
-        setCompteVendeur({ ...seller });
+        setCompteVendeur(applyKycSimOverride({ ...seller }));
       }
 
       // Fetch sales count

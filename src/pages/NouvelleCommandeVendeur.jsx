@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import BlocageKycPending from "@/components/BlocageKycPending";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -67,7 +68,7 @@ export default function NouvelleCommandeVendeur() {
       const { data: seller } = await supabase
         .from("sellers").select("*").eq("id", session.id).maybeSingle();
       if (seller) {
-        setCompteVendeur(seller);
+        setCompteVendeur(applyKycSimOverride(seller));
       } else {
         setErreur("Compte vendeur introuvable. Veuillez vous reconnecter.");
       }
@@ -87,6 +88,8 @@ export default function NouvelleCommandeVendeur() {
       }
     };
     charger();
+    const unsub = subscribeKycSim(() => charger());
+    return unsub;
   }, []);
 
   const { data: produits = [] } = useQuery({

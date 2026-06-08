@@ -12,6 +12,7 @@ import BlocageKycPending from "@/components/BlocageKycPending";
 
 import { filterTable } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { applyKycSimOverride, subscribeKycSim } from "@/lib/kycSimulator";
 import { getImageVariation, isOptionAvailable, isOptionAvailableInCoursiers, getCoursierIdsForVille } from "@/lib/variationHelpers";
 
 export default function CatalogueVendeur() {
@@ -39,10 +40,11 @@ export default function CatalogueVendeur() {
       }
       if (!seller) { setIsLocked(true); return; }
 
-      setCompteVendeur(seller);
+      const sellerSim = applyKycSimOverride(seller);
+      setCompteVendeur(sellerSim);
 
       // Only lock if training not completed - KYC does NOT block catalogue
-      if (!seller.catalogue_debloque && !seller.training_completed) {
+      if (!sellerSim.catalogue_debloque && !sellerSim.training_completed) {
         setIsLocked(true);
         return;
       }
@@ -50,6 +52,8 @@ export default function CatalogueVendeur() {
       setIsLocked(false);
     };
     checkAccess();
+    const unsub = subscribeKycSim(() => checkAccess());
+    return unsub;
   }, []);
 
   // Loading
