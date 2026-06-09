@@ -308,8 +308,8 @@ export default function Produits() {
                     const nbVar = (p.variations || []).reduce((t, v) => t + (v.options?.length || 0), 0);
                     return (
                       <TableRow key={p.id} className="hover:bg-slate-50">
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell className="align-top">
+                          <div className="flex items-start gap-2 min-w-0">
                             {(p.images?.[0]) ? (
                               <img src={p.images[0]} alt={p.nom} className="w-8 h-8 rounded object-cover flex-shrink-0" />
                             ) : (
@@ -317,7 +317,7 @@ export default function Produits() {
                                 <Package className="w-4 h-4 text-slate-400" />
                               </div>
                             )}
-                            <span className="font-medium">{p.nom}</span>
+                            <span className="font-medium whitespace-normal break-words leading-snug">{p.nom}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-slate-500">{p.reference || "—"}</TableCell>
