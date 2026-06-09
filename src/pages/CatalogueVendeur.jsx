@@ -369,7 +369,7 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
                     )}
                     <div className="p-3 flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-slate-900 text-sm leading-tight">{p.nom}</h3>
+                        <h3 className="font-semibold text-slate-900 text-sm leading-tight break-words">{p.nom}</h3>
                         <Badge className={`text-xs flex-shrink-0 ${stockOk ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"} border-0`}>
                           {stockOk ? "Dispo" : "Rupture"}
                         </Badge>

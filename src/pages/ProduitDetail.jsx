@@ -145,7 +145,7 @@ export default function ProduitDetail() {
         <button onClick={() => navigate(-1)} className="p-1">
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
-        <h1 className="text-base font-bold truncate">{produit.nom}</h1>
+        <h1 className="text-base font-bold leading-tight break-words">{produit.nom}</h1>
       </div>
 
       {/* Image principale */}
