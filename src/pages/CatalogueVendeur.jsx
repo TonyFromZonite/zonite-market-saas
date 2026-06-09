@@ -119,36 +119,51 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["categories_with_count"],
+    staleTime: 30 * 1000,
+    retry: 2,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
     queryFn: async () => {
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("actif", true)
-        .order("ordre");
+      const [catsRes, prodsRes] = await Promise.all([
+        supabase.from("categories").select("*").eq("actif", true).order("ordre"),
+        supabase.from("produits_public").select("id, categorie_id").eq("actif", true),
+      ]);
+      if (catsRes.error) throw catsRes.error;
+      if (prodsRes.error) throw prodsRes.error;
 
-      const withCount = await Promise.all(
-        (cats || []).map(async (cat) => {
-          const { count } = await supabase
-            .from("produits_public")
-            .select("*", { count: "exact", head: true })
-            .eq("categorie_id", cat.id)
-            .eq("actif", true);
-          return { ...cat, produits_count: count || 0 };
-        })
-      );
-
-      return withCount;
+      const counts = new Map();
+      for (const p of prodsRes.data || []) {
+        counts.set(p.categorie_id, (counts.get(p.categorie_id) || 0) + 1);
+      }
+      return (catsRes.data || []).map((cat) => ({
+        ...cat,
+        produits_count: counts.get(cat.id) || 0,
+      }));
     },
   });
+
+  // Realtime: invalidate catalog cache on produits/categories changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("catalog_rt_categories")
+      .on("postgres_changes", { event: "*", schema: "public", table: "produits" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+        queryClient.invalidateQueries({ queryKey: ["produits_categorie"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const filtered = categories.filter(c =>
     c.nom.toLowerCase().includes((recherche || "").toLowerCase())
   );
 
   const handlePullRefresh = async () => {
-    queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+    await refetch();
   };
 
   return (
@@ -180,6 +195,13 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-5xl mb-3">⚠️</div>
+            <h2 className="text-base font-bold text-slate-800 mb-2">Problème de connexion</h2>
+            <p className="text-sm text-slate-500 mb-5 max-w-xs">Impossible de charger le catalogue pour le moment.</p>
+            <button onClick={() => refetch()} className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white">Réessayer</button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
@@ -250,15 +272,19 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
     },
   });
 
-  const { data: produits = [], isLoading } = useQuery({
+  const { data: produits = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["produits_categorie", categorieId],
+    staleTime: 30 * 1000,
+    retry: 2,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("produits_public")
         .select("*")
         .eq("categorie_id", categorieId)
         .eq("actif", true)
         .order("nom");
+      if (error) throw error;
       return data || [];
     },
   });
@@ -329,6 +355,13 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4">
             {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+            <div className="text-5xl mb-3">⚠️</div>
+            <h3 className="text-base font-bold text-slate-700 mb-1">Problème de connexion</h3>
+            <p className="text-sm text-slate-400 mb-5 max-w-xs">Impossible de charger les produits.</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white">Réessayer</button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
