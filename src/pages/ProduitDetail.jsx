@@ -220,17 +220,25 @@ export default function ProduitDetail() {
 
         {/* Description */}
         {produit.description && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold text-slate-900 text-sm mb-2">Description</h3>
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{produit.description}</p>
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-900 text-sm mb-3">Description</h3>
+            <div className="text-[15px] text-slate-700 leading-7 whitespace-pre-line">
+              {produit.description.split(/\n{2,}/).map((para, i) => (
+                <p key={i} className="mb-3 last:mb-0">{para}</p>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Details */}
         {produit.details && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold text-slate-900 text-sm mb-2">Détails</h3>
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{produit.details}</p>
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-900 text-sm mb-3">Détails</h3>
+            <div className="text-[15px] text-slate-700 leading-7 whitespace-pre-line">
+              {produit.details.split(/\n{2,}/).map((para, i) => (
+                <p key={i} className="mb-3 last:mb-0">{para}</p>
+              ))}
+            </div>
           </div>
         )}
 
