@@ -196,6 +196,13 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
           <div className="grid grid-cols-2 gap-3">
             {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-5xl mb-3">⚠️</div>
+            <h2 className="text-base font-bold text-slate-800 mb-2">Problème de connexion</h2>
+            <p className="text-sm text-slate-500 mb-5 max-w-xs">Impossible de charger le catalogue pour le moment.</p>
+            <button onClick={() => refetch()} className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white">Réessayer</button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <div className="text-6xl mb-4" style={{ animation: 'float 3s ease-in-out infinite' }}>🛍️</div>
