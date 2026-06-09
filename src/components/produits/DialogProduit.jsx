@@ -4,6 +4,7 @@ import { uploadFile } from "@/lib/supabaseHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -310,7 +311,16 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                     <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2 space-y-2"><Label>Description</Label><Input value={form.description} onChange={(e) => modifier("description", e.target.value)} /></div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={form.description || ""}
+                    onChange={(e) => modifier("description", e.target.value)}
+                    rows={6}
+                    className="min-h-[140px] resize-y leading-6"
+                    placeholder="Description détaillée du produit. Utilisez Entrée pour créer des paragraphes."
+                  />
+                </div>
               </div>
 
               <div>
