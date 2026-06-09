@@ -118,6 +118,7 @@ export default function ResoumissionKYC() {
     }
     setEnCours(true);
     setErreur("");
+    const isResubmission = vendeur.statut_kyc === 'rejete';
     try {
       const { error } = await supabase.from('sellers').update({
         kyc_document_recto_url: kycDocs.recto || null,
