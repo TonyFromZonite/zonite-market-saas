@@ -119,36 +119,51 @@ function CategoriesGrid({ compteVendeur, recherche, setRecherche }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["categories_with_count"],
+    staleTime: 30 * 1000,
+    retry: 2,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
     queryFn: async () => {
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("actif", true)
-        .order("ordre");
+      const [catsRes, prodsRes] = await Promise.all([
+        supabase.from("categories").select("*").eq("actif", true).order("ordre"),
+        supabase.from("produits_public").select("id, categorie_id").eq("actif", true),
+      ]);
+      if (catsRes.error) throw catsRes.error;
+      if (prodsRes.error) throw prodsRes.error;
 
-      const withCount = await Promise.all(
-        (cats || []).map(async (cat) => {
-          const { count } = await supabase
-            .from("produits_public")
-            .select("*", { count: "exact", head: true })
-            .eq("categorie_id", cat.id)
-            .eq("actif", true);
-          return { ...cat, produits_count: count || 0 };
-        })
-      );
-
-      return withCount;
+      const counts = new Map();
+      for (const p of prodsRes.data || []) {
+        counts.set(p.categorie_id, (counts.get(p.categorie_id) || 0) + 1);
+      }
+      return (catsRes.data || []).map((cat) => ({
+        ...cat,
+        produits_count: counts.get(cat.id) || 0,
+      }));
     },
   });
+
+  // Realtime: invalidate catalog cache on produits/categories changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("catalog_rt_categories")
+      .on("postgres_changes", { event: "*", schema: "public", table: "produits" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+        queryClient.invalidateQueries({ queryKey: ["produits_categorie"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const filtered = categories.filter(c =>
     c.nom.toLowerCase().includes((recherche || "").toLowerCase())
   );
 
   const handlePullRefresh = async () => {
-    queryClient.invalidateQueries({ queryKey: ["categories_with_count"] });
+    await refetch();
   };
 
   return (
