@@ -272,15 +272,19 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
     },
   });
 
-  const { data: produits = [], isLoading } = useQuery({
+  const { data: produits = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["produits_categorie", categorieId],
+    staleTime: 30 * 1000,
+    retry: 2,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 5000),
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("produits_public")
         .select("*")
         .eq("categorie_id", categorieId)
         .eq("actif", true)
         .order("nom");
+      if (error) throw error;
       return data || [];
     },
   });
