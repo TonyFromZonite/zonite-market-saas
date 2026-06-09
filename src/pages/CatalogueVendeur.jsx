@@ -356,6 +356,13 @@ function ProduitsParCategorie({ categorieId, compteVendeur }) {
           <div className="grid grid-cols-1 gap-4">
             {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+            <div className="text-5xl mb-3">⚠️</div>
+            <h3 className="text-base font-bold text-slate-700 mb-1">Problème de connexion</h3>
+            <p className="text-sm text-slate-400 mb-5 max-w-xs">Impossible de charger les produits.</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white">Réessayer</button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
             <div className="text-5xl mb-3">📭</div>
