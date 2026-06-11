@@ -12,6 +12,7 @@ import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2, Image as Ima
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import ImageCropDialog from "@/components/produits/ImageCropDialog";
 import {
   normalizeVariations,
   setStockForKey,
@@ -30,6 +31,8 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   const [showVarModal, setShowVarModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockForm, setStockForm] = useState({ coursier_id: "", stock_par_variation: [] });
+  // Recadrage : { file, target: 'main' | { varId, optIndex } }
+  const [cropTask, setCropTask] = useState(null);
 
   const formatTaille = (octets) => {
     if (!octets || octets <= 0) return "—";
@@ -62,13 +65,18 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     setForm((p) => ({ ...p, categorie_id: id, categorie_nom: cat?.nom || "" }));
   };
 
-  // Images
-  const uploadImage = async (e) => {
+  // Images — passe d'abord par le recadrage
+  const uploadImage = (e) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
     if (!file) return;
+    setCropTask({ file, target: "main" });
+  };
+
+  const finalizeUpload = async (croppedFile) => {
     setUploadEnCours(true);
     try {
-      const { file_url, size, original_size } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(croppedFile);
       const imgs = [...(form.images || []), file_url];
       setForm((p) => ({ ...p, images: imgs }));
       setDernierUpload({ size, original_size });
@@ -77,7 +85,6 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
-      if (e.target) e.target.value = "";
     }
   };
 
@@ -186,11 +193,15 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   };
 
 
-  const uploadOptionImage = async (varId, optIndex, file) => {
+  const uploadOptionImage = (varId, optIndex, file) => {
     if (!file) return;
+    setCropTask({ file, target: { varId, optIndex } });
+  };
+
+  const finalizeOptionUpload = async (varId, optIndex, croppedFile) => {
     setUploadEnCours(true);
     try {
-      const { file_url, size, original_size } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(croppedFile);
       updateOption(varId, optIndex, { image_url: file_url });
       setDernierUpload({ size, original_size });
     } catch (err) {
@@ -198,6 +209,17 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
+    }
+  };
+
+  const handleCropConfirm = async (croppedFile) => {
+    const task = cropTask;
+    setCropTask(null);
+    if (!task) return;
+    if (task.target === "main") {
+      await finalizeUpload(croppedFile);
+    } else if (task.target && typeof task.target === "object") {
+      await finalizeOptionUpload(task.target.varId, task.target.optIndex, croppedFile);
     }
   };
 
@@ -711,6 +733,13 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImageCropDialog
+        open={!!cropTask}
+        file={cropTask?.file || null}
+        onCancel={() => setCropTask(null)}
+        onConfirm={handleCropConfirm}
+      />
     </>
   );
 }
