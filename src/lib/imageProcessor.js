@@ -21,19 +21,43 @@ function isHeicFile(file) {
 
 async function convertHeicToJpeg(file) {
   // Import dynamique pour ne pas alourdir le bundle initial
-  const heic2any = (await import("heic2any")).default;
+  let heic2any;
   try {
-    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-    const out = Array.isArray(blob) ? blob[0] : blob;
-    const newName = file.name.replace(/\.(heic|heif)$/i, ".jpg") || `image_${Date.now()}.jpg`;
-    return new File([out], newName, { type: "image/jpeg" });
+    heic2any = (await import("heic2any")).default;
   } catch (e) {
-    const err = new Error(
-      "Impossible de lire ce fichier HEIC. Exportez-le en JPEG depuis votre iPhone (Réglages → Appareil photo → Formats → Plus compatible) puis réessayez."
-    );
-    err.cause = e;
-    throw err;
+    console.error("[imageProcessor] heic2any load failed:", e);
+    throw new Error("Module de conversion HEIC indisponible. Vérifiez votre connexion puis réessayez.");
   }
+
+  // Essais successifs : JPEG haute qualité, puis JPEG basique, puis PNG.
+  // Certains HEIC (Live Photos, HEVC multi-images) échouent sur le premier essai.
+  const attempts = [
+    { toType: "image/jpeg", quality: 0.9 },
+    { toType: "image/jpeg" },
+    { toType: "image/png" },
+  ];
+
+  let lastError;
+  for (const opts of attempts) {
+    try {
+      const result = await heic2any({ blob: file, ...opts });
+      const out = Array.isArray(result) ? result[0] : result;
+      if (!out) continue;
+      const ext = opts.toType === "image/png" ? ".png" : ".jpg";
+      const newName = (file.name || `image_${Date.now()}`).replace(/\.(heic|heif)$/i, ext);
+      return new File([out], newName, { type: opts.toType });
+    } catch (e) {
+      lastError = e;
+      console.warn("[imageProcessor] HEIC attempt failed", opts, e);
+    }
+  }
+
+  console.error("[imageProcessor] HEIC conversion definitively failed:", lastError);
+  const err = new Error(
+    "Impossible de lire ce fichier HEIC. Exportez-le en JPEG depuis votre iPhone (Réglages → Appareil photo → Formats → Plus compatible) puis réessayez."
+  );
+  err.cause = lastError;
+  throw err;
 }
 
 function loadImage(file) {
