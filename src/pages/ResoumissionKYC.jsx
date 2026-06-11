@@ -158,6 +158,14 @@ export default function ResoumissionKYC() {
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de la resoumission.");
+      import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+        category: "kyc",
+        action: "kyc_submission_failed",
+        error,
+        context: { vendeur_id: vendeur?.id, typeDocument, isResubmission },
+        utilisateur: vendeur?.email,
+        alert: false,
+      }));
     } finally {
       setEnCours(false);
     }
