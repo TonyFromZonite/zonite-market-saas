@@ -31,6 +31,8 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   const [showVarModal, setShowVarModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockForm, setStockForm] = useState({ coursier_id: "", stock_par_variation: [] });
+  // Recadrage : { file, target: 'main' | { varId, optIndex } }
+  const [cropTask, setCropTask] = useState(null);
 
   const formatTaille = (octets) => {
     if (!octets || octets <= 0) return "—";
