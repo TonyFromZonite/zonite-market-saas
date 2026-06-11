@@ -407,6 +407,14 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                   <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadImage} disabled={uploadEnCours} />
                 </label>
               </div>
+              {dernierUpload && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                  Image optimisée : <strong>{formatTaille(dernierUpload.size)}</strong>
+                  {dernierUpload.original_size > dernierUpload.size && (
+                    <> (était {formatTaille(dernierUpload.original_size)}, redimensionnée à 1600 px max)</>
+                  )}
+                </p>
+              )}
               <div className="border border-dashed border-slate-300 rounded-lg p-3">
                 <p className="text-xs font-medium text-slate-500 mb-2">Ou via URL</p>
                 <div className="flex gap-2">
