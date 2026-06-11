@@ -193,11 +193,15 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
   };
 
 
-  const uploadOptionImage = async (varId, optIndex, file) => {
+  const uploadOptionImage = (varId, optIndex, file) => {
     if (!file) return;
+    setCropTask({ file, target: { varId, optIndex } });
+  };
+
+  const finalizeOptionUpload = async (varId, optIndex, croppedFile) => {
     setUploadEnCours(true);
     try {
-      const { file_url, size, original_size } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(croppedFile);
       updateOption(varId, optIndex, { image_url: file_url });
       setDernierUpload({ size, original_size });
     } catch (err) {
@@ -205,6 +209,17 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
+    }
+  };
+
+  const handleCropConfirm = async (croppedFile) => {
+    const task = cropTask;
+    setCropTask(null);
+    if (!task) return;
+    if (task.target === "main") {
+      await finalizeUpload(croppedFile);
+    } else if (task.target && typeof task.target === "object") {
+      await finalizeOptionUpload(task.target.varId, task.target.optIndex, croppedFile);
     }
   };
 
