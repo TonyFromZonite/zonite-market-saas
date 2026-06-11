@@ -12,6 +12,7 @@ import { Loader2, ImagePlus, X, Plus, Trash2, Layers, Truck, Edit2, Image as Ima
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import ImageCropDialog from "@/components/produits/ImageCropDialog";
 import {
   normalizeVariations,
   setStockForKey,
