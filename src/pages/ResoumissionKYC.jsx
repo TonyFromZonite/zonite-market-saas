@@ -105,6 +105,14 @@ export default function ResoumissionKYC() {
       toast({ title: '✅ Document ajouté', description: `${getLabelForKey(docKey)} uploadé` });
     } catch (error) {
       toast({ title: '❌ Erreur upload', description: error.message, variant: 'destructive' });
+      import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+        category: "kyc",
+        action: "kyc_upload_failed",
+        error,
+        context: { docKey, vendeur_id: vendeur?.id },
+        utilisateur: vendeur?.email,
+        alert: false,
+      }));
     } finally {
       setKycUploading(p => ({ ...p, [docKey]: false }));
     }
