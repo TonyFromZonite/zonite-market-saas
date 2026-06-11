@@ -11,6 +11,28 @@ const RATIOS = [
   { id: "3_4", label: "3:4", value: 3 / 4, Icon: RectangleVertical },
 ];
 
+const PREFS_KEY = "zonite_crop_prefs_v1";
+
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p !== "object" || p === null) return null;
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+function savePrefs(prefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // ignore
+  }
+}
+
 async function cropToBlob(imageSrc, areaPx, mime = "image/jpeg") {
   const img = await new Promise((resolve, reject) => {
     const i = new Image();
@@ -54,8 +76,16 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewMime, setPreviewMime] = useState("image/jpeg");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [aspect, setAspect] = useState(null);
+  const initialPrefs = useMemo(() => loadPrefs(), []);
+  const [zoom, setZoom] = useState(() => {
+    const z = Number(initialPrefs?.zoom);
+    return Number.isFinite(z) && z >= 1 && z <= 4 ? z : 1;
+  });
+  const [aspect, setAspect] = useState(() => {
+    if (!initialPrefs || !("aspect" in initialPrefs)) return null;
+    const a = initialPrefs.aspect;
+    return a === null || (typeof a === "number" && a > 0) ? a : null;
+  });
   const [areaPx, setAreaPx] = useState(null);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
@@ -66,7 +96,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
     let urlToRevoke = null;
     setLoading(true);
     setCrop({ x: 0, y: 0 });
-    setZoom(1);
+    // keep zoom & aspect from saved prefs across uploads
     setAreaPx(null);
     (async () => {
       try {
@@ -99,6 +129,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
     try {
       const blob = await cropToBlob(previewUrl, areaPx, "image/jpeg");
       if (!blob) return;
+      savePrefs({ aspect: aspect ?? null, zoom });
       const baseName = (file?.name || "image").replace(/\.[a-z0-9]+$/i, "");
       const cropped = new File([blob], `${baseName}_crop.jpg`, { type: "image/jpeg" });
       onConfirm(cropped);
