@@ -210,7 +210,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
               zoom={zoom}
               aspect={aspect ?? undefined}
               onCropChange={setCrop}
-              onZoomChange={setZoom}
+              onZoomChange={(z) => setZoom(sanitizeZoom(z))}
               onCropComplete={onCropComplete}
               restrictPosition={false}
               objectFit="contain"
