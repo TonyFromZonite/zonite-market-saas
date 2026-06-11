@@ -113,15 +113,8 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
   const [previewMime, setPreviewMime] = useState("image/jpeg");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const initialPrefs = useMemo(() => loadPrefs(), []);
-  const [zoom, setZoom] = useState(() => {
-    const z = Number(initialPrefs?.zoom);
-    return Number.isFinite(z) && z >= 1 && z <= 4 ? z : 1;
-  });
-  const [aspect, setAspect] = useState(() => {
-    if (!initialPrefs || !("aspect" in initialPrefs)) return null;
-    const a = initialPrefs.aspect;
-    return a === null || (typeof a === "number" && a > 0) ? a : null;
-  });
+  const [zoom, setZoom] = useState(() => sanitizeZoom(initialPrefs.zoom));
+  const [aspect, setAspect] = useState(() => sanitizeAspect(initialPrefs.aspect));
   const [areaPx, setAreaPx] = useState(null);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
