@@ -54,6 +54,20 @@ export default function JournalAudit() {
   const [recherche, setRecherche] = useState("");
   const [filtreModule, setFiltreModule] = useState("tous");
   const [page, setPage] = useState(0);
+  const location = useLocation();
+
+  // Deep-link : /JournalAudit?alert=auth|kyc|upload|sync|systeme
+  // Pré-filtre sur "[ALERT]" + catégorie pour montrer uniquement les erreurs critiques.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const alertCat = params.get("alert");
+    if (alertCat) {
+      setOngletActif("journal");
+      setRecherche(`[ALERT]${alertCat ? " " + alertCat : ""}`.trim());
+      setFiltreModule("systeme");
+      setPage(0);
+    }
+  }, [location.search]);
 
   const { data: journaux = [], isLoading } = useQuery({
     queryKey: ["journal_audit"],
