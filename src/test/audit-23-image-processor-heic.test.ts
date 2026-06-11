@@ -41,10 +41,8 @@ describe("Audit 23 — processImageForUpload (HEIC)", () => {
     heic2anyMock.mockReset();
 
     // URL.createObjectURL / revokeObjectURL stubs
-    // @ts-expect-error jsdom
-    global.URL.createObjectURL = vi.fn(() => "blob:mock");
-    // @ts-expect-error jsdom
-    global.URL.revokeObjectURL = vi.fn();
+    (global.URL as unknown as { createObjectURL: () => string }).createObjectURL = vi.fn(() => "blob:mock");
+    (global.URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = vi.fn();
 
     // Force échec du décodage natif (jsdom ne décode pas le HEIC de toute façon)
     // On simule img.onerror pour tryNativeHeicDecode + loadImage
