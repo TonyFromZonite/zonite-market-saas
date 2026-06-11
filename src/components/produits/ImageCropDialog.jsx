@@ -185,7 +185,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
             <button
               key={id}
               type="button"
-              onClick={() => setAspect(value)}
+              onClick={() => setAspect(sanitizeAspect(value))}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition ${
                 aspect === value
                   ? "bg-[#1a1f5e] text-white border-[#1a1f5e]"
