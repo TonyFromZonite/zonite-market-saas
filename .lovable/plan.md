@@ -1,59 +1,63 @@
-# Problème observé
+## Problème
 
-Certains vendeurs voient parfois "aucun produit" dans le catalogue, puis les produits réapparaissent plus tard. Ce comportement intermittent indique un problème de robustesse de chargement, pas un bug RLS (les politiques et grants sont corrects, la vue `produits_public` est accessible).
+Les images `.HEIC` (format Apple iPhone) ne sont pas supportées nativement par les navigateurs Chrome/Firefox/Edge → l'image uploadée s'affiche cassée. De plus, les très grandes images (5–10 Mo) ralentissent le catalogue et consomment beaucoup de bande passante.
 
-# Causes probables identifiées dans `src/pages/CatalogueVendeur.jsx`
+## Solution
 
-1. **N+1 fragile dans `CategoriesGrid`** — la query `categories_with_count` fait `Promise.all` de N HEAD count sur `produits_public`. Si UNE seule requête échoue (timeout, refresh de token Supabase en cours, coupure réseau brève), tout le `Promise.all` rejette → React Query reçoit une erreur → grid vide. Avec `staleTime: 2 min`, l'état vide est mis en cache et l'utilisateur reste bloqué quelques minutes.
+Ajouter une **normalisation côté client** au moment de l'upload, avant l'envoi à Supabase Storage. Le fichier original n'est jamais stocké tel quel — il est converti en JPEG web-friendly.
 
-2. **Aucune gestion d'erreur visible** — quand la query échoue, on affiche l'état "Catalogue bientôt disponible !" comme s'il n'y avait pas de catégories, ce qui correspond exactement au témoignage des vendeurs.
+### Étapes du pipeline (transparent pour le vendeur/admin)
 
-3. **Requête lancée avant que l'auth soit prête** — `useQuery` part dès le mount, sans attendre `isAuthReady`. Si le token Supabase est en cours de rafraîchissement au moment du mount, certaines requêtes peuvent revenir avec un état dégradé.
+1. **Détection HEIC/HEIF** par extension (`.heic`, `.heif`) ou MIME type.
+2. **Conversion HEIC → JPEG** via la librairie `heic2any` (purement navigateur, ~50 Ko, pas de backend).
+3. **Redimensionnement** : si largeur > 1600 px, redimensionner à 1600 px max (ratio préservé) via `<canvas>`.
+4. **Compression JPEG** qualité 0.85 (équilibre taille/qualité).
+5. **Renommage** : `produit_{timestamp}.jpg` au lieu de `IMG_5613.HEIC`.
+6. Le fichier final (typiquement < 400 Ko) est envoyé via `uploadFile()` existant.
 
-4. **`ProduitsParCategorie` filtre `actif=true`** — normal, mais si un admin bascule un produit `actif=false` puis le rebascule, la fenêtre de visibilité est mise en cache 2 min côté vendeur (cohérent avec "ça revient").
+### Fichiers à modifier
 
-5. **Realtime non branché sur produits/categories** — la mémoire mentionne un système Realtime généralisé, mais le catalogue ne s'invalide pas automatiquement quand un produit ou une catégorie change.
+- **`src/lib/imageProcessor.js`** (nouveau) — fonction `processImageForUpload(file)` qui retourne un `File` normalisé. Encapsule HEIC + resize + compression.
+- **`src/lib/supabaseHelpers.js`** — `uploadFile()` appelle `processImageForUpload()` avant l'upload Storage. Centralisé ici → bénéficie automatiquement à :
+  - `DialogProduit.jsx` (images produit + variations)
+  - `ProfilVendeur.jsx` (photo profil)
+  - tout autre appel existant
+- **`package.json`** — ajout de `heic2any` (~50 Ko gzip).
 
-# Fix proposé (3 modifications ciblées, frontend uniquement)
+### Garde-fous
 
-## 1. Remplacer le N+1 par une seule requête groupée
-Dans `CatalogueVendeur.jsx` → `CategoriesGrid` :
-- Récupérer toutes les catégories actives en 1 requête.
-- Récupérer en parallèle (1 seule requête) `produits_public` `select id, categorie_id` filtré sur `actif=true`, puis compter en mémoire par `categorie_id`.
-- Plus rapide, plus robuste, ne casse plus si un compte unitaire échoue.
+- Si la conversion HEIC échoue (fichier corrompu), message clair : « Format non supporté, exportez en JPEG depuis votre iPhone (Réglages → Appareil photo → Formats → Plus compatible) ».
+- Indicateur de progression « Conversion… » dans le bouton upload pendant le traitement (peut prendre 2–4 s sur gros HEIC).
+- KYC documents (autre bucket) : non touchés — la conversion s'applique uniquement aux images produits/profil.
 
-## 2. Ajouter une vraie gestion d'erreur + retry
-- Distinguer dans la query `isError` vs liste vide réelle.
-- Si `isError`, afficher un écran "Problème de connexion — Réessayer" avec bouton qui appelle `refetch()`, au lieu de l'écran "bientôt disponible".
-- Passer `retry: 2` avec `retryDelay` exponentiel sur ces queries spécifiques (override du défaut global).
-- Réduire `staleTime` à 30 s pour ces queries catalogue afin que les états transitoires se résorbent vite.
+### Hors scope
 
-## 3. Branchement Realtime léger sur le catalogue
-Ajouter un effet qui s'abonne aux changements `produits` et `categories` et appelle `queryClient.invalidateQueries({ queryKey: ["categories_with_count"] })` et `["produits_categorie", …]`. Cela garantit qu'une activation/désactivation côté admin se reflète immédiatement chez le vendeur, sans attendre 2 min ou un pull-to-refresh.
+- Pas de changement RLS, pas de changement Storage, pas de modification du proxy `serve-product-image`.
+- Pas de re-traitement des images déjà uploadées (anciennes HEIC cassées restent telles quelles ; il faudra les ré-uploader).
 
-# Hors scope
+## Détails techniques
 
-- Aucun changement RLS, aucun changement de schéma, aucune migration : les politiques et les grants sur `produits_public`, `categories`, `produits` ont été vérifiés et sont corrects.
-- Aucun changement de logique métier (filtrage par ville/quartier, formation, KYC) — uniquement la robustesse de chargement.
-- Pas de conversion JSX → TSX (interdit par les règles projet).
+```js
+// src/lib/imageProcessor.js
+import heic2any from "heic2any";
 
-# Détails techniques
+const MAX_WIDTH = 1600;
+const JPEG_QUALITY = 0.85;
 
-Fichier touché : `src/pages/CatalogueVendeur.jsx` uniquement.
+export async function processImageForUpload(file) {
+  let working = file;
+  const isHeic = /\.(heic|heif)$/i.test(file.name) 
+              || file.type === "image/heic" || file.type === "image/heif";
 
-```text
-CategoriesGrid
-├─ queryFn: 2 requêtes parallèles (categories + produits[id,categorie_id,actif])
-├─ reduce → Map<categorie_id, count>
-├─ retry: 2, staleTime: 30s
-├─ isError → écran erreur + bouton Réessayer
-└─ useEffect: supabase.channel('catalog_rt')
-              .on(postgres_changes, table=produits)  → invalidate
-              .on(postgres_changes, table=categories)→ invalidate
+  if (isHeic) {
+    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    working = new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg" });
+  }
 
-ProduitsParCategorie
-├─ même retry/staleTime override
-└─ même isError UI
+  // Resize via canvas si > MAX_WIDTH
+  const resized = await resizeIfNeeded(working);
+  return resized;
+}
 ```
 
-Vérification après implémentation : tester le chemin "vendeur déjà connecté → ouvre CatalogueVendeur → coupe réseau brièvement → rétablit" pour confirmer que le grid se rétablit automatiquement.
+Test manuel après implémentation : uploader un `.HEIC` iPhone de 8 Mo → doit s'afficher dans la grille produit, taille finale ~200–400 Ko.
