@@ -136,8 +136,15 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
         const nextAspect = sanitizeAspect(p.aspect);
         setZoom((cur) => (cur === nextZoom ? cur : nextZoom));
         setAspect((cur) => (cur === nextAspect ? cur : nextAspect));
-      } catch {
-        // ignore malformed payload from other tab
+      } catch (parseErr) {
+        // payload corrompu venant d'un autre onglet
+        import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+          category: "sync",
+          action: "crop_prefs_sync_parse_failed",
+          error: parseErr,
+          context: { key: PREFS_KEY, newValue: String(e.newValue).slice(0, 200) },
+          alert: false,
+        }));
       }
     };
     window.addEventListener("storage", onStorage);
