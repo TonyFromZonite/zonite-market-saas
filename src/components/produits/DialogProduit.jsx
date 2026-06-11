@@ -24,11 +24,19 @@ import {
 export default function DialogProduit({ open, onOpenChange, produit, form, setForm, categories, onSave, enCours }) {
   const [urlImageAjout, setUrlImageAjout] = useState("");
   const [uploadEnCours, setUploadEnCours] = useState(false);
+  const [dernierUpload, setDernierUpload] = useState(null); // { size, original_size }
   const [newVarName, setNewVarName] = useState("");
   const [newVarOptions, setNewVarOptions] = useState("");
   const [showVarModal, setShowVarModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockForm, setStockForm] = useState({ coursier_id: "", stock_par_variation: [] });
+
+  const formatTaille = (octets) => {
+    if (!octets || octets <= 0) return "—";
+    if (octets < 1024) return `${octets} o`;
+    if (octets < 1024 * 1024) return `${(octets / 1024).toFixed(0)} Ko`;
+    return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+  };
 
   // Load coursiers
   const { data: coursiers = [] } = useQuery({
