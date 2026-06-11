@@ -178,6 +178,7 @@ export async function processImageForUpload(file) {
   let working = file;
   if (isHeicFile(file)) {
     const info = await inspectHeicBrand(file);
+    if (typeof process !== "undefined" && process.env?.VITEST) console.log("[DBG] info=", info);
     // 1) Tentative native (Safari iOS lit le HEIC directement) — pas de lib lourde
     const native = await tryNativeHeicDecode(file);
     if (native) {
