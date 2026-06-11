@@ -226,7 +226,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
             max={4}
             step={0.05}
             value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
+            onChange={(e) => setZoom(sanitizeZoom(e.target.value))}
             className="flex-1 accent-[#1a1f5e]"
             disabled={loading || !previewUrl}
           />
