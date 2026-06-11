@@ -19,6 +19,45 @@ function isHeicFile(file) {
   return /\.(heic|heif)$/i.test(name) || type === "image/heic" || type === "image/heif";
 }
 
+/**
+ * Inspecte les premiers octets d'un HEIC pour identifier la "brand" ISOBMFF
+ * (ftyp box). Retourne :
+ *   { brand, compatible, isSequence, isLivePhoto, isSupported }
+ * - brands single-image :  heic, heix, mif1
+ * - brands séquences    :  hevc, hevx, heim, heis, hevm, hevs, msf1
+ *   (Live Photos iPhone = souvent "hevc"/"heim"/"hevm" multi-frame)
+ */
+async function inspectHeicBrand(file) {
+  try {
+    const head = await file.slice(0, 64).arrayBuffer();
+    const bytes = new Uint8Array(head);
+    // Cherche la signature "ftyp"
+    let ftypIdx = -1;
+    for (let i = 0; i <= bytes.length - 8; i++) {
+      if (
+        bytes[i] === 0x66 && bytes[i + 1] === 0x74 &&
+        bytes[i + 2] === 0x79 && bytes[i + 3] === 0x70
+      ) { ftypIdx = i; break; }
+    }
+    if (ftypIdx < 0) return { brand: null, isSupported: false };
+    const decoder = new TextDecoder("ascii");
+    const brand = decoder.decode(bytes.slice(ftypIdx + 4, ftypIdx + 8)).trim().toLowerCase();
+    const compatibles = decoder
+      .decode(bytes.slice(ftypIdx + 12, Math.min(ftypIdx + 64, bytes.length)))
+      .toLowerCase();
+    const sequenceBrands = ["hevc", "hevx", "heim", "heis", "hevm", "hevs", "msf1"];
+    const isSequence = sequenceBrands.includes(brand) ||
+                       sequenceBrands.some((b) => compatibles.includes(b));
+    const isLivePhoto = isSequence; // proxy raisonnable côté iPhone
+    const knownStill = ["heic", "heix", "mif1", "heif"];
+    const isSupported = knownStill.includes(brand) ||
+                        knownStill.some((b) => compatibles.includes(b));
+    return { brand, compatible: compatibles, isSequence, isLivePhoto, isSupported };
+  } catch {
+    return { brand: null, isSupported: false };
+  }
+}
+
 async function convertHeicToJpeg(file) {
   // Import dynamique pour ne pas alourdir le bundle initial
   let heic2any;
