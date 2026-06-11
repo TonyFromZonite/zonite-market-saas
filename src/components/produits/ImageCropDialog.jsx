@@ -119,6 +119,31 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
 
+  // Sync prefs across tabs/windows via the storage event
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key !== PREFS_KEY) return;
+      // Key removed elsewhere → fallback to defaults
+      if (e.newValue == null) {
+        setZoom(ZOOM_DEFAULT);
+        setAspect(ASPECT_DEFAULT);
+        return;
+      }
+      try {
+        const p = JSON.parse(e.newValue);
+        if (typeof p !== "object" || p === null) return;
+        const nextZoom = sanitizeZoom(p.zoom);
+        const nextAspect = sanitizeAspect(p.aspect);
+        setZoom((cur) => (cur === nextZoom ? cur : nextZoom));
+        setAspect((cur) => (cur === nextAspect ? cur : nextAspect));
+      } catch {
+        // ignore malformed payload from other tab
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   useEffect(() => {
     if (!open || !file) return;
     let cancelled = false;
