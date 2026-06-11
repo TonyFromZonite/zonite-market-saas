@@ -183,10 +183,14 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     try {
       const { file_url } = await uploadFile(file);
       updateOption(varId, optIndex, { image_url: file_url });
+    } catch (err) {
+      console.error("uploadOptionImage:", err);
+      alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
     }
   };
+
 
   // Generate all variation keys from defined variations
   const getVariationKeys = () => {
