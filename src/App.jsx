@@ -155,6 +155,7 @@ const AppWithRouter = () => {
     <>
       <AuthenticatedApp />
       <Toaster />
+      <CriticalAlertListener />
       <InstallPrompt />
       <BiometricLock />
       <NotificationManager />
