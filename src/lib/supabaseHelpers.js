@@ -2,6 +2,8 @@
  * Supabase query helpers — optimized with column selection and limits.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { processImageForUpload } from "@/lib/imageProcessor";
+
 
 // Default column sets per table to avoid SELECT *
 const TABLE_COLUMNS = {
