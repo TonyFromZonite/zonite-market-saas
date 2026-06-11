@@ -24,11 +24,19 @@ import {
 export default function DialogProduit({ open, onOpenChange, produit, form, setForm, categories, onSave, enCours }) {
   const [urlImageAjout, setUrlImageAjout] = useState("");
   const [uploadEnCours, setUploadEnCours] = useState(false);
+  const [dernierUpload, setDernierUpload] = useState(null); // { size, original_size }
   const [newVarName, setNewVarName] = useState("");
   const [newVarOptions, setNewVarOptions] = useState("");
   const [showVarModal, setShowVarModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockForm, setStockForm] = useState({ coursier_id: "", stock_par_variation: [] });
+
+  const formatTaille = (octets) => {
+    if (!octets || octets <= 0) return "—";
+    if (octets < 1024) return `${octets} o`;
+    if (octets < 1024 * 1024) return `${(octets / 1024).toFixed(0)} Ko`;
+    return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+  };
 
   // Load coursiers
   const { data: coursiers = [] } = useQuery({
@@ -60,9 +68,10 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     if (!file) return;
     setUploadEnCours(true);
     try {
-      const { file_url } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(file);
       const imgs = [...(form.images || []), file_url];
       setForm((p) => ({ ...p, images: imgs }));
+      setDernierUpload({ size, original_size });
     } catch (err) {
       console.error("uploadImage:", err);
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
@@ -181,8 +190,9 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     if (!file) return;
     setUploadEnCours(true);
     try {
-      const { file_url } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(file);
       updateOption(varId, optIndex, { image_url: file_url });
+      setDernierUpload({ size, original_size });
     } catch (err) {
       console.error("uploadOptionImage:", err);
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
@@ -397,6 +407,14 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                   <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadImage} disabled={uploadEnCours} />
                 </label>
               </div>
+              {dernierUpload && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                  Image optimisée : <strong>{formatTaille(dernierUpload.size)}</strong>
+                  {dernierUpload.original_size > dernierUpload.size && (
+                    <> (était {formatTaille(dernierUpload.original_size)}, redimensionnée à 1600 px max)</>
+                  )}
+                </p>
+              )}
               <div className="border border-dashed border-slate-300 rounded-lg p-3">
                 <p className="text-xs font-medium text-slate-500 mb-2">Ou via URL</p>
                 <div className="flex gap-2">
