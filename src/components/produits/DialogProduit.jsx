@@ -394,7 +394,7 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                 ))}
                 <label className="border-2 border-dashed border-slate-300 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#1a1f5e] hover:bg-slate-50">
                   {uploadEnCours ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : <><ImagePlus className="w-6 h-6 text-slate-400 mb-1" /><span className="text-xs text-slate-400">Upload</span></>}
-                  <input type="file" accept="image/*" className="hidden" onChange={uploadImage} disabled={uploadEnCours} />
+                  <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadImage} disabled={uploadEnCours} />
                 </label>
               </div>
               <div className="border border-dashed border-slate-300 rounded-lg p-3">
@@ -454,7 +454,7 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
                                 <ImagePlus className="w-4 h-4 mb-0.5" /> Image
                                 <input
                                   type="file"
-                                  accept="image/*"
+                                  accept="image/*,.heic,.heif"
                                   className="hidden"
                                   onChange={(e) => uploadOptionImage(v.id, idx, e.target.files?.[0])}
                                   disabled={uploadEnCours}
