@@ -29,7 +29,18 @@ function isHeicFile(file) {
  */
 async function inspectHeicBrand(file) {
   try {
-    const head = await file.slice(0, 64).arrayBuffer();
+    // Lire les premiers octets : on tente slice().arrayBuffer() puis fallback FileReader
+    let head;
+    try {
+      head = await file.slice(0, 64).arrayBuffer();
+    } catch {
+      head = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsArrayBuffer(file.slice ? file.slice(0, 64) : file);
+      });
+    }
     const bytes = new Uint8Array(head);
     // Cherche la signature "ftyp"
     let ftypIdx = -1;
