@@ -27,6 +27,7 @@ import { getAdminSession } from "@/components/useSessionGuard";
 import { getMenuVisible } from "@/components/admin/adminMenuConfig";
 import useSousAdminPermissions from "@/components/useSousAdminPermissions";
 import { filterTable, listTable } from "@/lib/supabaseHelpers";
+import AlertesCritiquesAdmin from "@/components/admin/AlertesCritiquesAdmin";
 
 const formaterMontant = (n) => `${Math.round(n || 0).toLocaleString("fr-FR")} FCFA`;
 const MODULE_EMOJIS = {
