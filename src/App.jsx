@@ -12,6 +12,7 @@ import BiometricLock from '@/components/BiometricLock';
 import AppLockScreen from '@/components/AppLockScreen';
 import NotificationManager from '@/components/NotificationManager';
 import EmailVerifiedRouteGuard from '@/components/EmailVerifiedRouteGuard';
+import CriticalAlertListener from '@/components/CriticalAlertListener';
 
 const GestionZones = lazy(() => import('./pages/GestionZones'));
 const GestionCoursiers = lazy(() => import('./pages/GestionCoursiers'));
@@ -154,6 +155,7 @@ const AppWithRouter = () => {
     <>
       <AuthenticatedApp />
       <Toaster />
+      <CriticalAlertListener />
       <InstallPrompt />
       <BiometricLock />
       <NotificationManager />

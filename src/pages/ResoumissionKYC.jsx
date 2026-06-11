@@ -105,6 +105,14 @@ export default function ResoumissionKYC() {
       toast({ title: '✅ Document ajouté', description: `${getLabelForKey(docKey)} uploadé` });
     } catch (error) {
       toast({ title: '❌ Erreur upload', description: error.message, variant: 'destructive' });
+      import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+        category: "kyc",
+        action: "kyc_upload_failed",
+        error,
+        context: { docKey, vendeur_id: vendeur?.id },
+        utilisateur: vendeur?.email,
+        alert: false,
+      }));
     } finally {
       setKycUploading(p => ({ ...p, [docKey]: false }));
     }
@@ -150,6 +158,14 @@ export default function ResoumissionKYC() {
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de la resoumission.");
+      import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+        category: "kyc",
+        action: "kyc_submission_failed",
+        error,
+        context: { vendeur_id: vendeur?.id, typeDocument, isResubmission },
+        utilisateur: vendeur?.email,
+        alert: false,
+      }));
     } finally {
       setEnCours(false);
     }

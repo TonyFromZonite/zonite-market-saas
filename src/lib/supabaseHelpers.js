@@ -97,12 +97,36 @@ export async function deleteRecord(table, id) {
 export async function uploadFile(file) {
   // Normalisation : HEIC → JPEG, resize ≤1600px, compression qualité 0.85
   const originalSize = file?.size || 0;
-  const processed = await processImageForUpload(file);
+  let processed;
+  try {
+    processed = await processImageForUpload(file);
+  } catch (e) {
+    const { logCritical } = await import("@/lib/criticalLogger");
+    const isHeic = /\.(heic|heif)$/i.test(file?.name || "") || /heic|heif/i.test(file?.type || "");
+    logCritical({
+      category: "upload",
+      action: isHeic ? "heic_processing_failed" : "image_processing_failed",
+      error: e,
+      context: { fileName: file?.name, fileType: file?.type, fileSize: originalSize },
+      alert: false, // le composant appelant affiche déjà un toast
+    });
+    throw e;
+  }
   const finalSize = processed?.size || 0;
   const safeName = (processed.name || `image_${Date.now()}.jpg`).replace(/[^a-zA-Z0-9._-]/g, "_");
   const fileName = `${Date.now()}_${safeName}`;
   const { data, error } = await supabase.storage.from("kyc-documents").upload(fileName, processed);
-  if (error) throw error;
+  if (error) {
+    const { logCritical } = await import("@/lib/criticalLogger");
+    logCritical({
+      category: "upload",
+      action: "storage_upload_failed",
+      error,
+      context: { fileName, fileType: processed?.type, fileSize: finalSize },
+      alert: false,
+    });
+    throw error;
+  }
   // Bucket is private — return a URL that points to the public proxy Edge Function.
   return { file_url: getProductImageUrl(data.path), size: finalSize, original_size: originalSize };
 }
