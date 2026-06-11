@@ -77,6 +77,14 @@ export default function Connexion() {
 
       if (authError) {
         setErreur("Email ou mot de passe incorrect.");
+        import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+          category: "auth",
+          action: "login_failed",
+          error: authError,
+          context: { mode, identifier: loginEmail },
+          utilisateur: loginEmail,
+          alert: false,
+        }));
         return;
       }
 
