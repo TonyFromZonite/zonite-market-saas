@@ -112,6 +112,25 @@ async function resizeAndCompress(file) {
   return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
 }
 
+async function tryNativeHeicDecode(file) {
+  // Safari iOS sait lire les HEIC nativement via <img>. Si ça marche,
+  // on ré-encode en JPEG via canvas — pas besoin de heic2any.
+  try {
+    const img = await loadImage(file);
+    if (!img.width || !img.height) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.9));
+    if (!blob) return null;
+    const newName = (file.name || `image_${Date.now()}`).replace(/\.(heic|heif)$/i, ".jpg");
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    return null;
+  }
+}
+
 export async function processImageForUpload(file) {
   if (!file) return file;
   // SVG : on ne touche pas
@@ -119,7 +138,17 @@ export async function processImageForUpload(file) {
 
   let working = file;
   if (isHeicFile(file)) {
-    working = await convertHeicToJpeg(file);
+    try {
+      working = await convertHeicToJpeg(file);
+    } catch (heicErr) {
+      // Dernier recours : décodage natif (Safari iOS)
+      const native = await tryNativeHeicDecode(file);
+      if (native) {
+        working = native;
+      } else {
+        throw heicErr;
+      }
+    }
   }
 
   // Seulement pour les images bitmap
