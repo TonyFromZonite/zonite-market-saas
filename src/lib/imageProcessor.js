@@ -177,13 +177,38 @@ export async function processImageForUpload(file) {
 
   let working = file;
   if (isHeicFile(file)) {
+    const info = await inspectHeicBrand(file);
     // 1) Tentative native (Safari iOS lit le HEIC directement) — pas de lib lourde
     const native = await tryNativeHeicDecode(file);
     if (native) {
       working = native;
     } else {
       // 2) Fallback : conversion via heic2any (Chrome/Firefox/Android)
-      working = await convertHeicToJpeg(file);
+      try {
+        working = await convertHeicToJpeg(file);
+      } catch (convErr) {
+        // Message adapté selon la "brand" détectée
+        if (info?.isLivePhoto || info?.isSequence) {
+          const err = new Error(
+            "Ce fichier est une Live Photo (HEIC multi-images) non supportée par le navigateur. " +
+            "Sur votre iPhone : ouvrez la photo → bouton « Modifier » → « Live » → désactivez Live, " +
+            "ou exportez en JPEG (Réglages → Appareil photo → Formats → Plus compatible)."
+          );
+          err.cause = convErr;
+          err.heicBrand = info.brand;
+          throw err;
+        }
+        if (info && info.brand && !info.isSupported) {
+          const err = new Error(
+            `Format HEIC « ${info.brand} » non reconnu par le navigateur. ` +
+            "Exportez le fichier en JPEG depuis votre iPhone (Réglages → Appareil photo → Formats → Plus compatible)."
+          );
+          err.cause = convErr;
+          err.heicBrand = info.brand;
+          throw err;
+        }
+        throw convErr;
+      }
     }
   }
 
