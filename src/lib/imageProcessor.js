@@ -138,16 +138,13 @@ export async function processImageForUpload(file) {
 
   let working = file;
   if (isHeicFile(file)) {
-    try {
+    // 1) Tentative native (Safari iOS lit le HEIC directement) — pas de lib lourde
+    const native = await tryNativeHeicDecode(file);
+    if (native) {
+      working = native;
+    } else {
+      // 2) Fallback : conversion via heic2any (Chrome/Firefox/Android)
       working = await convertHeicToJpeg(file);
-    } catch (heicErr) {
-      // Dernier recours : décodage natif (Safari iOS)
-      const native = await tryNativeHeicDecode(file);
-      if (native) {
-        working = native;
-      } else {
-        throw heicErr;
-      }
     }
   }
 
