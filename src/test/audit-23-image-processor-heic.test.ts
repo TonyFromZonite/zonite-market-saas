@@ -62,8 +62,8 @@ describe("Audit 23 — processImageForUpload (HEIC)", () => {
   });
 
   afterEach(() => {
-    // @ts-expect-error restore
-    global.Image = (global as unknown as { __OriginalImage: typeof Image }).__OriginalImage;
+    (global as unknown as { Image: unknown }).Image =
+      (global as unknown as { __OriginalImage: typeof Image }).__OriginalImage;
   });
 
   it("23.1 HEIC standard (brand 'heic') : conversion via heic2any réussit", async () => {
