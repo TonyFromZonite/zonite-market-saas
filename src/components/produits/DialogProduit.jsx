@@ -733,6 +733,13 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImageCropDialog
+        open={!!cropTask}
+        file={cropTask?.file || null}
+        onCancel={() => setCropTask(null)}
+        onConfirm={handleCropConfirm}
+      />
     </>
   );
 }
