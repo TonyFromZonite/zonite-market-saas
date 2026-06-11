@@ -63,10 +63,15 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
       const { file_url } = await uploadFile(file);
       const imgs = [...(form.images || []), file_url];
       setForm((p) => ({ ...p, images: imgs }));
+    } catch (err) {
+      console.error("uploadImage:", err);
+      alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
+      if (e.target) e.target.value = "";
     }
   };
+
 
   const ajouterImageUrl = () => {
     if (!urlImageAjout.trim()) return;
