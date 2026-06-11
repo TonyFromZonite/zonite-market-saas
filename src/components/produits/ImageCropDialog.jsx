@@ -12,22 +12,58 @@ const RATIOS = [
 ];
 
 const PREFS_KEY = "zonite_crop_prefs_v1";
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_DEFAULT = 1;
+const ASPECT_DEFAULT = null;
+const ALLOWED_ASPECTS = RATIOS.map((r) => r.value); // [null, 1, 4/3, 3/4]
+
+function sanitizeZoom(z) {
+  const n = typeof z === "number" ? z : Number(z);
+  if (!Number.isFinite(n)) return ZOOM_DEFAULT;
+  if (n < ZOOM_MIN) return ZOOM_MIN;
+  if (n > ZOOM_MAX) return ZOOM_MAX;
+  return n;
+}
+
+function sanitizeAspect(a) {
+  if (a === null || a === undefined) return ASPECT_DEFAULT;
+  const n = typeof a === "number" ? a : Number(a);
+  if (!Number.isFinite(n) || n <= 0) return ASPECT_DEFAULT;
+  // Snap aux ratios connus, sinon fallback à Libre
+  const match = ALLOWED_ASPECTS.find(
+    (v) => v !== null && Math.abs(v - n) < 0.001
+  );
+  return match ?? ASPECT_DEFAULT;
+}
 
 function loadPrefs() {
+  const fallback = { zoom: ZOOM_DEFAULT, aspect: ASPECT_DEFAULT };
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return null;
+    if (!raw) return fallback;
     const p = JSON.parse(raw);
-    if (typeof p !== "object" || p === null) return null;
-    return p;
+    if (typeof p !== "object" || p === null) {
+      try { localStorage.removeItem(PREFS_KEY); } catch { /* ignore */ }
+      return fallback;
+    }
+    return {
+      zoom: sanitizeZoom(p.zoom),
+      aspect: sanitizeAspect(p.aspect),
+    };
   } catch {
-    return null;
+    try { localStorage.removeItem(PREFS_KEY); } catch { /* ignore */ }
+    return fallback;
   }
 }
 
 function savePrefs(prefs) {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    const safe = {
+      zoom: sanitizeZoom(prefs?.zoom),
+      aspect: sanitizeAspect(prefs?.aspect),
+    };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(safe));
   } catch {
     // ignore
   }
@@ -77,15 +113,8 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
   const [previewMime, setPreviewMime] = useState("image/jpeg");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const initialPrefs = useMemo(() => loadPrefs(), []);
-  const [zoom, setZoom] = useState(() => {
-    const z = Number(initialPrefs?.zoom);
-    return Number.isFinite(z) && z >= 1 && z <= 4 ? z : 1;
-  });
-  const [aspect, setAspect] = useState(() => {
-    if (!initialPrefs || !("aspect" in initialPrefs)) return null;
-    const a = initialPrefs.aspect;
-    return a === null || (typeof a === "number" && a > 0) ? a : null;
-  });
+  const [zoom, setZoom] = useState(() => sanitizeZoom(initialPrefs.zoom));
+  const [aspect, setAspect] = useState(() => sanitizeAspect(initialPrefs.aspect));
   const [areaPx, setAreaPx] = useState(null);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
@@ -156,7 +185,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
             <button
               key={id}
               type="button"
-              onClick={() => setAspect(value)}
+              onClick={() => setAspect(sanitizeAspect(value))}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition ${
                 aspect === value
                   ? "bg-[#1a1f5e] text-white border-[#1a1f5e]"
@@ -181,7 +210,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
               zoom={zoom}
               aspect={aspect ?? undefined}
               onCropChange={setCrop}
-              onZoomChange={setZoom}
+              onZoomChange={(z) => setZoom(sanitizeZoom(z))}
               onCropComplete={onCropComplete}
               restrictPosition={false}
               objectFit="contain"
@@ -197,7 +226,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
             max={4}
             step={0.05}
             value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
+            onChange={(e) => setZoom(sanitizeZoom(e.target.value))}
             className="flex-1 accent-[#1a1f5e]"
             disabled={loading || !previewUrl}
           />
