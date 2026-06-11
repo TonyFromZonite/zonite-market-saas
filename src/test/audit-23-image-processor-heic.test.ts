@@ -56,8 +56,7 @@ describe("Audit 23 — processImageForUpload (HEIC)", () => {
         queueMicrotask(() => this.onerror?.(new Error("decode failed")));
       }
     }
-    // @ts-expect-error override
-    global.Image = FailingImage;
+    (global as unknown as { Image: unknown }).Image = FailingImage;
     // restore au teardown
     (global as unknown as { __OriginalImage: typeof Image }).__OriginalImage = OriginalImage;
   });
