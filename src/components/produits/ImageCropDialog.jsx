@@ -129,6 +129,7 @@ export default function ImageCropDialog({ open, file, onCancel, onConfirm }) {
     try {
       const blob = await cropToBlob(previewUrl, areaPx, "image/jpeg");
       if (!blob) return;
+      savePrefs({ aspect: aspect ?? null, zoom });
       const baseName = (file?.name || "image").replace(/\.[a-z0-9]+$/i, "");
       const cropped = new File([blob], `${baseName}_crop.jpg`, { type: "image/jpeg" });
       onConfirm(cropped);
