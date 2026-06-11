@@ -96,13 +96,15 @@ export async function deleteRecord(table, id) {
 
 export async function uploadFile(file) {
   // Normalisation : HEIC → JPEG, resize ≤1600px, compression qualité 0.85
+  const originalSize = file?.size || 0;
   const processed = await processImageForUpload(file);
+  const finalSize = processed?.size || 0;
   const safeName = (processed.name || `image_${Date.now()}.jpg`).replace(/[^a-zA-Z0-9._-]/g, "_");
   const fileName = `${Date.now()}_${safeName}`;
   const { data, error } = await supabase.storage.from("kyc-documents").upload(fileName, processed);
   if (error) throw error;
   // Bucket is private — return a URL that points to the public proxy Edge Function.
-  return { file_url: getProductImageUrl(data.path) };
+  return { file_url: getProductImageUrl(data.path), size: finalSize, original_size: originalSize };
 }
 
 
