@@ -65,13 +65,18 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
     setForm((p) => ({ ...p, categorie_id: id, categorie_nom: cat?.nom || "" }));
   };
 
-  // Images
-  const uploadImage = async (e) => {
+  // Images — passe d'abord par le recadrage
+  const uploadImage = (e) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
     if (!file) return;
+    setCropTask({ file, target: "main" });
+  };
+
+  const finalizeUpload = async (croppedFile) => {
     setUploadEnCours(true);
     try {
-      const { file_url, size, original_size } = await uploadFile(file);
+      const { file_url, size, original_size } = await uploadFile(croppedFile);
       const imgs = [...(form.images || []), file_url];
       setForm((p) => ({ ...p, images: imgs }));
       setDernierUpload({ size, original_size });
@@ -80,7 +85,6 @@ export default function DialogProduit({ open, onOpenChange, produit, form, setFo
       alert(err?.message || "Échec de l'upload. Réessayez avec une image JPEG ou PNG.");
     } finally {
       setUploadEnCours(false);
-      if (e.target) e.target.value = "";
     }
   };
 
