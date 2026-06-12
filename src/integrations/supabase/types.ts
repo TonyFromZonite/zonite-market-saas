@@ -1742,6 +1742,83 @@ export type Database = {
           },
         ]
       }
+      ventes_vendeur_safe: {
+        Row: {
+          annee: number | null
+          commande_id: string | null
+          commission_vendeur: number | null
+          created_at: string | null
+          id: string | null
+          mois: number | null
+          montant_total: number | null
+          prix_final_client: number | null
+          produit_id: string | null
+          quantite: number | null
+          semaine: number | null
+          vendeur_email: string | null
+          vendeur_id: string | null
+        }
+        Insert: {
+          annee?: number | null
+          commande_id?: string | null
+          commission_vendeur?: number | null
+          created_at?: string | null
+          id?: string | null
+          mois?: number | null
+          montant_total?: number | null
+          prix_final_client?: number | null
+          produit_id?: string | null
+          quantite?: number | null
+          semaine?: number | null
+          vendeur_email?: string | null
+          vendeur_id?: string | null
+        }
+        Update: {
+          annee?: number | null
+          commande_id?: string | null
+          commission_vendeur?: number | null
+          created_at?: string | null
+          id?: string | null
+          mois?: number | null
+          montant_total?: number | null
+          prix_final_client?: number | null
+          produit_id?: string | null
+          quantite?: number | null
+          semaine?: number | null
+          vendeur_email?: string | null
+          vendeur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventes_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_vendeur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_vendeur_id_fkey"
+            columns: ["vendeur_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       adjust_seller_commission: {
