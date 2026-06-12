@@ -248,12 +248,13 @@ export default function EspaceVendeur() {
       const startOfYear = new Date(now.getFullYear(), 0, 1);
 
       const [ventesWeek, ventesMois, ventesAnnee, commandesEC, totalVentes] = await Promise.all([
-        supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfWeek.toISOString()),
-        supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfMonth.toISOString()),
-        supabase.from('ventes').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfYear.toISOString()),
+        supabase.from('ventes_vendeur_safe').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfWeek.toISOString()),
+        supabase.from('ventes_vendeur_safe').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfMonth.toISOString()),
+        supabase.from('ventes_vendeur_safe').select('montant_total, commission_vendeur').eq('vendeur_id', compteVendeur.id).gte('created_at', startOfYear.toISOString()),
         supabase.from('commandes_vendeur').select('id').eq('vendeur_id', compteVendeur.id).in('statut', ['en_attente_validation_admin', 'validee_admin', 'attribuee_livreur', 'en_livraison']),
-        supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', compteVendeur.id),
+        supabase.from('ventes_vendeur_safe').select('*', { count: 'exact', head: true }).eq('vendeur_id', compteVendeur.id),
       ]);
+
 
       const sum = (arr, field) => (arr || []).reduce((s, v) => s + (v[field] || 0), 0);
       return {
@@ -331,7 +332,7 @@ export default function EspaceVendeur() {
     queryFn: async () => {
       const [commandesH, ventesH, paiementsH] = await Promise.all([
         supabase.from('commandes_vendeur').select('id, reference_commande, produit_nom, quantite, montant_total, statut, created_at, updated_at, notes_admin').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('ventes').select('id, montant_total, commission_vendeur, created_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('ventes_vendeur_safe').select('id, montant_total, commission_vendeur, created_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('demandes_paiement_vendeur').select('id, montant, statut, operateur_mobile_money, numero_mobile_money, created_at, traite_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
       ]);
 

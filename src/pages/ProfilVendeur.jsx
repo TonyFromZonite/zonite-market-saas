@@ -90,7 +90,7 @@ export default function ProfilVendeur() {
       }
 
       // Fetch sales count
-      const { count } = await supabase.from('ventes').select('*', { count: 'exact', head: true }).eq('vendeur_id', seller.id);
+      const { count } = await supabase.from('ventes_vendeur_safe').select('*', { count: 'exact', head: true }).eq('vendeur_id', seller.id);
       setNombreVentes(count || 0);
 
       // Fetch filleuls via SECURITY DEFINER RPC (bypasses RLS on sellers)
