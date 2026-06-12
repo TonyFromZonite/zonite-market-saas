@@ -748,12 +748,12 @@ export default function EspaceVendeur() {
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed w-full">
-              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
+            <Link to={createPageUrl("VideoFormation")}>
+              <div className="bg-[#1a1f5e] text-white rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#141952] transition-colors">
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Plus className="w-4 h-4" /></div>
-                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px]">commande</p></div>
+                <div><p className="font-bold text-xs">Nouvelle</p><p className="text-[10px] text-slate-300">▶ Formation</p></div>
               </div>
-            </button>
+            </Link>
           )}
           {canAccessFeature(compteVendeur.seller_status, "catalog", compteVendeur.training_completed) ? (
             <Link to={createPageUrl("CatalogueVendeur")}>
@@ -763,17 +763,17 @@ export default function EspaceVendeur() {
               </div>
             </Link>
           ) : (
-            <button disabled className="cursor-not-allowed w-full">
-              <div className="bg-slate-300 text-slate-500 rounded-xl p-3 flex items-center gap-2.5 opacity-60">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
-                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px]">produits</p></div>
+            <Link to={createPageUrl("VideoFormation")}>
+              <div className="bg-[#F5C518] text-[#1a1f5e] rounded-xl p-3 flex items-center gap-2.5 hover:bg-[#e0b010] transition-colors">
+                <div className="w-8 h-8 bg-[#1a1f5e]/10 rounded-lg flex items-center justify-center"><Package className="w-4 h-4" /></div>
+                <div><p className="font-bold text-xs">Catalogue</p><p className="text-[10px] text-[#1a1f5e]/70">▶ Visionner la formation</p></div>
               </div>
-            </button>
+            </Link>
           )}
         </div>
 
         {/* Formation & Cours */}
-        <Link to={createPageUrl("FormationCours")}>
+        <Link to={createPageUrl(compteVendeur.training_completed ? "FormationCours" : "VideoFormation")}>
           <div className="mb-3 bg-gradient-to-r from-[#1a1f5e] to-[#2a2f7e] text-white rounded-xl p-3 flex items-center gap-3 hover:opacity-90 transition-opacity">
             <div className="w-10 h-10 bg-[#F5C518]/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <GraduationCap className="w-5 h-5 text-[#F5C518]" />

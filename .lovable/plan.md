@@ -1,63 +1,39 @@
-## Problème
+## Constat
 
-Les images `.HEIC` (format Apple iPhone) ne sont pas supportées nativement par les navigateurs Chrome/Firefox/Edge → l'image uploadée s'affiche cassée. De plus, les très grandes images (5–10 Mo) ralentissent le catalogue et consomment beaucoup de bande passante.
+Le déblocage par une seule vidéo existe toujours côté backend, mais le chemin pour y arriver est cassé pour un nouveau vendeur.
 
-## Solution
+**Ce qui débloque encore correctement :** `VideoFormation.jsx` (case "j'ai regardé" + acceptation conditions → `training_completed = true` + `catalogue_debloque = true`).
 
-Ajouter une **normalisation côté client** au moment de l'upload, avant l'envoi à Supabase Storage. Le fichier original n'est jamais stocké tel quel — il est converti en JPEG web-friendly.
+**Ce qui est cassé :** sur le tableau de bord vendeur (`EspaceVendeur.jsx`, lignes 758-772), le bouton **Catalogue** est rendu inactif (gris, `disabled`) quand `training_completed` est `false` via `canAccessFeature(...)`. Le vendeur ne peut donc **plus cliquer dessus** pour atteindre l'écran « 🔒 Catalogue non débloqué » qui contenait le bouton « ▶ Voir la formation » menant à `VideoFormation`.
 
-### Étapes du pipeline (transparent pour le vendeur/admin)
+Pire : la grosse carte juste en dessous (lignes 776-787) « 🎓 Formation & Cours Zonite » route vers `FormationCours` (page multi-vidéos qui **ne déclenche aucun déblocage**). Un nouveau vendeur clique dessus, regarde des vidéos, et le catalogue reste verrouillé sans aucun message.
 
-1. **Détection HEIC/HEIF** par extension (`.heic`, `.heif`) ou MIME type.
-2. **Conversion HEIC → JPEG** via la librairie `heic2any` (purement navigateur, ~50 Ko, pas de backend).
-3. **Redimensionnement** : si largeur > 1600 px, redimensionner à 1600 px max (ratio préservé) via `<canvas>`.
-4. **Compression JPEG** qualité 0.85 (équilibre taille/qualité).
-5. **Renommage** : `produit_{timestamp}.jpg` au lieu de `IMG_5613.HEIC`.
-6. Le fichier final (typiquement < 400 Ko) est envoyé via `uploadFile()` existant.
+Résultat : le vendeur est coincé. Avant la mise à jour, le bouton/lien le menait à la vidéo unique qui débloquait tout.
 
-### Fichiers à modifier
+## Correction proposée
 
-- **`src/lib/imageProcessor.js`** (nouveau) — fonction `processImageForUpload(file)` qui retourne un `File` normalisé. Encapsule HEIC + resize + compression.
-- **`src/lib/supabaseHelpers.js`** — `uploadFile()` appelle `processImageForUpload()` avant l'upload Storage. Centralisé ici → bénéficie automatiquement à :
-  - `DialogProduit.jsx` (images produit + variations)
-  - `ProfilVendeur.jsx` (photo profil)
-  - tout autre appel existant
-- **`package.json`** — ajout de `heic2any` (~50 Ko gzip).
+Dans `src/pages/EspaceVendeur.jsx` uniquement (zéro changement de logique métier, zéro migration) :
 
-### Garde-fous
+1. **Bouton Catalogue** : quand `training_completed` est `false` mais que le compte est sinon utilisable (`seller_status` ∈ active_seller / kyc_required / kyc_pending), le rendre **cliquable** et le faire pointer vers `VideoFormation` (pas vers `CatalogueVendeur` désactivé). Garder le rendu jaune actuel + une petite mention « ▶ Visionner la formation » à la place de « produits » pour qu'on comprenne pourquoi on est redirigé. Aucun changement visuel pour les vendeurs déjà actifs.
 
-- Si la conversion HEIC échoue (fichier corrompu), message clair : « Format non supporté, exportez en JPEG depuis votre iPhone (Réglages → Appareil photo → Formats → Plus compatible) ».
-- Indicateur de progression « Conversion… » dans le bouton upload pendant le traitement (peut prendre 2–4 s sur gros HEIC).
-- KYC documents (autre bucket) : non touchés — la conversion s'applique uniquement aux images produits/profil.
+2. **Bouton Nouvelle commande** : même règle — pointer vers `VideoFormation` plutôt que rester inerte. Pas de raison d'inviter à passer commande tant que la formation n'est pas faite, mais on ne laisse pas un bouton mort.
 
-### Hors scope
+3. **Carte « Formation & Cours Zonite »** : si `training_completed` est `false`, faire pointer le lien vers `VideoFormation` (vidéo de déblocage). Sinon garder `FormationCours` comme aujourd'hui (centre de formation continue). Aucun changement de design.
 
-- Pas de changement RLS, pas de changement Storage, pas de modification du proxy `serve-product-image`.
-- Pas de re-traitement des images déjà uploadées (anciennes HEIC cassées restent telles quelles ; il faudra les ré-uploader).
+Aucun changement sur `CatalogueVendeur.jsx` (l'écran 🔒 reste un filet de sécurité), `VideoFormation.jsx`, `SellerStatusEngine.jsx`, ni la base.
 
 ## Détails techniques
 
-```js
-// src/lib/imageProcessor.js
-import heic2any from "heic2any";
+- Fichier modifié : `src/pages/EspaceVendeur.jsx`
+- Remplacer les blocs `<button disabled>` (lignes 750-757 et 765-772) par des `<Link to={createPageUrl("VideoFormation")}>` reprenant exactement le style actuel des versions actives (bleu `#1a1f5e` pour Nouvelle commande, jaune `#F5C518` pour Catalogue) afin de ne pas modifier la mise en page.
+- Modifier la cible du `<Link to={createPageUrl("FormationCours")}>` (ligne 776) en :
+  ```jsx
+  <Link to={createPageUrl(compteVendeur.training_completed ? "FormationCours" : "VideoFormation")}>
+  ```
+- Vérifier que les 169 tests Vitest passent (audit-03 et audit-19 couvrent cette zone).
 
-const MAX_WIDTH = 1600;
-const JPEG_QUALITY = 0.85;
+## Hors scope
 
-export async function processImageForUpload(file) {
-  let working = file;
-  const isHeic = /\.(heic|heif)$/i.test(file.name) 
-              || file.type === "image/heic" || file.type === "image/heif";
-
-  if (isHeic) {
-    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-    working = new File([blob], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg" });
-  }
-
-  // Resize via canvas si > MAX_WIDTH
-  const resized = await resizeIfNeeded(working);
-  return resized;
-}
-```
-
-Test manuel après implémentation : uploader un `.HEIC` iPhone de 8 Mo → doit s'afficher dans la grille produit, taille finale ~200–400 Ko.
+- Pas de changement de la règle DB (training_completed reste positionné par VideoFormation).
+- Pas de modification de `canAccessFeature` ni de `FormationCours` (centre de formation continue conservé tel quel).
+- Pas de nouveau message KYC (KYC ne bloque toujours pas le catalogue, conformément au commentaire en place).
