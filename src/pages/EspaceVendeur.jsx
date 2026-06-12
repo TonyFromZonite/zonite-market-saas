@@ -332,7 +332,7 @@ export default function EspaceVendeur() {
     queryFn: async () => {
       const [commandesH, ventesH, paiementsH] = await Promise.all([
         supabase.from('commandes_vendeur').select('id, reference_commande, produit_nom, quantite, montant_total, statut, created_at, updated_at, notes_admin').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('ventes').select('id, montant_total, commission_vendeur, created_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('ventes_vendeur_safe').select('id, montant_total, commission_vendeur, created_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('demandes_paiement_vendeur').select('id, montant, statut, operateur_mobile_money, numero_mobile_money, created_at, traite_at').eq('vendeur_id', compteVendeur.id).order('created_at', { ascending: false }).limit(20),
       ]);
 
