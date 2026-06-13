@@ -637,6 +637,9 @@ export default function CommandesVendeurs() {
               <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
                 <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Quantité</p><p className="font-medium">{commandeSelectionnee.quantite}</p></div>
+                {commandeSelectionnee.variation && (
+                  <div className="col-span-2"><p className="text-slate-400 text-xs">Variante</p><p className="font-semibold text-indigo-700">{formatVariation(commandeSelectionnee.variation)}</p></div>
+                )}
                 <div>
                   <p className="text-slate-400 text-xs">Prix client</p>
                   <p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p>
