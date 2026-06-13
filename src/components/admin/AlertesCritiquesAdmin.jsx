@@ -23,6 +23,16 @@ function extractCategory(row) {
   return "systeme";
 }
 
+// Ignore les faux positifs : mauvais mot de passe utilisateur, permission navigateur refusée.
+function isFalsePositive(row) {
+  const err = row?.details?.error;
+  if (!err) return false;
+  if (err.code === "invalid_credentials") return true;
+  if (err.name === "NotAllowedError") return true;
+  if (typeof err.message === "string" && /not allowed by the user agent/i.test(err.message)) return true;
+  return false;
+}
+
 /**
  * Bannière temps-réel pour les admins du /TableauDeBord.
  * - Souscrit aux inserts dans journal_audit où action commence par "[ALERT]"
@@ -48,13 +58,15 @@ export default function AlertesCritiquesAdmin() {
         .limit(20);
       if (cancelled || !data) return;
       setAlertes(
-        data.map((r) => ({
-          id: r.id,
-          action: r.action.replace(/^\[ALERT\]\s*/, ""),
-          category: extractCategory(r),
-          message: r.details?.error?.message || r.utilisateur || r.action,
-          created_at: r.created_at,
-        }))
+        data
+          .filter((r) => !isFalsePositive(r))
+          .map((r) => ({
+            id: r.id,
+            action: r.action.replace(/^\[ALERT\]\s*/, ""),
+            category: extractCategory(r),
+            message: r.details?.error?.message || r.utilisateur || r.action,
+            created_at: r.created_at,
+          }))
       );
     })();
     return () => { cancelled = true; };
@@ -70,6 +82,7 @@ export default function AlertesCritiquesAdmin() {
         (payload) => {
           const row = payload?.new;
           if (!row || typeof row.action !== "string" || !row.action.startsWith("[ALERT]")) return;
+          if (isFalsePositive(row)) return;
           const entry = {
             id: row.id,
             action: row.action.replace(/^\[ALERT\]\s*/, ""),
