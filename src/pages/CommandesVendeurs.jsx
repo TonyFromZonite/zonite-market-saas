@@ -12,6 +12,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw, Copy } from "lucide-react";
 import { toast } from "sonner";
 
+function formatVariation(raw) {
+  if (!raw || typeof raw !== "string") return "";
+  return raw
+    .split(/\s*(\||\/)\s*/)
+    .filter((s) => s && s !== "|" && s !== "/")
+    .map((seg) => {
+      const idx = seg.indexOf(":");
+      if (idx === -1) return seg.trim();
+      const nom = seg.slice(0, idx).trim();
+      const val = seg.slice(idx + 1).trim();
+      return nom && val ? `${nom} : ${val}` : seg.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
 function copierInfosCommande(cmd) {
   if (!cmd) return;
   const livraisonIncluse = !!cmd.livraison_incluse;
@@ -20,8 +36,11 @@ function copierInfosCommande(cmd) {
   const total = livraisonIncluse ? prixClient : prixClient + frais;
   const adresse = [cmd.client_ville, cmd.client_quartier].filter(Boolean).join(", ")
     + (cmd.client_adresse ? ` – ${cmd.client_adresse}` : "");
+  const variante = formatVariation(cmd.variation);
+  const qte = Number(cmd.quantite) || 1;
   const texte =
-`Commande : ${cmd.produit_nom || "—"}
+`Commande : ${cmd.produit_nom || "—"}${variante ? `\nVariante : ${variante}` : ""}
+Quantité : ${qte}
 
 Nom : ${cmd.client_nom || "—"}
 Adresse : ${adresse || "—"}
@@ -332,7 +351,7 @@ export default function CommandesVendeurs() {
         vendeur_id: cmd.vendeur_id,
         vendeur_email: cmd.vendeur_email,
         titre: "🎉 Livraison confirmée !",
-        message: `Votre commande ${cmd.reference_commande || cmd.id} a été livrée avec succès !\n\n📦 Produit : ${cmd.produit_nom}\n🔢 Quantité : ${cmd.quantite}\n\n💰 Commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+        message: `Votre commande ${cmd.reference_commande || cmd.id} a été livrée avec succès !\n\n📦 Produit : ${cmd.produit_nom}${cmd.variation ? ` (${formatVariation(cmd.variation)})` : ""}\n🔢 Quantité : ${cmd.quantite}\n\n💰 Commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
         type: "succes",
       });
 
@@ -572,6 +591,9 @@ export default function CommandesVendeurs() {
           <div key={c.id} className="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer" onClick={() => { setCommandeSelectionnee(c); setNotesAdmin(c.notes_admin || ""); setLivreurNom(c.coursier_nom || ""); setEditLivraisonIncluse(!!c.livraison_incluse); setEditFraisLivraison(String(Number(c.frais_livraison) || 0)); setMessageVendeur(""); }}>
             <div className="flex-1 min-w-0 mr-3">
               <p className="font-medium text-sm text-slate-900 truncate">{c.produit_nom} <span className="text-slate-400 font-normal">× {c.quantite}</span></p>
+              {c.variation && (
+                <p className="text-xs text-indigo-600 font-medium truncate">Variante : {formatVariation(c.variation)}</p>
+              )}
               <p className="text-xs text-slate-500">{c.vendeur_nom} → {c.client_nom} ({c.client_ville})</p>
               <p className="text-xs text-slate-400">{formaterDate(c.created_at)} • Commission: {formater(c.commission_calculee)}</p>
             </div>
@@ -615,6 +637,9 @@ export default function CommandesVendeurs() {
               <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-3">
                 <div><p className="text-slate-400 text-xs">Vendeur</p><p className="font-medium">{commandeSelectionnee.vendeur_nom}</p></div>
                 <div><p className="text-slate-400 text-xs">Quantité</p><p className="font-medium">{commandeSelectionnee.quantite}</p></div>
+                {commandeSelectionnee.variation && (
+                  <div className="col-span-2"><p className="text-slate-400 text-xs">Variante</p><p className="font-semibold text-indigo-700">{formatVariation(commandeSelectionnee.variation)}</p></div>
+                )}
                 <div>
                   <p className="text-slate-400 text-xs">Prix client</p>
                   <p className="font-bold">{formater(commandeSelectionnee.prix_final_client)}</p>

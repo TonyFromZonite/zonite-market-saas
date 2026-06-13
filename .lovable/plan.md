@@ -1,33 +1,41 @@
-## Diagnostic
+## Objectif
 
-Les **6 alertes** affichées dans la bannière sont des **résidus / faux positifs**, pas de vraies erreurs système :
+Quand un vendeur passe une commande avec variation (ex. couleur + taille), l'admin doit voir précisément la variation dans `CommandesVendeurs.jsx`, et le bouton **« Copier les infos de la commande »** doit inclure ces variations + la quantité pour transmission claire à l'agence de livraison.
 
-| # | Heure (UTC) | Action | Cause réelle |
-|---|---|---|---|
-| 1 | 11:43 | `[ALERT] unhandled_rejection` | `NotAllowedError` — l'utilisateur a refusé une permission navigateur (notification / biométrie). Pas un bug. |
-| 2 | 08:38 | `[ALERT] login_failed` | `invalid_credentials` — mauvais mot de passe utilisateur. Écrite **avant** le correctif d'hier. |
-| 3 | 05:57 | `[ALERT] login_failed` | idem (`@tony91`) |
-| 4-6 | 03:08 (×3) | `[ALERT] login_failed` | idem (`habibkamagate5@gmail.com`, 3 essais successifs) |
+## Constat actuel
 
-Le correctif de `Connexion.jsx` fonctionne bien (aucune nouvelle entrée `[ALERT] login_failed` depuis le déploiement). Les 5 lignes auth sont juste **antérieures** au correctif et resteront visibles pendant la fenêtre de 24h. La 6ème (`NotAllowedError`) provient de `criticalLogger.installGlobalCriticalHandlers` qui capture toute promesse rejetée, y compris les permissions refusées qui ne sont pas des erreurs.
+Dans `src/pages/CommandesVendeurs.jsx` :
 
-## Correctif proposé
+- La variation (`commande.variation`, ex. `"Couleur:Rouge|Taille:M"`) est stockée en BD mais n'est affichée ni dans la liste des commandes, ni dans le modal de détail.
+- La fonction `copierInfosCommande` (lignes 15–54) génère le texte copié sans la variation ni la quantité — l'agence de livraison ne sait donc pas quelle variante préparer.
 
-**1. `src/lib/criticalLogger.js` — filtrer `NotAllowedError`** dans le gestionnaire global `unhandledrejection` (au même titre que `AbortError` et `ResizeObserver` déjà filtrés). Une permission refusée par l'utilisateur n'est pas une erreur critique.
+## Modifications (frontend uniquement, `src/pages/CommandesVendeurs.jsx`)
 
-**2. `src/components/admin/AlertesCritiquesAdmin.jsx` — ignorer les faux positifs résiduels** au chargement et en realtime :
-- ligne dont `details.error.code === "invalid_credentials"` → ne pas afficher
-- ligne dont `details.error.name === "NotAllowedError"` → ne pas afficher
+1. **Helper de formatage** (en haut du fichier)
+   - Ajouter `formatVariation(raw)` qui parse `"Couleur:Rouge|Taille:M"` (ou `" / "`) et renvoie un libellé lisible `"Couleur : Rouge, Taille : M"`.
 
-Cela fera disparaître **immédiatement** les 6 alertes actuelles de la bannière sans toucher au journal d'audit (la traçabilité reste pour consultation manuelle).
+2. **`copierInfosCommande(cmd)`** — enrichir le texte copié
+   - Ajouter la ligne `Quantité : <n>`.
+   - Si `cmd.variation` existe, ajouter `Variantes : <formatVariation(...)>` juste après le nom du produit.
+   - Conserver le reste (nom, adresse, téléphone, montant, notes) inchangé.
 
-## Hors scope
+3. **Liste des commandes (ligne ~574)**
+   - Sous le nom du produit, afficher en petit `Variante : Couleur : Rouge, Taille : M` quand `c.variation` est défini.
 
-- Pas de purge SQL du `journal_audit` : on garde l'historique.
-- Pas de modification de la logique d'authentification ni des autres flux.
-- Pas de changement du `JournalAudit.jsx` : le filtre `?alert=...` continue de fonctionner pour les vraies alertes.
+4. **Modal de détail (grille à la ligne ~615)**
+   - Ajouter une cellule `Variante` (col-span-2 si présente) à côté de Quantité, affichant `formatVariation(commandeSelectionnee.variation)`.
 
-## Fichiers modifiés
+5. **Message vendeur à la livraison (ligne ~335)**
+   - Inclure la variante dans le message de confirmation envoyé au vendeur (`📦 Produit : ... (Couleur : Rouge, Taille : M)`).
 
-- `src/lib/criticalLogger.js` — ajout de `NotAllowedError` dans la regex de filtrage des rejets non gérés.
-- `src/components/admin/AlertesCritiquesAdmin.jsx` — filtre côté affichage pour ignorer `invalid_credentials` et `NotAllowedError`.
+## Hors périmètre
+
+- Pas de changement à la création de commande (`NouvelleCommandeVendeur.jsx`) — le format stocké reste identique.
+- Pas de modification SQL/RLS/triggers.
+- Pas de toucher à l'auth, KYC, ou logique métier.
+- Aucune nouvelle fonctionnalité, juste l'affichage et le texte copié.
+
+## Vérification
+
+- Lancer `bunx vitest run` pour s'assurer qu'aucun des 169 tests existants ne casse.
+- Vérifier visuellement dans le preview qu'une commande avec variation affiche bien la variante et que le bouton Copier inclut la ligne `Variantes`.
