@@ -351,7 +351,7 @@ export default function CommandesVendeurs() {
         vendeur_id: cmd.vendeur_id,
         vendeur_email: cmd.vendeur_email,
         titre: "🎉 Livraison confirmée !",
-        message: `Votre commande ${cmd.reference_commande || cmd.id} a été livrée avec succès !\n\n📦 Produit : ${cmd.produit_nom}\n🔢 Quantité : ${cmd.quantite}\n\n💰 Commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
+        message: `Votre commande ${cmd.reference_commande || cmd.id} a été livrée avec succès !\n\n📦 Produit : ${cmd.produit_nom}${cmd.variation ? ` (${formatVariation(cmd.variation)})` : ""}\n🔢 Quantité : ${cmd.quantite}\n\n💰 Commission : ${commissionVendeur.toLocaleString("fr-FR")} FCFA\n💳 Nouveau solde : ${nouveauSolde.toLocaleString("fr-FR")} FCFA`,
         type: "succes",
       });
 
