@@ -1,39 +1,35 @@
-## Constat
+## Diagnostic
 
-Le déblocage par une seule vidéo existe toujours côté backend, mais le chemin pour y arriver est cassé pour un nouveau vendeur.
+Les "erreurs critiques" `[ALERT] login_failed` reçues dans le Journal d'Audit ne sont **pas de vraies erreurs système** — ce sont simplement des utilisateurs qui ont tapé un mauvais mot de passe.
 
-**Ce qui débloque encore correctement :** `VideoFormation.jsx` (case "j'ai regardé" + acceptation conditions → `training_completed = true` + `catalogue_debloque = true`).
+Exemples des 24 dernières heures (table `journal_audit`) :
 
-**Ce qui est cassé :** sur le tableau de bord vendeur (`EspaceVendeur.jsx`, lignes 758-772), le bouton **Catalogue** est rendu inactif (gris, `disabled`) quand `training_completed` est `false` via `canAccessFeature(...)`. Le vendeur ne peut donc **plus cliquer dessus** pour atteindre l'écran « 🔒 Catalogue non débloqué » qui contenait le bouton « ▶ Voir la formation » menant à `VideoFormation`.
+| Heure | Identifiant | Code erreur Supabase |
+|---|---|---|
+| 13/06 08:38 | mcarinenanette@gmail.com | `invalid_credentials` |
+| 13/06 05:57 | @tony91 | `invalid_credentials` |
+| 13/06 03:08 | habibkamagate5@gmail.com (×3) | `invalid_credentials` |
 
-Pire : la grosse carte juste en dessous (lignes 776-787) « 🎓 Formation & Cours Zonite » route vers `FormationCours` (page multi-vidéos qui **ne déclenche aucun déblocage**). Un nouveau vendeur clique dessus, regarde des vidéos, et le catalogue reste verrouillé sans aucun message.
+**Cause** — `src/pages/Connexion.jsx` (lignes 78-88) appelle `logCritical({ category: "auth", action: "login_failed" })` dès que `signInWithPassword` retourne une erreur, **quel que soit le code**. `logCritical` préfixe alors la ligne par `[ALERT]`, ce qui :
+1. l'affiche dans la bannière rouge `AlertesCritiquesAdmin` du Tableau de Bord,
+2. la fait apparaître comme "erreur critique d'authentification" alors qu'il s'agit juste d'un mot de passe erroné côté utilisateur.
 
-Résultat : le vendeur est coincé. Avant la mise à jour, le bouton/lien le menait à la vidéo unique qui débloquait tout.
+Aucun vrai dysfonctionnement n'est en cours : le système de connexion fonctionne (les logs Supabase Auth montrent des logins réussis normalement, ex. Joseph Podka à 09:41, l'admin à 09:44).
 
-## Correction proposée
+## Correctif proposé
 
-Dans `src/pages/EspaceVendeur.jsx` uniquement (zéro changement de logique métier, zéro migration) :
+Distinguer **erreur système** vs **mauvais identifiant utilisateur** dans `Connexion.jsx` :
 
-1. **Bouton Catalogue** : quand `training_completed` est `false` mais que le compte est sinon utilisable (`seller_status` ∈ active_seller / kyc_required / kyc_pending), le rendre **cliquable** et le faire pointer vers `VideoFormation` (pas vers `CatalogueVendeur` désactivé). Garder le rendu jaune actuel + une petite mention « ▶ Visionner la formation » à la place de « produits » pour qu'on comprenne pourquoi on est redirigé. Aucun changement visuel pour les vendeurs déjà actifs.
+- Si `authError.code === "invalid_credentials"` (ou message équivalent) → **ne plus appeler `logCritical`**. Écrire à la place une entrée simple dans `journal_audit` avec `module = "auth"`, `action = "login_failed"` (sans le préfixe `[ALERT]`). Cela conserve la traçabilité (utile pour détecter du brute-force) sans déclencher la bannière rouge admin.
+- Garder `logCritical` uniquement pour les **vraies pannes auth** : erreur réseau, `AuthRetryableFetchError`, 500, code inattendu, RPC `resolve_username_to_email` qui échoue à cause d'un problème serveur, etc.
 
-2. **Bouton Nouvelle commande** : même règle — pointer vers `VideoFormation` plutôt que rester inerte. Pas de raison d'inviter à passer commande tant que la formation n'est pas faite, mais on ne laisse pas un bouton mort.
+Optionnel (à confirmer) : ajouter un compteur simple côté `AlertesCritiquesAdmin` ou un filtre pour ignorer aussi tout résiduel `action = "[ALERT] login_failed"` avec `error.code = invalid_credentials` si on en croise encore dans les 24h d'historique.
 
-3. **Carte « Formation & Cours Zonite »** : si `training_completed` est `false`, faire pointer le lien vers `VideoFormation` (vidéo de déblocage). Sinon garder `FormationCours` comme aujourd'hui (centre de formation continue). Aucun changement de design.
+## Fichiers modifiés
 
-Aucun changement sur `CatalogueVendeur.jsx` (l'écran 🔒 reste un filet de sécurité), `VideoFormation.jsx`, `SellerStatusEngine.jsx`, ni la base.
-
-## Détails techniques
-
-- Fichier modifié : `src/pages/EspaceVendeur.jsx`
-- Remplacer les blocs `<button disabled>` (lignes 750-757 et 765-772) par des `<Link to={createPageUrl("VideoFormation")}>` reprenant exactement le style actuel des versions actives (bleu `#1a1f5e` pour Nouvelle commande, jaune `#F5C518` pour Catalogue) afin de ne pas modifier la mise en page.
-- Modifier la cible du `<Link to={createPageUrl("FormationCours")}>` (ligne 776) en :
-  ```jsx
-  <Link to={createPageUrl(compteVendeur.training_completed ? "FormationCours" : "VideoFormation")}>
-  ```
-- Vérifier que les 169 tests Vitest passent (audit-03 et audit-19 couvrent cette zone).
+- `src/pages/Connexion.jsx` — branche conditionnelle sur `authError.code` avant `logCritical`, insertion légère dans `journal_audit` pour les mauvais mots de passe.
 
 ## Hors scope
 
-- Pas de changement de la règle DB (training_completed reste positionné par VideoFormation).
-- Pas de modification de `canAccessFeature` ni de `FormationCours` (centre de formation continue conservé tel quel).
-- Pas de nouveau message KYC (KYC ne bloque toujours pas le catalogue, conformément au commentaire en place).
+- Aucune modification de la logique d'authentification, des rôles, du flux KYC, du catalogue, ou des autres composants.
+- Pas de purge automatique des anciennes alertes — l'admin peut simplement cliquer sur la croix de la bannière, et elles disparaîtront naturellement après 24h (filtre de `AlertesCritiquesAdmin`).
