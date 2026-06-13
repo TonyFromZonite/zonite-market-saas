@@ -58,13 +58,15 @@ export default function AlertesCritiquesAdmin() {
         .limit(20);
       if (cancelled || !data) return;
       setAlertes(
-        data.map((r) => ({
-          id: r.id,
-          action: r.action.replace(/^\[ALERT\]\s*/, ""),
-          category: extractCategory(r),
-          message: r.details?.error?.message || r.utilisateur || r.action,
-          created_at: r.created_at,
-        }))
+        data
+          .filter((r) => !isFalsePositive(r))
+          .map((r) => ({
+            id: r.id,
+            action: r.action.replace(/^\[ALERT\]\s*/, ""),
+            category: extractCategory(r),
+            message: r.details?.error?.message || r.utilisateur || r.action,
+            created_at: r.created_at,
+          }))
       );
     })();
     return () => { cancelled = true; };
@@ -80,6 +82,7 @@ export default function AlertesCritiquesAdmin() {
         (payload) => {
           const row = payload?.new;
           if (!row || typeof row.action !== "string" || !row.action.startsWith("[ALERT]")) return;
+          if (isFalsePositive(row)) return;
           const entry = {
             id: row.id,
             action: row.action.replace(/^\[ALERT\]\s*/, ""),
