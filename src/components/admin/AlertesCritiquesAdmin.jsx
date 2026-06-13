@@ -23,6 +23,16 @@ function extractCategory(row) {
   return "systeme";
 }
 
+// Ignore les faux positifs : mauvais mot de passe utilisateur, permission navigateur refusée.
+function isFalsePositive(row) {
+  const err = row?.details?.error;
+  if (!err) return false;
+  if (err.code === "invalid_credentials") return true;
+  if (err.name === "NotAllowedError") return true;
+  if (typeof err.message === "string" && /not allowed by the user agent/i.test(err.message)) return true;
+  return false;
+}
+
 /**
  * Bannière temps-réel pour les admins du /TableauDeBord.
  * - Souscrit aux inserts dans journal_audit où action commence par "[ALERT]"

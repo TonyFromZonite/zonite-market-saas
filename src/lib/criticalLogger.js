@@ -100,7 +100,8 @@ export function installGlobalCriticalHandlers() {
     const reason = ev?.reason;
     // Filtrer le bruit (AbortError, ResizeObserver...)
     const msg = reason?.message || String(reason || "");
-    if (/AbortError|ResizeObserver|NetworkError when attempting/i.test(msg)) return;
+    if (/AbortError|ResizeObserver|NetworkError when attempting|NotAllowedError|not allowed by the user agent/i.test(msg)) return;
+    if (reason?.name === "NotAllowedError") return;
     logCritical({
       category: "systeme",
       action: "unhandled_rejection",
