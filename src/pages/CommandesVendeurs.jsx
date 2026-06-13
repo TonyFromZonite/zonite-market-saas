@@ -12,6 +12,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, CheckCircle2, Truck, XCircle, PackageCheck, RotateCcw, Copy } from "lucide-react";
 import { toast } from "sonner";
 
+function formatVariation(raw) {
+  if (!raw || typeof raw !== "string") return "";
+  return raw
+    .split(/\s*(\||\/)\s*/)
+    .filter((s) => s && s !== "|" && s !== "/")
+    .map((seg) => {
+      const idx = seg.indexOf(":");
+      if (idx === -1) return seg.trim();
+      const nom = seg.slice(0, idx).trim();
+      const val = seg.slice(idx + 1).trim();
+      return nom && val ? `${nom} : ${val}` : seg.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
 function copierInfosCommande(cmd) {
   if (!cmd) return;
   const livraisonIncluse = !!cmd.livraison_incluse;
@@ -20,8 +36,11 @@ function copierInfosCommande(cmd) {
   const total = livraisonIncluse ? prixClient : prixClient + frais;
   const adresse = [cmd.client_ville, cmd.client_quartier].filter(Boolean).join(", ")
     + (cmd.client_adresse ? ` – ${cmd.client_adresse}` : "");
+  const variante = formatVariation(cmd.variation);
+  const qte = Number(cmd.quantite) || 1;
   const texte =
-`Commande : ${cmd.produit_nom || "—"}
+`Commande : ${cmd.produit_nom || "—"}${variante ? `\nVariante : ${variante}` : ""}
+Quantité : ${qte}
 
 Nom : ${cmd.client_nom || "—"}
 Adresse : ${adresse || "—"}
