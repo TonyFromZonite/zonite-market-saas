@@ -77,14 +77,39 @@ export default function Connexion() {
 
       if (authError) {
         setErreur("Email ou mot de passe incorrect.");
-        import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
-          category: "auth",
-          action: "login_failed",
-          error: authError,
-          context: { mode, identifier: loginEmail },
-          utilisateur: loginEmail,
-          alert: false,
-        }));
+        const errCode = authError.code || authError.status;
+        const errMsg = (authError.message || "").toLowerCase();
+        const isUserCredentialError =
+          errCode === "invalid_credentials" ||
+          errCode === 400 ||
+          errMsg.includes("invalid login credentials") ||
+          errMsg.includes("invalid_credentials");
+
+        if (isUserCredentialError) {
+          // Mauvais identifiant : trace simple, pas d'alerte critique admin
+          supabase.from("journal_audit").insert({
+            action: "login_failed",
+            module: "auth",
+            utilisateur: loginEmail,
+            details: {
+              category: "auth",
+              reason: "invalid_credentials",
+              mode,
+              identifier: loginEmail,
+              timestamp: new Date().toISOString(),
+            },
+          }).then(() => {}, () => {});
+        } else {
+          // Vraie panne (réseau, 500, code inattendu) : alerte critique
+          import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
+            category: "auth",
+            action: "login_failed",
+            error: authError,
+            context: { mode, identifier: loginEmail },
+            utilisateur: loginEmail,
+            alert: false,
+          }));
+        }
         return;
       }
 
