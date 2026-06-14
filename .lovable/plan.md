@@ -1,41 +1,37 @@
-## Objectif
+## Cause du bug
 
-Quand un vendeur passe une commande avec variation (ex. couleur + taille), l'admin doit voir précisément la variation dans `CommandesVendeurs.jsx`, et le bouton **« Copier les infos de la commande »** doit inclure ces variations + la quantité pour transmission claire à l'agence de livraison.
+Message reçu par le vendeur : `Option "Bleu ciel" inconnue pour la variation "COULEURS" du produit.`
 
-## Constat actuel
+Le trigger SQL `validate_commande_variation` compare **strictement** (sensible à la casse et aux espaces) le couple `Nom:Valeur` de la commande contre la définition `produits.variations`.
 
-Dans `src/pages/CommandesVendeurs.jsx` :
+Or, après ta modification :
+- les définitions actuelles contiennent par ex. `nom:"couleur"` / `value:"bleu ciel"` ou `value:"Bleu Ciel"`,
+- mais les **clés stockées dans `produits.stocks_par_coursier[].stock_par_variation[].variation_key`** (anciennes) gardent l'ancienne casse `COULEURS:Bleu ciel`.
+- Le sélecteur côté vendeur (`SelecteurLocalisation.jsx`) propose ces `variation_key` brutes → la commande envoie `COULEURS:Bleu ciel` → le trigger rejette.
 
-- La variation (`commande.variation`, ex. `"Couleur:Rouge|Taille:M"`) est stockée en BD mais n'est affichée ni dans la liste des commandes, ni dans le modal de détail.
-- La fonction `copierInfosCommande` (lignes 15–54) génère le texte copié sans la variation ni la quantité — l'agence de livraison ne sait donc pas quelle variante préparer.
+Exemples vérifiés en BD :
+- Matelas RIYANA 140x200 : `nom:"COULEUR"`, option `"Blanc et bleu ciel"`
+- Matelas RIYANA 180x200 : `nom:"couleur"`, option `"Bleu Ciel"`
+- Matelas RIYANA 120x190 : `nom:"couleur"`, option `"bleu ciel"`
 
-## Modifications (frontend uniquement, `src/pages/CommandesVendeurs.jsx`)
+## Correction (2 volets, en migration SQL uniquement, zéro changement front)
 
-1. **Helper de formatage** (en haut du fichier)
-   - Ajouter `formatVariation(raw)` qui parse `"Couleur:Rouge|Taille:M"` (ou `" / "`) et renvoie un libellé lisible `"Couleur : Rouge, Taille : M"`.
+### 1. Trigger tolérant à la casse / espaces
 
-2. **`copierInfosCommande(cmd)`** — enrichir le texte copié
-   - Ajouter la ligne `Quantité : <n>`.
-   - Si `cmd.variation` existe, ajouter `Variantes : <formatVariation(...)>` juste après le nom du produit.
-   - Conserver le reste (nom, adresse, téléphone, montant, notes) inchangé.
+Mettre à jour `public.validate_commande_variation()` pour comparer `lower(trim(...))` côté commande et côté définition produit. Comportement métier identique, juste plus robuste face aux renommages d'admin.
 
-3. **Liste des commandes (ligne ~574)**
-   - Sous le nom du produit, afficher en petit `Variante : Couleur : Rouge, Taille : M` quand `c.variation` est défini.
+### 2. Réaligner les `variation_key` historiques
 
-4. **Modal de détail (grille à la ligne ~615)**
-   - Ajouter une cellule `Variante` (col-span-2 si présente) à côté de Quantité, affichant `formatVariation(commandeSelectionnee.variation)`.
-
-5. **Message vendeur à la livraison (ligne ~335)**
-   - Inclure la variante dans le message de confirmation envoyé au vendeur (`📦 Produit : ... (Couleur : Rouge, Taille : M)`).
+Script SQL one-shot qui parcourt `produits.stocks_par_coursier` et réécrit chaque `variation_key` en utilisant le `Nom`/`value` actuels de `produits.variations` lorsqu'un match insensible à la casse est trouvé. Comme ça la clé en stock = clé en définition = clé envoyée par la commande.
 
 ## Hors périmètre
 
-- Pas de changement à la création de commande (`NouvelleCommandeVendeur.jsx`) — le format stocké reste identique.
-- Pas de modification SQL/RLS/triggers.
-- Pas de toucher à l'auth, KYC, ou logique métier.
-- Aucune nouvelle fonctionnalité, juste l'affichage et le texte copié.
+- Pas de changement à `SelecteurLocalisation.jsx`, `NouvelleCommandeVendeur.jsx`, `CommandesVendeurs.jsx`.
+- Pas de modification du format d'enregistrement (`Nom:Valeur` séparés par `|`).
+- Pas de touche à l'auth, KYC, RLS, ou autres triggers.
 
 ## Vérification
 
-- Lancer `bunx vitest run` pour s'assurer qu'aucun des 169 tests existants ne casse.
-- Vérifier visuellement dans le preview qu'une commande avec variation affiche bien la variante et que le bouton Copier inclut la ligne `Variantes`.
+- Tenter à nouveau la commande qui échouait → doit passer.
+- Lancer `bunx vitest run` (les 169 tests existants doivent rester verts, en particulier `audit-22-variation-alerte-livraison`).
+- Vérifier en BD qu'une commande de test insère bien la ligne avec la variation.
