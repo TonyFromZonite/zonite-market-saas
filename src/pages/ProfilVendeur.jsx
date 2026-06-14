@@ -34,6 +34,30 @@ export default function ProfilVendeur() {
   const [succesMdp, setSuccesMdp] = useState(false);
   const [saveMdpEnCours, setSaveMdpEnCours] = useState(false);
 
+  // Self-account deletion state
+  const [deleteStep, setDeleteStep] = useState(0); // 0=closed, 1=warning, 2=balance, 3=confirm
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!compteVendeur?.id) return;
+    setDeletingAccount(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-seller-complete', {
+        body: { seller_id: compteVendeur.id }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Compte supprimé", description: "Toutes vos données ont été effacées définitivement.", duration: 5000 });
+      try { clearAllSessions(); } catch (_) {}
+      try { await supabase.auth.signOut(); } catch (_) {}
+      setTimeout(() => { window.location.href = createPageUrl("Connexion"); }, 800);
+    } catch (e) {
+      toast({ title: "Erreur", description: e.message || "Suppression impossible", variant: "destructive", duration: 6000 });
+      setDeletingAccount(false);
+    }
+  };
+
   // Edit profile state
   const [editingProfile, setEditingProfile] = useState(false);
   const [editFields, setEditFields] = useState({});
