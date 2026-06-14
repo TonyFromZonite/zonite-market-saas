@@ -1,37 +1,47 @@
-## Cause du bug
+## Objectif
+Permettre à un vendeur de supprimer définitivement son propre compte (RGPD / données personnelles) depuis son espace, avec plusieurs avertissements avant confirmation irréversible. Réutilise la même logique que la suppression admin (Edge Function `delete-seller-complete`).
 
-Message reçu par le vendeur : `Option "Bleu ciel" inconnue pour la variation "COULEURS" du produit.`
+## Changements
 
-Le trigger SQL `validate_commande_variation` compare **strictement** (sensible à la casse et aux espaces) le couple `Nom:Valeur` de la commande contre la définition `produits.variations`.
+### 1. Edge Function `delete-seller-complete` (autorisation élargie)
+Aujourd'hui : seuls les admins peuvent l'appeler.
+Modifier l'autorisation pour accepter **aussi** un vendeur qui supprime **son propre compte** :
+- Si l'appelant est admin → comportement actuel (peut supprimer n'importe quel `seller_id`).
+- Sinon, vérifier que `seller_id` correspond bien à `sellers.user_id = caller.id`. Sinon → 403.
+- Ajouter une entrée `journal_audit` avec `action = "auto_suppression_compte"` quand c'est un vendeur.
+- Garde-fou : refuser la suppression si l'email du vendeur est celui de l'admin principal (`Tonykodjeu@gmail.com`) — protège l'admin principal (règle mémoire).
 
-Or, après ta modification :
-- les définitions actuelles contiennent par ex. `nom:"couleur"` / `value:"bleu ciel"` ou `value:"Bleu Ciel"`,
-- mais les **clés stockées dans `produits.stocks_par_coursier[].stock_par_variation[].variation_key`** (anciennes) gardent l'ancienne casse `COULEURS:Bleu ciel`.
-- Le sélecteur côté vendeur (`SelecteurLocalisation.jsx`) propose ces `variation_key` brutes → la commande envoie `COULEURS:Bleu ciel` → le trigger rejette.
+Aucune autre logique de cascade n'est modifiée.
 
-Exemples vérifiés en BD :
-- Matelas RIYANA 140x200 : `nom:"COULEUR"`, option `"Blanc et bleu ciel"`
-- Matelas RIYANA 180x200 : `nom:"couleur"`, option `"Bleu Ciel"`
-- Matelas RIYANA 120x190 : `nom:"couleur"`, option `"bleu ciel"`
+### 2. Page `src/pages/ProfilVendeur.jsx` — nouvelle zone "Zone de danger"
+Ajouter en bas de la page (sous le bouton Déconnexion existant, ligne 681) une section visuellement séparée :
 
-## Correction (2 volets, en migration SQL uniquement, zéro changement front)
+```
+┌─ Zone de danger ────────────────────────────┐
+│ Supprimer définitivement mon compte         │
+│ [Texte explicatif court RGPD]               │
+│ [ Bouton rouge : Supprimer mon compte ]     │
+└─────────────────────────────────────────────┘
+```
 
-### 1. Trigger tolérant à la casse / espaces
+Au clic, ouvrir un **AlertDialog** en 3 étapes successives (état local) pour éviter toute suppression accidentelle :
 
-Mettre à jour `public.validate_commande_variation()` pour comparer `lower(trim(...))` côté commande et côté définition produit. Comportement métier identique, juste plus robuste face aux renommages d'admin.
+1. **Étape 1 — Avertissement** : liste claire de ce qui sera supprimé définitivement (profil, produits, commandes, commissions, KYC, notifications, etc.) et que c'est **irréversible**. Boutons : `Annuler` / `Continuer`.
+2. **Étape 2 — Solde** : si `solde_commission > 0` ou `solde_en_attente > 0`, afficher un avertissement explicite que tout solde restant sera **perdu**. Boutons : `Annuler` / `J'ai compris, continuer`.
+3. **Étape 3 — Confirmation finale** : l'utilisateur doit taper exactement `SUPPRIMER` dans un input avant que le bouton `Supprimer définitivement` (rouge) ne s'active. `Annuler` toujours disponible.
 
-### 2. Réaligner les `variation_key` historiques
+À la confirmation finale :
+- Appel `supabase.functions.invoke('delete-seller-complete', { body: { seller_id: vendeur.id } })`.
+- Toast succès, `clearAllSessions()`, `supabase.auth.signOut()`, redirection vers `Connexion`.
+- En cas d'erreur : toast destructive, dialog reste ouvert.
 
-Script SQL one-shot qui parcourt `produits.stocks_par_coursier` et réécrit chaque `variation_key` en utilisant le `Nom`/`value` actuels de `produits.variations` lorsqu'un match insensible à la casse est trouvé. Comme ça la clé en stock = clé en définition = clé envoyée par la commande.
+### 3. Aucune autre modification
+- Pas de changement de schéma DB.
+- Pas de changement RLS.
+- Pas de modification des fichiers admin (`Vendeurs.jsx`) — le flux admin reste identique.
+- Pas de modification de mise en page hors de la nouvelle section dans `ProfilVendeur.jsx`.
 
-## Hors périmètre
-
-- Pas de changement à `SelecteurLocalisation.jsx`, `NouvelleCommandeVendeur.jsx`, `CommandesVendeurs.jsx`.
-- Pas de modification du format d'enregistrement (`Nom:Valeur` séparés par `|`).
-- Pas de touche à l'auth, KYC, RLS, ou autres triggers.
-
-## Vérification
-
-- Tenter à nouveau la commande qui échouait → doit passer.
-- Lancer `bunx vitest run` (les 169 tests existants doivent rester verts, en particulier `audit-22-variation-alerte-livraison`).
-- Vérifier en BD qu'une commande de test insère bien la ligne avec la variation.
+## Détails techniques
+- Fichiers touchés : `supabase/functions/delete-seller-complete/index.ts`, `src/pages/ProfilVendeur.jsx`.
+- Composants UI utilisés : `AlertDialog` shadcn déjà présent, `Button` variant destructive, `Input` pour la confirmation textuelle.
+- Tests Vitest : aucun test existant ne couvre l'auto-suppression ; les 169 tests doivent rester verts.

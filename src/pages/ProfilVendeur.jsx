@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2, Pencil, Save, X, Facebook, MessageCircle, Users } from "lucide-react";
+import { LogOut, ChevronLeft, User, Phone, MapPin, Wallet, TrendingUp, ShoppingBag, KeyRound, Eye, EyeOff, CheckCircle2, Copy, Share2, Pencil, Save, X, Facebook, MessageCircle, Users, Trash2, AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LOGO_URL as LOGO } from "@/components/constants";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,30 @@ export default function ProfilVendeur() {
   const [erreurMdp, setErreurMdp] = useState("");
   const [succesMdp, setSuccesMdp] = useState(false);
   const [saveMdpEnCours, setSaveMdpEnCours] = useState(false);
+
+  // Self-account deletion state
+  const [deleteStep, setDeleteStep] = useState(0); // 0=closed, 1=warning, 2=balance, 3=confirm
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!compteVendeur?.id) return;
+    setDeletingAccount(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-seller-complete', {
+        body: { seller_id: compteVendeur.id }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Compte supprimé", description: "Toutes vos données ont été effacées définitivement.", duration: 5000 });
+      try { clearAllSessions(); } catch (_) {}
+      try { await supabase.auth.signOut(); } catch (_) {}
+      setTimeout(() => { window.location.href = createPageUrl("Connexion"); }, 800);
+    } catch (e) {
+      toast({ title: "Erreur", description: e.message || "Suppression impossible", variant: "destructive", duration: 6000 });
+      setDeletingAccount(false);
+    }
+  };
 
   // Edit profile state
   const [editingProfile, setEditingProfile] = useState(false);
@@ -681,8 +706,127 @@ export default function ProfilVendeur() {
         <Button variant="outline" onClick={() => { clearAllSessions(); supabase.auth.signOut(); window.location.href = createPageUrl("Connexion"); }} className="w-full border-red-200 text-red-600 hover:bg-red-50">
           <LogOut className="w-4 h-4 mr-2" /> Se déconnecter
         </Button>
+
+        {/* Zone de danger - Suppression définitive du compte (RGPD) */}
+        <div className="mt-6 rounded-2xl border-2 border-red-200 bg-red-50/50 p-4">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-red-900 text-sm">Zone de danger</h3>
+              <p className="text-xs text-red-800/80 mt-1">
+                Conformément au RGPD, vous pouvez supprimer définitivement votre compte et toutes vos données personnelles. Cette action est <strong>irréversible</strong>.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => { setDeleteConfirmText(""); setDeleteStep(1); }}
+            className="w-full border-red-300 bg-white text-red-700 hover:bg-red-100 font-semibold"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Supprimer définitivement mon compte
+          </Button>
+        </div>
       </div>
     </div>
+
+    {/* Étape 1 — Avertissement */}
+    <AlertDialog open={deleteStep === 1} onOpenChange={(o) => !o && setDeleteStep(0)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="w-5 h-5" /> Suppression définitive du compte
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>Cette action va supprimer <strong>définitivement et de façon irréversible</strong> :</p>
+              <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                <li>Votre profil vendeur et vos informations personnelles</li>
+                <li>Vos documents KYC (CNI, passeport, selfie)</li>
+                <li>Toutes vos commandes et ventes enregistrées</li>
+                <li>Vos commissions, demandes de paiement et historique</li>
+                <li>Vos notifications, tickets de support et candidatures</li>
+                <li>Votre compte de connexion (email/mot de passe)</li>
+              </ul>
+              <p className="text-red-700 font-semibold pt-2">Aucune récupération ne sera possible après confirmation.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDeleteStep(0)}>Annuler</AlertDialogCancel>
+          <AlertDialogAction onClick={() => setDeleteStep(2)} className="bg-red-600 hover:bg-red-700">
+            Continuer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Étape 2 — Solde */}
+    <AlertDialog open={deleteStep === 2} onOpenChange={(o) => !o && setDeleteStep(0)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+            <Wallet className="w-5 h-5" /> Solde commission
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              {(Number(compteVendeur?.solde_commission || 0) > 0 || Number(compteVendeur?.solde_en_attente || 0) > 0) ? (
+                <>
+                  <p className="text-red-700 font-semibold">Attention, votre solde sera définitivement perdu :</p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
+                    <div className="flex justify-between"><span>Solde disponible</span><strong>{Number(compteVendeur?.solde_commission || 0).toLocaleString('fr-FR')} FCFA</strong></div>
+                    <div className="flex justify-between"><span>Solde en attente</span><strong>{Number(compteVendeur?.solde_en_attente || 0).toLocaleString('fr-FR')} FCFA</strong></div>
+                  </div>
+                  <p className="text-xs text-slate-600 pt-1">Si vous souhaitez récupérer ces fonds, annulez et faites une demande de paiement avant de supprimer votre compte.</p>
+                </>
+              ) : (
+                <p>Votre solde commission est nul. Aucun montant ne sera perdu.</p>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDeleteStep(0)}>Annuler</AlertDialogCancel>
+          <AlertDialogAction onClick={() => setDeleteStep(3)} className="bg-red-600 hover:bg-red-700">
+            J'ai compris, continuer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Étape 3 — Confirmation finale */}
+    <AlertDialog open={deleteStep === 3} onOpenChange={(o) => !o && !deletingAccount && setDeleteStep(0)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="w-5 h-5" /> Confirmation finale
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm">
+              <p>Pour confirmer la suppression définitive, tapez exactement <strong>SUPPRIMER</strong> ci-dessous :</p>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="SUPPRIMER"
+                disabled={deletingAccount}
+                autoFocus
+              />
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deletingAccount} onClick={() => setDeleteStep(0)}>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={deleteConfirmText.trim() !== "SUPPRIMER" || deletingAccount}
+            onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {deletingAccount ? "Suppression…" : "Supprimer définitivement"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <EmailVerificationDialog
       open={showVerifyEmail}
       onOpenChange={setShowVerifyEmail}

@@ -25,7 +25,6 @@ Deno.serve(async (req) => {
     if (authError || !caller) throw new Error("Non autorisé");
 
     const { data: isAdmin } = await supabaseAdmin.rpc("has_role", { _user_id: caller.id, _role: "admin" });
-    if (!isAdmin) throw new Error("Accès refusé: admin uniquement");
 
     const { seller_id } = await req.json();
     if (!seller_id) throw new Error("seller_id requis");
@@ -38,6 +37,27 @@ Deno.serve(async (req) => {
       .single();
 
     if (sellerErr || !seller) throw new Error("Vendeur introuvable");
+
+    // Authorization: admin OR self-deletion
+    const isSelf = seller.user_id && seller.user_id === caller.id;
+    if (!isAdmin && !isSelf) throw new Error("Accès refusé");
+
+    // Protect primary admin account
+    if ((seller.email || "").toLowerCase() === "tonykodjeu@gmail.com") {
+      throw new Error("Ce compte administrateur principal ne peut pas être supprimé");
+    }
+
+    // Audit self-deletion
+    if (isSelf && !isAdmin) {
+      await supabaseAdmin.from("journal_audit").insert({
+        action: "auto_suppression_compte",
+        module: "vendeur",
+        utilisateur: seller.email,
+        entite_type: "sellers",
+        entite_id: seller_id,
+        details: { motif: "Suppression compte par le vendeur lui-même (RGPD)" },
+      });
+    }
 
     // Delete all related data in order (foreign key dependencies)
     const tables = [
