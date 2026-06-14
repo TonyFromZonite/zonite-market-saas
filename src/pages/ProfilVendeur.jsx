@@ -707,27 +707,31 @@ export default function ProfilVendeur() {
           <LogOut className="w-4 h-4 mr-2" /> Se déconnecter
         </Button>
 
-        {/* Zone de danger - Suppression définitive du compte (RGPD) */}
-        <div className="mt-6 rounded-2xl border-2 border-red-200 bg-red-50/50 p-4">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+        {/* Zone de danger - Suppression définitive du compte (RGPD)
+            Affichée uniquement pour les vendeurs autorisés (compte validé
+            et hors compte admin principal). Voir src/lib/accountDeletion.js */}
+        {canSelfDeleteAccount(compteVendeur) && (
+          <div className="mt-6 rounded-2xl border-2 border-red-200 bg-red-50/50 p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-red-900 text-sm">Zone de danger</h3>
+                <p className="text-xs text-red-800/80 mt-1">
+                  Conformément au RGPD, vous pouvez supprimer définitivement votre compte et toutes vos données personnelles. Cette action est <strong>irréversible</strong>.
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-red-900 text-sm">Zone de danger</h3>
-              <p className="text-xs text-red-800/80 mt-1">
-                Conformément au RGPD, vous pouvez supprimer définitivement votre compte et toutes vos données personnelles. Cette action est <strong>irréversible</strong>.
-              </p>
-            </div>
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteConfirmText(""); setDeleteStep(1); }}
+              className="w-full border-red-300 bg-white text-red-700 hover:bg-red-100 font-semibold"
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Supprimer définitivement mon compte
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => { setDeleteConfirmText(""); setDeleteStep(1); }}
-            className="w-full border-red-300 bg-white text-red-700 hover:bg-red-100 font-semibold"
-          >
-            <Trash2 className="w-4 h-4 mr-2" /> Supprimer définitivement mon compte
-          </Button>
-        </div>
+        )}
       </div>
     </div>
 
