@@ -104,12 +104,21 @@ export default function ResoumissionKYC() {
       setKycDocs(p => ({ ...p, [docKey]: urlData.publicUrl }));
       toast({ title: '✅ Document ajouté', description: `${getLabelForKey(docKey)} uploadé` });
     } catch (error) {
-      toast({ title: '❌ Erreur upload', description: error.message, variant: 'destructive' });
+      const msg = error?.message || "";
+      const isNetwork =
+        (typeof navigator !== "undefined" && navigator.onLine === false) ||
+        /Failed to fetch|NetworkError|Load failed|StorageUnknownError/i.test(msg) ||
+        error?.name === "StorageUnknownError";
+      toast({
+        title: isNetwork ? '📶 Connexion instable' : '❌ Erreur upload',
+        description: isNetwork ? 'Vérifiez votre connexion et réessayez.' : error.message,
+        variant: 'destructive',
+      });
       import("@/lib/criticalLogger").then(({ logCritical }) => logCritical({
         category: "kyc",
-        action: "kyc_upload_failed",
+        action: isNetwork ? "kyc_upload_network" : "kyc_upload_failed",
         error,
-        context: { docKey, vendeur_id: vendeur?.id },
+        context: { docKey, vendeur_id: vendeur?.id, online: typeof navigator !== "undefined" ? navigator.onLine : null },
         utilisateur: vendeur?.email,
         alert: false,
       }));

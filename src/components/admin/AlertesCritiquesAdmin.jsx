@@ -23,14 +23,16 @@ function extractCategory(row) {
   return "systeme";
 }
 
-// Ignore les faux positifs : mauvais mot de passe utilisateur, permission navigateur refusée.
+// Ignore les faux positifs : auth (email non confirmé, mauvais mot de passe),
+// permissions navigateur refusées, extensions qui cassent le DOM, chunks Vite périmés.
 function isFalsePositive(row) {
   const err = row?.details?.error;
   if (!err) return false;
-  if (err.code === "invalid_credentials") return true;
-  if (err.name === "NotAllowedError") return true;
-  if (typeof err.message === "string" && /not allowed by the user agent/i.test(err.message)) return true;
-  return false;
+  if (err.code === "invalid_credentials" || err.code === "email_not_confirmed") return true;
+  if (err.name === "NotAllowedError" || err.name === "NotFoundError") return true;
+  const msg = typeof err.message === "string" ? err.message : "";
+  if (!msg) return false;
+  return /not allowed by the user agent|Failed to execute '(insertBefore|removeChild)' on 'Node'|Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed/i.test(msg);
 }
 
 /**
