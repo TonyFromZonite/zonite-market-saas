@@ -210,9 +210,10 @@ export default function InscriptionVendeur() {
 
       // Edge function HTTP error (non-2xx) → `error` is set, body in error.context
       if (error) {
-        let payload = null;
-        try { payload = await error.context?.json?.(); } catch (_) {}
-        const message = payload?.error || error.message || "Erreur lors de l'inscription";
+        const { message, payload } = await extractFunctionError(
+          error,
+          "Une erreur est survenue lors de l'inscription. Réessayez dans un instant."
+        );
         if (payload?.throttled || payload?.retry_after > 0) {
           const retry = payload.retry_after || 60;
           setCooldownLeft(retry);
