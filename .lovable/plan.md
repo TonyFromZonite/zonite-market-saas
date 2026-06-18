@@ -1,30 +1,41 @@
-## Problème
+## Vérification : affichage « KYC : Validé » sur le profil vendeur
 
-Depuis la dernière mise à jour, l'app affiche un écran blanc. Les requêtes réseau du client le confirment :
+J'ai relu `src/pages/ProfilVendeur.jsx` (lignes 597-627), la section « Statut du compte ».
 
+### Comportement actuel (déjà conforme à la demande)
+
+La ligne KYC du bloc « Statut du compte » est construite ainsi :
+
+```jsx
+...(compteVendeur?.statut_kyc === "valide"
+  ? []                                  // → aucune ligne KYC
+  : [{ label: "KYC",
+       val: statut_kyc === "rejete" ? "✗ Rejeté" : "En attente",
+       ok: false }])
 ```
-TypeError: installGlobalCriticalHandlers(...) is not a function
-  at src/main.jsx:9
-```
 
-`main.jsx` plante à la ligne 9 → React n'est jamais monté → page blanche. Comme l'erreur survient avant le rendu, un simple "rafraîchir" ne suffit pas tant que le bundle servi (HTTP cache, ancien onglet ouvert, cache CDN) reste celui qui ne connaît pas la nouvelle export.
+Donc :
+- `statut_kyc = en_attente` → ligne « KYC — En attente » (jaune)
+- `statut_kyc = rejete` → ligne « KYC — ✗ Rejeté » (rouge) + motif
+- `statut_kyc = valide` → **aucune ligne KYC affichée**, définitivement
 
-La fonction `installGlobalCriticalHandlers` existe bien dans `src/lib/criticalLogger.js`, donc le code source est correct. Le crash vient d'un décalage : un client charge un ancien `criticalLogger.js` mis en cache qui n'exporte pas encore ce symbole, combiné à un nouveau `main.jsx` qui l'appelle sans garde.
+La confirmation reste visible côté vendeur uniquement via la notification « KYC Validé ! » envoyée par `GestionKYC.jsx` au moment de la validation.
 
-## Correctif
+### Pourquoi vous voyez peut-être encore « KYC : Validé » sur le compte « Test moi »
 
-### `src/main.jsx`
-Rendre l'appel défensif pour qu'un module mis en cache (ou tout autre échec d'import futur) ne bloque jamais le rendu de l'app :
+Trois causes possibles, aucune liée au code du profil :
 
-- Remplacer `installGlobalCriticalHandlers()` par un appel protégé :
-  - vérifier `typeof installGlobalCriticalHandlers === "function"` avant d'appeler,
-  - envelopper dans un `try/catch` qui se contente d'un `console.warn`.
-- Aucun changement de comportement quand le module est à jour : les handlers globaux s'installent normalement.
+1. **Bundle en cache** sur l'appareil : l'ancienne version du `ProfilVendeur.jsx` est toujours servie. Forcer un rechargement (vider le cache PWA / pull-to-refresh / fermer-rouvrir l'app) résout l'affichage.
+2. **Confusion avec un autre bloc** : la barre « Progression du profil » (`ProfileProgress.jsx`) liste bien une étape « KYC validé ✅ » — c'est une checklist de complétion, pas le statut KYC, et c'est voulu.
+3. **`statut_kyc` du compte Test moi ≠ `"valide"`** en base (ex : `"en_attente"`) — dans ce cas la ligne doit bien s'afficher.
 
-Aucune autre modification (pas de changement métier, pas de backend, pas de schéma DB). 169 tests doivent rester verts.
+### Plan proposé
 
-## Pourquoi ça résout l'incident
+Aucune modification de code n'est nécessaire : le comportement demandé est déjà implémenté correctement.
 
-- Les clients qui chargent l'ancienne version cachée n'affichent plus d'écran blanc : ils perdent juste temporairement les handlers globaux d'erreur, jusqu'au prochain hard refresh qui récupère le bundle à jour.
-- Les nouveaux clients reçoivent les deux fichiers à jour et fonctionnent comme avant.
-- C'est une protection durable : toute future désynchronisation entre `main.jsx` et `criticalLogger.js` ne pourra plus tuer l'application.
+Action proposée si vous validez :
+1. Vérifier en base la valeur exacte de `sellers.statut_kyc` pour le compte « Test moi » (via une requête lecture seule sur Lovable Cloud).
+2. Si la valeur est bien `"valide"` mais l'UI montre encore la ligne → c'est un cache navigateur/PWA ; je documenterai la procédure de purge.
+3. Si vous me confirmez que c'est en fait la ligne « KYC validé » de la **barre de progression** qui vous gêne, je peux la masquer une fois atteinte (à confirmer, car cela casse la jauge de complétion à 100 %).
+
+Dites-moi laquelle de ces pistes vous voulez que je creuse.
