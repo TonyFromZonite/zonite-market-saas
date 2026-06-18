@@ -95,13 +95,17 @@ export const shouldShowTrainingModal = (sellerStatus, trainingCompleted = false)
  * Retourne null si le vendeur est validé (active_seller) → aucun badge à afficher.
  * Sinon retourne { label, className } pour un rendu cohérent partout.
  */
-export const getSellerStatusBadge = (sellerStatus) => {
-  if (sellerStatus === SELLER_STATUSES.ACTIVE_SELLER) return null;
+export const getSellerStatusBadge = (sellerStatus, { adminView = false } = {}) => {
+  if (sellerStatus === SELLER_STATUSES.ACTIVE_SELLER) {
+    return adminView
+      ? { label: "Actif", className: "bg-emerald-100 text-emerald-700" }
+      : null;
+  }
 
   const map = {
     [SELLER_STATUSES.PENDING_VERIFICATION]: { label: "Non vérifié", className: "bg-slate-200 text-slate-700" },
     [SELLER_STATUSES.KYC_REQUIRED]: { label: "En attente", className: "bg-yellow-500 text-white" },
-    [SELLER_STATUSES.KYC_PENDING]: { label: "KYC en attente", className: "bg-yellow-500 text-white" },
+    [SELLER_STATUSES.KYC_PENDING]: { label: adminView ? "KYC en attente" : "KYC en attente", className: "bg-yellow-500 text-white" },
     [SELLER_STATUSES.KYC_REJECTED]: { label: "KYC rejeté", className: "bg-red-500 text-white" },
     [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: { label: "Formation requise", className: "bg-blue-500 text-white" },
   };
