@@ -599,7 +599,17 @@ export default function ProfilVendeur() {
           <h2 className="font-semibold text-slate-900 mb-2 text-sm">Statut du compte</h2>
           <div className="space-y-2 text-sm">
             {[
-              { label: "KYC", val: compteVendeur?.statut_kyc === "valide" ? "✓ Validé" : compteVendeur?.statut_kyc === "rejete" ? "✗ Rejeté" : "En attente", ok: compteVendeur?.statut_kyc === "valide" },
+              // Le KYC validé est un état acquis : on l'affiche uniquement tant
+              // qu'il est en attente ou rejeté. Une fois validé, la ligne
+              // disparaît définitivement du profil (la notification de
+              // validation reste la confirmation visible côté vendeur).
+              ...(compteVendeur?.statut_kyc === "valide"
+                ? []
+                : [{
+                    label: "KYC",
+                    val: compteVendeur?.statut_kyc === "rejete" ? "✗ Rejeté" : "En attente",
+                    ok: false,
+                  }]),
               { label: "Formation", val: compteVendeur?.training_completed ? "✓ Complétée" : "Non complétée", ok: compteVendeur?.training_completed },
               { label: "Catalogue", val: compteVendeur?.catalogue_debloque ? "✓ Débloqué" : "Verrouillé", ok: compteVendeur?.catalogue_debloque },
             ].map(({ label, val, ok }) => (
