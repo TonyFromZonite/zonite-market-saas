@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
 import DialogAjustementCommission from "@/components/commissions/DialogAjustementCommission";
 import useAdminAccess from "@/hooks/useAdminAccess";
+import { getSellerStatusBadge } from "@/components/SellerStatusEngine";
 
 const ONGLETS = [
   { key: "liste", label: "Vendeurs" },
@@ -296,9 +297,10 @@ function ListeVendeurs() {
                   <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
                   <TableCell>
-                    <Badge className={v.seller_status === "active_seller" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>
-                      {v.seller_status === "active_seller" ? "Actif" : v.seller_status === "kyc_pending" ? "KYC en attente" : v.seller_status === "pending_verification" ? "Non vérifié" : v.seller_status}
-                    </Badge>
+                    {(() => {
+                      const b = getSellerStatusBadge(v.seller_status, { adminView: true });
+                      return b ? <Badge className={b.className}>{b.label}</Badge> : null;
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
