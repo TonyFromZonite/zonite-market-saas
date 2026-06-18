@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { createPageUrl } from "@/utils";
 import { LOGO_URL as LOGO } from "@/components/constants";
+import { extractFunctionError } from "@/lib/extractFunctionError";
 
 const calcStrength = (pwd) => {
   let score = 0;
