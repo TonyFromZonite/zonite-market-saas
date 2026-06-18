@@ -181,6 +181,17 @@ export default function InscriptionVendeur() {
         let payload = null;
         try { payload = await error.context?.json?.(); } catch (_) {}
         const message = payload?.error || error.message || "Erreur lors de l'inscription";
+        if (payload?.throttled || payload?.retry_after > 0) {
+          const retry = payload.retry_after || 60;
+          setCooldownLeft(retry);
+          setErreur(message);
+          toast({
+            title: "⏳ Patientez",
+            description: message,
+            variant: "destructive",
+          });
+          return;
+        }
         if (payload?.field) {
           setErrors((p) => ({ ...p, [payload.field]: message }));
         } else {
@@ -189,10 +200,18 @@ export default function InscriptionVendeur() {
         return;
       }
       if (data?.error) {
+        if (data.throttled || data.retry_after > 0) {
+          const retry = data.retry_after || 60;
+          setCooldownLeft(retry);
+          setErreur(data.error);
+          toast({ title: "⏳ Patientez", description: data.error, variant: "destructive" });
+          return;
+        }
         if (data.field) setErrors((p) => ({ ...p, [data.field]: data.error }));
         else setErreur(data.error);
         return;
       }
+
 
       if (data?.resumed) {
         setErreur("Un nouveau code de vérification vient d'être envoyé à votre email.");
