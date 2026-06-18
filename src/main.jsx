@@ -6,7 +6,17 @@ import './globals.css'
 import './App.css'
 import { installGlobalCriticalHandlers } from '@/lib/criticalLogger'
 
-installGlobalCriticalHandlers()
+try {
+  if (typeof installGlobalCriticalHandlers === "function") {
+    installGlobalCriticalHandlers()
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn("[main] installGlobalCriticalHandlers indisponible (bundle obsolète en cache) — l'app démarre quand même.")
+  }
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn("[main] installGlobalCriticalHandlers a échoué :", e)
+}
 
 // Auto-reload sur chunks Vite périmés après déploiement.
 // Un onglet ouvert avec un ancien index.html essaie de charger des hashes
