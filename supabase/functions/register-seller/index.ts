@@ -258,18 +258,22 @@ Deno.serve(async (req) => {
       }
       createdRole = true;
 
-      // 3d. Envoi OTP — échec ⇒ rollback complet
-      const { error: mailErr } = await admin.functions.invoke(
-        "send-verification-email",
-        { body: { email, nom: full_name, code: otp } },
-      );
-      if (mailErr) {
-        console.error("[register-seller] verification email error:", mailErr);
-        await rollback();
-        return jsonResponse(
-          { error: "Impossible d'envoyer le code de vérification. Réessayez." },
-          502,
+      // 3d. Envoi OTP — l'échec NE DOIT PAS détruire le compte vendeur.
+      // Le code est déjà persisté en DB ; le vendeur peut cliquer
+      // "Renvoyer le code" depuis l'étape 2.
+      let emailSendFailed = false;
+      try {
+        const { error: mailErr } = await admin.functions.invoke(
+          "send-verification-email",
+          { body: { email, nom: full_name, code: otp } },
         );
+        if (mailErr) {
+          console.error("[register-seller] verification email error:", mailErr);
+          emailSendFailed = true;
+        }
+      } catch (e) {
+        console.error("[register-seller] verification email exception:", e);
+        emailSendFailed = true;
       }
 
       return jsonResponse({
@@ -277,6 +281,7 @@ Deno.serve(async (req) => {
         user_id: createdUserId,
         email,
         resumed: false,
+        email_send_failed: emailSendFailed,
       });
     } catch (e) {
       console.error("[register-seller] unexpected:", e);
