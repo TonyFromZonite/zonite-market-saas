@@ -1,43 +1,17 @@
-Constat rapide
-- Le domaine email principal est vérifié et opérationnel.
-- Les emails système récents sont bien marqués comme envoyés dans les logs d’envoi.
-- Le code vendeur actuel passe par une fonction séparée qui envoie via Resend directement, donc ses envois ne sont pas visibles dans le journal email principal.
-- Un compte vendeur récent est resté non vérifié avec un code généré, ce qui confirme que le point fragile est la réception/traçabilité du code, pas seulement la création du compte.
-- Les fonctions testées répondent actuellement en 200, donc le problème semble intermittent ou lié à la délivrabilité/traçabilité du flux OTP vendeur.
+## Objectif
 
-Plan de correction
-1. Centraliser l’email de code vendeur
-   - Remplacer l’envoi direct du code par le système email déjà configuré du projet.
-   - Ajouter/brancher un modèle d’email “code de vérification vendeur” traçable dans le journal d’envoi.
-   - Garder le contenu actuel du mail, sans changement de design majeur.
+Retirer la bannière rouge "X erreurs critiques (24h) — KYC · N — Voir le Journal d'Audit" qui apparaît en haut du tableau de bord admin à la connexion.
 
-2. Rendre l’inscription plus robuste
-   - Ne plus bloquer définitivement la création du vendeur quand l’email rencontre une erreur temporaire.
-   - Si l’envoi échoue, garder le compte en attente de vérification et afficher un message clair avec bouton de renvoi.
-   - Conserver les protections existantes contre doublons, username déjà pris et abus de renvoi.
+## Changement
 
-3. Fiabiliser “Renvoyer le code”
-   - Utiliser le même canal email centralisé que l’inscription.
-   - Journaliser chaque tentative avec statut envoyé/échoué.
-   - Afficher les vrais messages d’erreur non-2xx déjà extraits côté frontend.
+**`src/pages/TableauDeBord.jsx`**
+- Supprimer l'import `AlertesCritiquesAdmin` (ligne 30).
+- Supprimer le rendu `<AlertesCritiquesAdmin />` (ligne 305).
 
-4. Couvrir les tests automatisés
-   - Ajouter/compléter des tests pour :
-     - inscription OK avec code généré,
-     - erreur email temporaire sans perte du compte,
-     - renvoi de code OK,
-     - renvoi limité par cooldown,
-     - erreur non-2xx avec message lisible,
-     - vérification code puis redirection vers /EspaceVendeur.
+Le composant `src/components/admin/AlertesCritiquesAdmin.jsx` et le logger `src/lib/criticalLogger.js` sont **conservés** : les erreurs critiques continueront d'être enregistrées dans le journal d'audit et restent consultables via la page `/JournalAudit`. Seul l'affichage de la bannière sur le tableau de bord est masqué.
 
-5. Tests manuels après implémentation
-   - Créer un vendeur test avec email réel.
-   - Vérifier réception du code dans la boîte email et dans les spams.
-   - Cliquer “Renvoyer le code” deux fois pour vérifier cooldown + message clair.
-   - Entrer mauvais code puis bon code.
-   - Confirmer redirection vers /EspaceVendeur et passage du vendeur en actif.
+## Hors scope
 
-Résultat attendu
-- Les vendeurs peuvent créer leur compte même si l’envoi email a une erreur temporaire.
-- Les codes sont envoyés par le canal email principal, avec suivi clair des erreurs.
-- Les erreurs “non-2xx” ne restent plus génériques et le support peut savoir si un email a réellement été envoyé.
+- Aucune modification du logger ni du journal d'audit.
+- Aucun autre élément du tableau de bord touché.
+- Aucun test à modifier (aucun test ne cible cette bannière).
