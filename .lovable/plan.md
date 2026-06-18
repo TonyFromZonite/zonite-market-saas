@@ -1,48 +1,43 @@
+# Vérification avant publication
 
-# Diagnostic — erreur RLS sur `sellers` au moment du « Créer mon compte »
+Objectif : confirmer que les dernières modifications (affichage unique du badge « KYC : validé » + diagnostic erreur RLS sellers) n'ont rien cassé avant que tu publies.
 
-## Constat technique
+## Périmètre des derniers changements
+1. `src/pages/ProfilVendeur.jsx` — logique d'affichage du badge KYC validé une seule fois.
+2. `.lovable/plan.md` — fichier de notes, aucun impact runtime.
+3. Aucune modification de schéma DB, d'edge function, ni du flux d'inscription.
 
-1. La page `src/pages/InscriptionVendeur.jsx` (lignes 168-177) appelle UNIQUEMENT l'Edge Function `register-seller` pour créer le compte. Cette fonction utilise la clé `SUPABASE_SERVICE_ROLE_KEY` côté serveur, ce qui **contourne complètement la RLS**. Elle ne peut donc PAS produire une erreur « new row violates row-level security policy ».
-2. Les politiques actuelles sur `public.sellers` (vérifiées en base) :
-   - `INSERT` : `authenticated`, `WITH CHECK (auth.uid() = user_id)`
-   - `SELECT/UPDATE` propriétaire + admin.
-   Aucune politique anonyme. Seule une tentative d'INSERT client-side (sans Edge Function) déclencherait ce message.
-3. Recherche dans tout le code source : aucun `supabase.from("sellers").insert(...)` n'existe côté client. Tous les inserts passent par l'Edge Function.
-4. Logs Auth récents : les vraies inscriptions (11:13, 11:17…) sont passées **avec succès** via `/admin/users` (= service_role appelé par l'edge function `register-seller`). Aucun rejet RLS dans les logs serveur.
+## Étapes de vérification
 
-## Conclusion
+### 1. Audit statique du code modifié
+- Relire `ProfilVendeur.jsx` pour confirmer :
+  - pas d'import cassé,
+  - le flag « KYC vu » est bien lu/écrit (DB ou localStorage selon implémentation),
+  - aucune autre section du profil n'a été touchée par effet de bord.
 
-L'erreur que voit le vendeur provient quasi-certainement d'un **bundle JavaScript obsolète** servi par le cache navigateur / service-worker PWA sur `zonite.org`. Cette ancienne version exécute encore un `supabase.from("sellers").insert(...)` direct depuis le navigateur, ce qui est aujourd'hui bloqué par la politique INSERT (`auth.uid() = user_id`) puisque le vendeur n'est pas encore connecté à ce moment-là.
+### 2. Suite de tests automatisés
+- Lancer la suite Vitest existante (102 tests / 19 domaines).
+- Vérifier en particulier les domaines : profil vendeur, KYC, inscription, auth, notifications.
+- Tout échec = blocage publication.
 
-## Plan d'action
+### 3. Health check du preview
+- `preview_control--get_preview_health` pour vérifier qu'il n'y a ni build error, ni runtime error, ni requêtes 4xx/5xx récentes.
 
-### Étape 1 — Confirmer la cause (sans toucher au code)
-Demander au vendeur :
-- Capture d'écran de l'erreur (texte exact + URL).
-- Faire un **rechargement forcé** : `Ctrl+Shift+R` (Chrome desktop) / fermer-rouvrir l'onglet (Safari iOS) / désinstaller-réinstaller la PWA si applicable.
-- Réessayer l'inscription. Si l'erreur disparaît → cache confirmé.
+### 4. Vérification visuelle ciblée
+- Ouvrir `/ProfilVendeur` sur le compte « Test moi » via `browser--view_preview` pour confirmer :
+  - le badge « KYC : validé » ne réapparaît pas,
+  - le reste du profil (avatar, infos, liens sociaux, code parrainage) s'affiche normalement.
 
-### Étape 2 — Vérifier côté serveur en parallèle
-- Consulter `supabase auth logs` au moment précis du test : si on voit un `POST /admin/users` 200 ou 422, c'est bien l'Edge Function. Si on voit un `POST /rest/v1/sellers` 401/403, c'est confirmé : ancien bundle.
-- Vérifier que `register-seller` est bien déployée et active (déjà confirmé dans les logs : booted OK).
+### 5. Scan de sécurité
+- `security--get_scan_results` — pré-requis publication. Si findings critiques → on les traite avant publish.
 
-### Étape 3 — Renforcer le service worker (si cache confirmé)
-Forcer l'invalidation du cache pour tous les vendeurs :
-- Bumper la version du service worker pour déclencher un `skipWaiting()` + `clients.claim()` automatique au prochain chargement.
-- Aucune modification du flux d'inscription nécessaire (il est déjà correct).
+### 6. Vérification métadonnées SEO/partage
+- Contrôler `index.html` : title, meta description, OG, Twitter, favicon — toujours alignés avec ZONITE Market.
 
-### Étape 4 — Filet de sécurité (optionnel)
-Si l'on souhaite que MÊME un vieux bundle ne casse pas, on peut intercepter les erreurs d'inscription dans `InscriptionVendeur.jsx` et afficher un message clair invitant à recharger la page. Aucun changement de RLS n'est souhaitable : la politique actuelle est correcte du point de vue sécurité.
+## Livrable
+Un rapport synthétique :
+- ✅ / ❌ pour chacune des 6 étapes,
+- liste des éventuels problèmes trouvés,
+- recommandation finale : **publier** ou **corriger d'abord**.
 
-## À NE PAS faire
-
-- Ne pas assouplir la politique INSERT sur `sellers` (ouvrirait une faille : n'importe qui pourrait créer des vendeurs).
-- Ne pas dupliquer la logique d'inscription côté client.
-
-## Question ouverte
-
-Souhaitez-vous que je passe en mode build pour :
-- **(A)** seulement bumper la version du service worker afin de forcer la mise à jour du cache chez tous les utilisateurs, **ou**
-- **(B)** également ajouter un message d'erreur explicite (« Rechargez la page ») si l'ancien chemin client est déclenché, **ou**
-- **(C)** simplement attendre la capture d'écran du vendeur avant toute action ?
+Aucune modification de code dans ce plan — uniquement de la lecture, des tests et des vérifications.
