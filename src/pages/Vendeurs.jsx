@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { filterTable, listTable, subscribeToTable } from "@/lib/supabaseHelpers";
 import DialogAjustementCommission from "@/components/commissions/DialogAjustementCommission";
 import useAdminAccess from "@/hooks/useAdminAccess";
+import { getSellerStatusBadge } from "@/components/SellerStatusEngine";
 
 const ONGLETS = [
   { key: "liste", label: "Vendeurs" },
