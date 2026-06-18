@@ -523,10 +523,15 @@ export default function InscriptionVendeur() {
               </div>
             )}
 
-            <Button onClick={handleRegister} disabled={loading}
-              className="w-full h-12 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl text-base">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "🚀 Créer mon compte gratuit"}
+            <Button onClick={handleRegister} disabled={loading || cooldownLeft > 0}
+              className="w-full h-12 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl text-base disabled:opacity-60">
+              {loading
+                ? <Loader2 className="w-5 h-5 animate-spin" />
+                : cooldownLeft > 0
+                  ? `Réessayer dans ${cooldownLeft}s`
+                  : "🚀 Créer mon compte gratuit"}
             </Button>
+
 
             <p className="text-center text-slate-400 text-xs">
               Déjà un compte ?{" "}
