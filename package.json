@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps chromium"
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:smoke": "playwright test e2e/smoke-pre-publish.spec.ts --reporter=list",
+    "pre-publish": "node scripts/pre-publish.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
