@@ -138,17 +138,9 @@ export default function VideoFormation() {
     setEnCours(true);
     setErreur("");
     try {
-      const { error: updateError } = await supabase
-        .from('sellers')
-        .update({
-          training_completed: true,
-          catalogue_debloque: true,
-          conditions_acceptees: true,
-          training_completed_at: new Date().toISOString(),
-        })
-        .eq('id', compteVendeur.id);
-
-      if (updateError) throw new Error(updateError.message);
+      const { data, error: invokeError } = await supabase.functions.invoke('complete-training');
+      if (invokeError) throw new Error(invokeError.message || "Erreur lors de la finalisation.");
+      if (data?.error) throw new Error(data.error);
 
       // Update session storage too
       const session = JSON.parse(localStorage.getItem('vendeur_session') || '{}');

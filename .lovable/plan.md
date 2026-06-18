@@ -1,43 +1,48 @@
-# Vérification avant publication
+# Problème identifié
 
-Objectif : confirmer que les dernières modifications (affichage unique du badge « KYC : validé » + diagnostic erreur RLS sellers) n'ont rien cassé avant que tu publies.
+Quand un vendeur termine la formation et clique sur « Terminer et accéder au catalogue », le code (`VideoFormation.jsx`, ligne 141) fait :
 
-## Périmètre des derniers changements
-1. `src/pages/ProfilVendeur.jsx` — logique d'affichage du badge KYC validé une seule fois.
-2. `.lovable/plan.md` — fichier de notes, aucun impact runtime.
-3. Aucune modification de schéma DB, d'edge function, ni du flux d'inscription.
+```js
+supabase.from('sellers').update({
+  training_completed: true,
+  catalogue_debloque: true,
+  conditions_acceptees: true,
+  training_completed_at: ...
+}).eq('id', compteVendeur.id)
+```
 
-## Étapes de vérification
+Mais le trigger Postgres `prevent_seller_privileged_updates` bloque explicitement toute modification de ces 3 colonnes (`training_completed`, `catalogue_debloque`, `conditions_acceptees`) par un utilisateur non-admin → l'update échoue avec `Modification non autorisée : ces champs sont réservés à l'administration.`
 
-### 1. Audit statique du code modifié
-- Relire `ProfilVendeur.jsx` pour confirmer :
-  - pas d'import cassé,
-  - le flag « KYC vu » est bien lu/écrit (DB ou localStorage selon implémentation),
-  - aucune autre section du profil n'a été touchée par effet de bord.
+Résultat côté vendeur : la formation ne se valide jamais, le catalogue reste verrouillé, même après avoir coché les cases.
 
-### 2. Suite de tests automatisés
-- Lancer la suite Vitest existante (102 tests / 19 domaines).
-- Vérifier en particulier les domaines : profil vendeur, KYC, inscription, auth, notifications.
-- Tout échec = blocage publication.
+C'est une régression provoquée par le trigger de sécurité (ajouté pour empêcher l'escalade de privilèges), qui est trop strict pour le cas légitime de l'auto-complétion de formation par le vendeur.
 
-### 3. Health check du preview
-- `preview_control--get_preview_health` pour vérifier qu'il n'y a ni build error, ni runtime error, ni requêtes 4xx/5xx récentes.
+# Correction (chirurgicale, rien d'autre touché)
 
-### 4. Vérification visuelle ciblée
-- Ouvrir `/ProfilVendeur` sur le compte « Test moi » via `browser--view_preview` pour confirmer :
-  - le badge « KYC : validé » ne réapparaît pas,
-  - le reste du profil (avatar, infos, liens sociaux, code parrainage) s'affiche normalement.
+## 1. Nouvelle Edge Function `complete-training`
+Fichier : `supabase/functions/complete-training/index.ts`
 
-### 5. Scan de sécurité
-- `security--get_scan_results` — pré-requis publication. Si findings critiques → on les traite avant publish.
+- Auth via JWT du vendeur connecté (`Authorization: Bearer <token>`)
+- Récupère `user.id` depuis `supabase.auth.getUser()`
+- Avec le client **service_role** (bypass trigger), met à jour la ligne `sellers` correspondante :
+  - `training_completed = true`
+  - `catalogue_debloque = true`
+  - `conditions_acceptees = true`
+  - `training_completed_at = now()`
+- N'autorise QUE ces 4 champs, et seulement pour le seller lié à `user.id` → aucune surface d'escalade
+- Retourne `{ ok: true, seller: {...} }`
+- CORS standard, pas de `verify_jwt = false` (auth requise)
 
-### 6. Vérification métadonnées SEO/partage
-- Contrôler `index.html` : title, meta description, OG, Twitter, favicon — toujours alignés avec ZONITE Market.
+## 2. `src/pages/VideoFormation.jsx` — `handleTerminer`
+Remplacer l'`update` direct par un appel à l'edge function via `supabase.functions.invoke('complete-training')`. En cas de succès, garder le comportement existant (mise à jour `localStorage`, toast, redirection vers `CatalogueVendeur`). Le reste du fichier (timer, vidéo, checkboxes, UI) n'est pas modifié.
 
-## Livrable
-Un rapport synthétique :
-- ✅ / ❌ pour chacune des 6 étapes,
-- liste des éventuels problèmes trouvés,
-- recommandation finale : **publier** ou **corriger d'abord**.
+## Hors-périmètre (non touché)
+- Trigger `prevent_seller_privileged_updates` : conservé tel quel (sécurité).
+- RLS `sellers` : inchangée.
+- `CatalogueVendeur.jsx`, `FormationCours.jsx`, `WelcomeWizard.jsx`, `SellerStatusEngine.jsx` : inchangés.
+- Aucune autre logique vendeur/admin/KYC modifiée.
 
-Aucune modification de code dans ce plan — uniquement de la lecture, des tests et des vérifications.
+## Vérification
+- Test manuel : un vendeur termine la formation → catalogue accessible.
+- Lancer la suite Vitest (en particulier `audit-03-formation-catalogue.test.ts`) — aucun changement de comportement attendu côté logique d'accès.
+- `supabase--edge_function_logs complete-training` pour confirmer le succès.
