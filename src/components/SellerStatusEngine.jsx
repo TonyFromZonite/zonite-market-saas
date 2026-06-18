@@ -89,3 +89,28 @@ export const getRequiredModal = (sellerStatus, trainingCompleted = false) => {
 export const shouldShowTrainingModal = (sellerStatus, trainingCompleted = false) => {
   return false; // Disabled - we use catalogue lock screen instead
 };
+
+/**
+ * Source unique pour le badge de statut vendeur.
+ * Retourne null si le vendeur est validé (active_seller) → aucun badge à afficher.
+ * Sinon retourne { label, className } pour un rendu cohérent partout.
+ */
+export const getSellerStatusBadge = (sellerStatus) => {
+  if (sellerStatus === SELLER_STATUSES.ACTIVE_SELLER) return null;
+
+  const map = {
+    [SELLER_STATUSES.PENDING_VERIFICATION]: { label: "Non vérifié", className: "bg-slate-200 text-slate-700" },
+    [SELLER_STATUSES.KYC_REQUIRED]: { label: "En attente", className: "bg-yellow-500 text-white" },
+    [SELLER_STATUSES.KYC_PENDING]: { label: "KYC en attente", className: "bg-yellow-500 text-white" },
+    [SELLER_STATUSES.KYC_REJECTED]: { label: "KYC rejeté", className: "bg-red-500 text-white" },
+    [SELLER_STATUSES.KYC_APPROVED_TRAINING_REQUIRED]: { label: "Formation requise", className: "bg-blue-500 text-white" },
+  };
+  return map[sellerStatus] || { label: "En attente", className: "bg-yellow-500 text-white" };
+};
+
+/**
+ * Helper booléen pour savoir si le vendeur est validé.
+ */
+export const isActiveSeller = (sellerStatus) =>
+  sellerStatus === SELLER_STATUSES.ACTIVE_SELLER;
+
