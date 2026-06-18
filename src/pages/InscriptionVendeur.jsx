@@ -357,10 +357,16 @@ export default function InscriptionVendeur() {
         body: { seller_id: sellerId, email: form.email.toLowerCase().trim() },
       });
       if (error || data?.error) {
-        const retry = data?.retry_after || 0;
+        let msg = data?.error;
+        let retry = data?.retry_after || 0;
+        if (error) {
+          const extracted = await extractFunctionError(error, "Erreur lors de l'envoi du code");
+          msg = extracted.payload?.error || msg || extracted.message;
+          retry = extracted.payload?.retry_after || retry;
+        }
         if (retry > 0) setCooldownLeft(retry);
-        setErreur(data?.error || error?.message || "Erreur lors de l'envoi du code");
-        toast({ title: "⏳ Trop de tentatives", description: data?.error || "Patientez avant de réessayer", variant: "destructive" });
+        setErreur(msg || "Erreur lors de l'envoi du code");
+        toast({ title: "⏳ Trop de tentatives", description: msg || "Patientez avant de réessayer", variant: "destructive" });
         return;
       }
       const cd = data?.cooldown_seconds || 60;
