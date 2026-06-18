@@ -322,11 +322,14 @@ export default function ProfilVendeur() {
             <p className="font-bold text-lg">{displayName}</p>
             {compteVendeur?.username && <p className="text-slate-300 text-xs">@{compteVendeur.username}</p>}
             <div className="flex items-center gap-2 mt-1">
-              {compteVendeur?.seller_status !== "active_seller" && (
-                <Badge className="text-xs border-0 bg-yellow-500 text-white">
-                  En attente
-                </Badge>
-              )}
+              {(() => {
+                const statusBadge = getSellerStatusBadge(compteVendeur?.seller_status);
+                return statusBadge ? (
+                  <Badge className={`text-xs border-0 ${statusBadge.className}`}>
+                    {statusBadge.label}
+                  </Badge>
+                ) : null;
+              })()}
               <BadgeVendeur badge={compteVendeur?.badge_niveau || 'nouveau'} size="sm" />
             </div>
           </div>
