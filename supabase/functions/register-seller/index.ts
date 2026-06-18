@@ -153,7 +153,27 @@ Deno.serve(async (req) => {
 
       if (authErr || !created?.user) {
         const msg = authErr?.message || "Erreur de création du compte";
-        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("registered")) {
+        const lower = msg.toLowerCase();
+        // GoTrue throttle: "For security purposes, you can only request this after X seconds"
+        const isThrottle =
+          (authErr as any)?.status === 429 ||
+          lower.includes("for security purposes") ||
+          lower.includes("only request this after") ||
+          lower.includes("over_email_send_rate") ||
+          lower.includes("rate limit");
+        if (isThrottle) {
+          const m = msg.match(/(\d+)\s*second/i);
+          const retry = m ? parseInt(m[1], 10) : 60;
+          return jsonResponse(
+            {
+              error: `Trop de tentatives. Pour des raisons de sécurité, patientez ${retry}s avant de réessayer.`,
+              retry_after: retry,
+              throttled: true,
+            },
+            429,
+          );
+        }
+        if (lower.includes("already") || lower.includes("registered")) {
           return jsonResponse(
             { error: "Cet email a déjà un compte. Connectez-vous.", field: "email" },
             409,
@@ -161,6 +181,7 @@ Deno.serve(async (req) => {
         }
         return jsonResponse({ error: msg }, 400);
       }
+
       createdUserId = created.user.id;
 
       // 3b. Insert sellers
