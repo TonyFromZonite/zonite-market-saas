@@ -525,15 +525,21 @@ export default function EspaceVendeur() {
         </div>
       )}
 
-      {/* Banner profil incomplet */}
+      {/* Banner profil incomplet — cliquable */}
       {compteVendeur && (!compteVendeur.ville || !compteVendeur.quartier) && (
-        <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/ProfilVendeur')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/ProfilVendeur'); }}
+          className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 cursor-pointer hover:bg-red-100 transition-colors"
+        >
           <span className="text-2xl">⚠️</span>
           <div className="flex-1">
             <p className="text-red-700 font-semibold text-sm">Profil incomplet</p>
             <p className="text-red-500 text-xs">Ville et quartier requis pour les livraisons.</p>
           </div>
-          <button onClick={() => navigate('/ProfilVendeur')} className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">Compléter</button>
+          <span className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">Compléter →</span>
         </div>
       )}
 
@@ -567,7 +573,13 @@ export default function EspaceVendeur() {
 
         if (isRejected) {
           return (
-            <div className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/ResoumissionKYC')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/ResoumissionKYC'); }}
+              className="mx-4 mt-3 mb-2 p-3 bg-red-50 border border-red-200 rounded-xl cursor-pointer hover:bg-red-100 transition-colors"
+            >
               <div className="flex items-start gap-3 mb-2">
                 <span className="text-2xl">❌</span>
                 <div className="flex-1 min-w-0">
@@ -575,12 +587,9 @@ export default function EspaceVendeur() {
                   <p className="text-red-500 text-xs mt-0.5">{compteVendeur.kyc_raison_rejet || "Veuillez resoumettre vos documents."}</p>
                 </div>
               </div>
-              <button
-                onClick={() => navigate('/ResoumissionKYC')}
-                className="w-full px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-              >
+              <div className="w-full px-3 py-2.5 bg-red-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2">
                 🔄 Resoumettre mon KYC maintenant
-              </button>
+              </div>
             </div>
           );
         }
@@ -588,19 +597,18 @@ export default function EspaceVendeur() {
           return <BanniereKycPending variant="card" />;
         }
         if (isValidated) {
-          return (
-            <div className="mx-4 mt-3 mb-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
-              <span className="text-2xl">✅</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-emerald-700 font-bold text-sm">Statut KYC : Validé</p>
-                <p className="text-emerald-600 text-xs mt-0.5">Votre identité a été vérifiée avec succès.</p>
-              </div>
-            </div>
-          );
+          // KYC validé par l'admin → la rubrique disparaît définitivement
+          return null;
         }
         if (notSubmitted) {
           return (
-            <div className="mx-4 mt-3 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/ResoumissionKYC')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/ResoumissionKYC'); }}
+              className="mx-4 mt-3 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors"
+            >
               <div className="flex items-start gap-3 mb-2">
                 <span className="text-2xl">📋</span>
                 <div className="flex-1 min-w-0">
@@ -608,12 +616,9 @@ export default function EspaceVendeur() {
                   <p className="text-orange-600 text-xs mt-0.5">Soumettez vos documents pour activer toutes les fonctionnalités.</p>
                 </div>
               </div>
-              <button
-                onClick={() => navigate('/ResoumissionKYC')}
-                className="w-full px-3 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-              >
+              <div className="w-full px-3 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2">
                 📤 Soumettre mon KYC
-              </button>
+              </div>
             </div>
           );
         }
