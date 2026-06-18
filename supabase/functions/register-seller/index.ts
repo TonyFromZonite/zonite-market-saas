@@ -89,17 +89,27 @@ Deno.serve(async (req) => {
         })
         .eq("id", existingSeller.id);
 
-      const { error: mailErr } = await admin.functions.invoke(
-        "send-verification-email",
-        { body: { email, nom: existingSeller.full_name || full_name, code } },
-      );
-      if (mailErr) {
-        console.error("[register-seller] resume mail error:", mailErr);
-        return jsonResponse(
-          { error: "Impossible d'envoyer le code de vérification. Réessayez." },
-          502,
+      let resumeEmailSendFailed = false;
+      try {
+        const { error: mailErr } = await admin.functions.invoke(
+          "send-verification-email",
+          { body: { email, nom: existingSeller.full_name || full_name, code } },
         );
+        if (mailErr) {
+          console.error("[register-seller] resume mail error:", mailErr);
+          resumeEmailSendFailed = true;
+        }
+      } catch (e) {
+        console.error("[register-seller] resume mail exception:", e);
+        resumeEmailSendFailed = true;
       }
+
+      return jsonResponse({
+        resumed: true,
+        seller_id: existingSeller.id,
+        email,
+        email_send_failed: resumeEmailSendFailed,
+      });
 
       return jsonResponse({
         resumed: true,
