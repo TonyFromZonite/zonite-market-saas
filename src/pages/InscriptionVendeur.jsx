@@ -25,6 +25,38 @@ const getStrengthLabel = (s) => {
   if (s >= 3) return { label: "Fort ✓", color: "#22c55e" };
 };
 
+/**
+ * Extrait proprement le payload d'erreur d'un appel `supabase.functions.invoke`.
+ * Évite l'affichage du message générique "Edge Function returned a non-2xx status code".
+ */
+async function extractFunctionError(error, fallback = "Une erreur est survenue. Réessayez dans un instant.") {
+  const ctx = error?.context;
+  const status = ctx?.status;
+  let payload = null;
+  let rawText = "";
+  try {
+    if (ctx && typeof ctx.clone === "function") {
+      try { payload = await ctx.clone().json(); }
+      catch (_) {
+        try {
+          rawText = await ctx.clone().text();
+          if (rawText) { try { payload = JSON.parse(rawText); } catch (_) {} }
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+  const isGeneric = !error?.message || /non-2xx/i.test(error.message);
+  const message =
+    payload?.error ||
+    (rawText && !rawText.startsWith("{") ? rawText : null) ||
+    (isGeneric ? fallback : error?.message) ||
+    fallback;
+  if (typeof console !== "undefined") {
+    console.error("[edge-fn error]", { status, payload, rawText, message });
+  }
+  return { message, status, payload: payload || {} };
+}
+
 export default function InscriptionVendeur() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -178,9 +210,10 @@ export default function InscriptionVendeur() {
 
       // Edge function HTTP error (non-2xx) → `error` is set, body in error.context
       if (error) {
-        let payload = null;
-        try { payload = await error.context?.json?.(); } catch (_) {}
-        const message = payload?.error || error.message || "Erreur lors de l'inscription";
+        const { message, payload } = await extractFunctionError(
+          error,
+          "Une erreur est survenue lors de l'inscription. Réessayez dans un instant."
+        );
         if (payload?.throttled || payload?.retry_after > 0) {
           const retry = payload.retry_after || 60;
           setCooldownLeft(retry);
@@ -324,10 +357,16 @@ export default function InscriptionVendeur() {
         body: { seller_id: sellerId, email: form.email.toLowerCase().trim() },
       });
       if (error || data?.error) {
-        const retry = data?.retry_after || 0;
+        let msg = data?.error;
+        let retry = data?.retry_after || 0;
+        if (error) {
+          const extracted = await extractFunctionError(error, "Erreur lors de l'envoi du code");
+          msg = extracted.payload?.error || msg || extracted.message;
+          retry = extracted.payload?.retry_after || retry;
+        }
         if (retry > 0) setCooldownLeft(retry);
-        setErreur(data?.error || error?.message || "Erreur lors de l'envoi du code");
-        toast({ title: "⏳ Trop de tentatives", description: data?.error || "Patientez avant de réessayer", variant: "destructive" });
+        setErreur(msg || "Erreur lors de l'envoi du code");
+        toast({ title: "⏳ Trop de tentatives", description: msg || "Patientez avant de réessayer", variant: "destructive" });
         return;
       }
       const cd = data?.cooldown_seconds || 60;
