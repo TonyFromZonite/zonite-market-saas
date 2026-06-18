@@ -119,11 +119,31 @@ Deno.serve(async (req) => {
     if (updErr) return json({ error: updErr.message }, 500);
 
     // Send email
-    const { error: mailErr } = await admin.functions.invoke("send-verification-email", {
-      body: { email: seller.email, nom: seller.full_name, code },
-    });
-    if (mailErr) {
-      return json({ error: "Échec d'envoi de l'email", details: mailErr.message }, 500);
+    let mailSendFailed = false;
+    let mailErrorMsg: string | null = null;
+    try {
+      const { error: mailErr } = await admin.functions.invoke("send-verification-email", {
+        body: { email: seller.email, nom: seller.full_name, code },
+      });
+      if (mailErr) {
+        mailSendFailed = true;
+        mailErrorMsg = mailErr.message || "send-verification-email error";
+        console.error("[resend-verification-code] mail error:", mailErr);
+      }
+    } catch (e) {
+      mailSendFailed = true;
+      mailErrorMsg = (e as Error)?.message || "send-verification-email exception";
+      console.error("[resend-verification-code] mail exception:", e);
+    }
+
+    if (mailSendFailed) {
+      return json(
+        {
+          error: "Échec d'envoi de l'email. Réessayez dans un instant ou vérifiez vos spams.",
+          details: mailErrorMsg,
+        },
+        502,
+      );
     }
 
     return json({
