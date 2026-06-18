@@ -1,41 +1,48 @@
-## Vérification : affichage « KYC : Validé » sur le profil vendeur
 
-J'ai relu `src/pages/ProfilVendeur.jsx` (lignes 597-627), la section « Statut du compte ».
+# Diagnostic — erreur RLS sur `sellers` au moment du « Créer mon compte »
 
-### Comportement actuel (déjà conforme à la demande)
+## Constat technique
 
-La ligne KYC du bloc « Statut du compte » est construite ainsi :
+1. La page `src/pages/InscriptionVendeur.jsx` (lignes 168-177) appelle UNIQUEMENT l'Edge Function `register-seller` pour créer le compte. Cette fonction utilise la clé `SUPABASE_SERVICE_ROLE_KEY` côté serveur, ce qui **contourne complètement la RLS**. Elle ne peut donc PAS produire une erreur « new row violates row-level security policy ».
+2. Les politiques actuelles sur `public.sellers` (vérifiées en base) :
+   - `INSERT` : `authenticated`, `WITH CHECK (auth.uid() = user_id)`
+   - `SELECT/UPDATE` propriétaire + admin.
+   Aucune politique anonyme. Seule une tentative d'INSERT client-side (sans Edge Function) déclencherait ce message.
+3. Recherche dans tout le code source : aucun `supabase.from("sellers").insert(...)` n'existe côté client. Tous les inserts passent par l'Edge Function.
+4. Logs Auth récents : les vraies inscriptions (11:13, 11:17…) sont passées **avec succès** via `/admin/users` (= service_role appelé par l'edge function `register-seller`). Aucun rejet RLS dans les logs serveur.
 
-```jsx
-...(compteVendeur?.statut_kyc === "valide"
-  ? []                                  // → aucune ligne KYC
-  : [{ label: "KYC",
-       val: statut_kyc === "rejete" ? "✗ Rejeté" : "En attente",
-       ok: false }])
-```
+## Conclusion
 
-Donc :
-- `statut_kyc = en_attente` → ligne « KYC — En attente » (jaune)
-- `statut_kyc = rejete` → ligne « KYC — ✗ Rejeté » (rouge) + motif
-- `statut_kyc = valide` → **aucune ligne KYC affichée**, définitivement
+L'erreur que voit le vendeur provient quasi-certainement d'un **bundle JavaScript obsolète** servi par le cache navigateur / service-worker PWA sur `zonite.org`. Cette ancienne version exécute encore un `supabase.from("sellers").insert(...)` direct depuis le navigateur, ce qui est aujourd'hui bloqué par la politique INSERT (`auth.uid() = user_id`) puisque le vendeur n'est pas encore connecté à ce moment-là.
 
-La confirmation reste visible côté vendeur uniquement via la notification « KYC Validé ! » envoyée par `GestionKYC.jsx` au moment de la validation.
+## Plan d'action
 
-### Pourquoi vous voyez peut-être encore « KYC : Validé » sur le compte « Test moi »
+### Étape 1 — Confirmer la cause (sans toucher au code)
+Demander au vendeur :
+- Capture d'écran de l'erreur (texte exact + URL).
+- Faire un **rechargement forcé** : `Ctrl+Shift+R` (Chrome desktop) / fermer-rouvrir l'onglet (Safari iOS) / désinstaller-réinstaller la PWA si applicable.
+- Réessayer l'inscription. Si l'erreur disparaît → cache confirmé.
 
-Trois causes possibles, aucune liée au code du profil :
+### Étape 2 — Vérifier côté serveur en parallèle
+- Consulter `supabase auth logs` au moment précis du test : si on voit un `POST /admin/users` 200 ou 422, c'est bien l'Edge Function. Si on voit un `POST /rest/v1/sellers` 401/403, c'est confirmé : ancien bundle.
+- Vérifier que `register-seller` est bien déployée et active (déjà confirmé dans les logs : booted OK).
 
-1. **Bundle en cache** sur l'appareil : l'ancienne version du `ProfilVendeur.jsx` est toujours servie. Forcer un rechargement (vider le cache PWA / pull-to-refresh / fermer-rouvrir l'app) résout l'affichage.
-2. **Confusion avec un autre bloc** : la barre « Progression du profil » (`ProfileProgress.jsx`) liste bien une étape « KYC validé ✅ » — c'est une checklist de complétion, pas le statut KYC, et c'est voulu.
-3. **`statut_kyc` du compte Test moi ≠ `"valide"`** en base (ex : `"en_attente"`) — dans ce cas la ligne doit bien s'afficher.
+### Étape 3 — Renforcer le service worker (si cache confirmé)
+Forcer l'invalidation du cache pour tous les vendeurs :
+- Bumper la version du service worker pour déclencher un `skipWaiting()` + `clients.claim()` automatique au prochain chargement.
+- Aucune modification du flux d'inscription nécessaire (il est déjà correct).
 
-### Plan proposé
+### Étape 4 — Filet de sécurité (optionnel)
+Si l'on souhaite que MÊME un vieux bundle ne casse pas, on peut intercepter les erreurs d'inscription dans `InscriptionVendeur.jsx` et afficher un message clair invitant à recharger la page. Aucun changement de RLS n'est souhaitable : la politique actuelle est correcte du point de vue sécurité.
 
-Aucune modification de code n'est nécessaire : le comportement demandé est déjà implémenté correctement.
+## À NE PAS faire
 
-Action proposée si vous validez :
-1. Vérifier en base la valeur exacte de `sellers.statut_kyc` pour le compte « Test moi » (via une requête lecture seule sur Lovable Cloud).
-2. Si la valeur est bien `"valide"` mais l'UI montre encore la ligne → c'est un cache navigateur/PWA ; je documenterai la procédure de purge.
-3. Si vous me confirmez que c'est en fait la ligne « KYC validé » de la **barre de progression** qui vous gêne, je peux la masquer une fois atteinte (à confirmer, car cela casse la jauge de complétion à 100 %).
+- Ne pas assouplir la politique INSERT sur `sellers` (ouvrirait une faille : n'importe qui pourrait créer des vendeurs).
+- Ne pas dupliquer la logique d'inscription côté client.
 
-Dites-moi laquelle de ces pistes vous voulez que je creuse.
+## Question ouverte
+
+Souhaitez-vous que je passe en mode build pour :
+- **(A)** seulement bumper la version du service worker afin de forcer la mise à jour du cache chez tous les utilisateurs, **ou**
+- **(B)** également ajouter un message d'erreur explicite (« Rechargez la page ») si l'ancien chemin client est déclenché, **ou**
+- **(C)** simplement attendre la capture d'écran du vendeur avant toute action ?
