@@ -216,7 +216,16 @@ export default function InscriptionVendeur() {
       }
 
 
-      if (data?.resumed) {
+      if (data?.email_send_failed) {
+        setErreur(
+          "Votre compte est créé, mais l'email contenant le code n'a pas pu partir. " +
+          "Cliquez sur « Renvoyer le code » ci-dessous. Vérifiez aussi vos spams."
+        );
+        toast({
+          title: "Compte créé",
+          description: "Cliquez sur « Renvoyer le code » pour recevoir votre code de vérification.",
+        });
+      } else if (data?.resumed) {
         setErreur("Un nouveau code de vérification vient d'être envoyé à votre email.");
       }
 
