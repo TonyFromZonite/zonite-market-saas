@@ -8,10 +8,9 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastMock }),
 }));
 
-const SELLER_ID = "seller-redirect-fail";
-const CODE = "123456";
-
 vi.mock("@/integrations/supabase/client", () => {
+  const SELLER_ID = "seller-redirect-fail";
+  const CODE = "123456";
   const sellerRow = {
     id: SELLER_ID,
     email: "vendeur@test.com",
