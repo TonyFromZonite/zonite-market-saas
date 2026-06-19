@@ -270,35 +270,38 @@ export default function InscriptionVendeur() {
     setRedirectFailed(false);
 
     try {
-      const { data: seller, error } = await supabase
-        .from("sellers")
-        .select("id, email_verification_code, email_verification_expires_at, email")
-        .eq("id", sellerId)
-        .single();
+      // Vérification + activation côté serveur (service role) pour
+      // contourner le trigger qui empêche un vendeur de modifier
+      // email_verified / seller_status lui-même.
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+        "verify-email-code",
+        { body: { seller_id: sellerId, code: verificationCode } }
+      );
 
-      if (error || !seller) { setErreur("Compte introuvable"); return; }
-      if (seller.email_verification_code !== verificationCode) { setErreur("Code invalide"); return; }
-      if (seller.email_verification_expires_at && new Date(seller.email_verification_expires_at) < new Date()) {
-        setErreur("Code expiré. Demandez un nouveau code."); return;
+      if (verifyError) {
+        const { message } = await extractFunctionError(verifyError, "Code invalide");
+        setErreur(message);
+        return;
+      }
+      if (verifyData?.error) {
+        setErreur(verifyData.error);
+        return;
+      }
+      if (!verifyData?.success) {
+        setErreur("Échec de la vérification. Réessayez.");
+        return;
       }
 
-      // Activate immediately
-      const updateData = {
-        email_verified: true,
-        email_verification_code: null,
-        seller_status: "active_seller",
-      };
+      const seller = verifyData.seller || {};
 
-      await supabase.from("sellers").update(updateData).eq("id", seller.id);
-
-      // Create parrainages record if referral
+      // Create parrainages record if referral (best effort)
       const finalRefCode = refCode ? refCode.toUpperCase().trim() : (manualRef ? manualRef.toUpperCase().trim() : null);
       const finalRefData = refCode ? refValid : manualRefValid;
-      if (finalRefCode && finalRefData) {
+      if (finalRefCode && finalRefData && !verifyData.already_verified) {
         try {
           await supabase.from("parrainages").insert({
             parrain_id: finalRefData.id,
-            filleul_id: seller.id,
+            filleul_id: seller.id || sellerId,
             code_parrainage: finalRefCode,
             actif: true,
             livraisons_comptees: 0,
@@ -325,15 +328,28 @@ export default function InscriptionVendeur() {
         localStorage.removeItem("zonite_bio_cred_id");
         localStorage.removeItem("zonite_bio_prompt_dismissed");
         localStorage.setItem("vendeur_session", JSON.stringify({
-          id: seller.id,
-          email: seller.email,
-          nom_complet: form.full_name,
+          id: seller.id || sellerId,
+          user_id: seller.user_id || null,
+          email: seller.email || form.email,
+          nom_complet: seller.full_name || form.full_name,
+          full_name: seller.full_name || form.full_name,
           role: "vendeur",
-          seller_status: "active_seller",
-          wizard_completed: false,
-          catalogue_debloque: false,
-          training_completed: false,
+          seller_status: seller.seller_status || "active_seller",
+          statut_kyc: seller.statut_kyc || null,
+          telephone: seller.telephone || null,
+          catalogue_debloque: seller.catalogue_debloque ?? false,
+          training_completed: seller.training_completed ?? false,
+          solde_commission: seller.solde_commission ?? 0,
+          wizard_completed: seller.wizard_completed ?? false,
         }));
+
+        // Notifier le guard d'accès pour qu'il revalide immédiatement
+        try {
+          window.dispatchEvent(new CustomEvent("zonite:email-verified", {
+            detail: { sellerId: seller.id || sellerId, userId: seller.user_id || null },
+          }));
+        } catch (_) {}
+
         window.location.href = "/EspaceVendeur";
       } catch (redirectError) {
         setRedirectFailed(true);
@@ -353,6 +369,7 @@ export default function InscriptionVendeur() {
     }
 
   };
+
 
   const [cooldownLeft, setCooldownLeft] = useState(0);
 

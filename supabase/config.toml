@@ -21,5 +21,7 @@ project_id = "jpopxydfttoseckcakqp"
     verify_jwt = false
   [functions.resend-verification-code]
     verify_jwt = false
+  [functions.verify-email-code]
+    verify_jwt = false
   [functions.serve-product-image]
     verify_jwt = false
