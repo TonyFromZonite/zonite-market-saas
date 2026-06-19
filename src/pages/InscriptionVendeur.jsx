@@ -314,31 +314,43 @@ export default function InscriptionVendeur() {
       }
 
       // Set session & go to EspaceVendeur
-      localStorage.removeItem("admin_session");
-      localStorage.removeItem("sous_admin");
-      // Purge tout drapeau biométrique laissé par un précédent utilisateur
-      // sur ce navigateur, sinon l'AppLockScreen verrouille le nouveau vendeur.
-      localStorage.removeItem("bio_enabled");
-      localStorage.removeItem("zonite_bio_enrolled");
-      localStorage.removeItem("zonite_bio_cred_id");
-      localStorage.removeItem("zonite_bio_prompt_dismissed");
-      localStorage.setItem("vendeur_session", JSON.stringify({
-        id: seller.id,
-        email: seller.email,
-        nom_complet: form.full_name,
-        role: "vendeur",
-        seller_status: "active_seller",
-        wizard_completed: false,
-        catalogue_debloque: false,
-        training_completed: false,
-      }));
-      window.location.href = "/EspaceVendeur";
+      try {
+        localStorage.removeItem("admin_session");
+        localStorage.removeItem("sous_admin");
+        // Purge tout drapeau biométrique laissé par un précédent utilisateur
+        // sur ce navigateur, sinon l'AppLockScreen verrouille le nouveau vendeur.
+        localStorage.removeItem("bio_enabled");
+        localStorage.removeItem("zonite_bio_enrolled");
+        localStorage.removeItem("zonite_bio_cred_id");
+        localStorage.removeItem("zonite_bio_prompt_dismissed");
+        localStorage.setItem("vendeur_session", JSON.stringify({
+          id: seller.id,
+          email: seller.email,
+          nom_complet: form.full_name,
+          role: "vendeur",
+          seller_status: "active_seller",
+          wizard_completed: false,
+          catalogue_debloque: false,
+          training_completed: false,
+        }));
+        window.location.href = "/EspaceVendeur";
+      } catch (redirectError) {
+        setRedirectFailed(true);
+        setErreur("La redirection automatique vers votre espace vendeur a échoué. Cliquez sur le bouton ci-dessous pour continuer.");
+        toast({
+          title: "Redirection impossible",
+          description: "Votre compte est bien créé. Utilisez le bouton ci-dessous pour accéder à votre espace.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de la vérification");
     } finally {
       setLoading(false);
     }
+
   };
 
   const [cooldownLeft, setCooldownLeft] = useState(0);
