@@ -11,12 +11,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-const toastMock = vi.fn();
+const { toastMock, invokeMock } = vi.hoisted(() => ({
+  toastMock: vi.fn(),
+  invokeMock: vi.fn(),
+}));
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastMock }),
 }));
 
-const invokeMock = vi.fn();
+
 
 vi.mock("@/integrations/supabase/client", () => {
   const SID = "seller-otp-bio";
