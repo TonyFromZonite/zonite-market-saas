@@ -57,6 +57,21 @@ export default function InscriptionVendeur() {
   const [sellerId, setSellerId] = useState(null);
   const [reenvoyerDisable, setReenvoyerDisable] = useState(false);
   const [erreur, setErreur] = useState("");
+  const [redirectFailed, setRedirectFailed] = useState(false);
+
+  const continuerManuellement = () => {
+    try {
+      window.location.href = "/EspaceVendeur";
+    } catch (e) {
+      toast({
+        title: "Redirection impossible",
+        description: "Veuillez rafraîchir la page ou contacter le support si le problème persiste.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
 
   const usernameTimer = useRef(null);
   const emailTimer = useRef(null);
@@ -252,6 +267,7 @@ export default function InscriptionVendeur() {
     }
     setLoading(true);
     setErreur("");
+    setRedirectFailed(false);
 
     try {
       const { data: seller, error } = await supabase
@@ -299,31 +315,43 @@ export default function InscriptionVendeur() {
       }
 
       // Set session & go to EspaceVendeur
-      localStorage.removeItem("admin_session");
-      localStorage.removeItem("sous_admin");
-      // Purge tout drapeau biométrique laissé par un précédent utilisateur
-      // sur ce navigateur, sinon l'AppLockScreen verrouille le nouveau vendeur.
-      localStorage.removeItem("bio_enabled");
-      localStorage.removeItem("zonite_bio_enrolled");
-      localStorage.removeItem("zonite_bio_cred_id");
-      localStorage.removeItem("zonite_bio_prompt_dismissed");
-      localStorage.setItem("vendeur_session", JSON.stringify({
-        id: seller.id,
-        email: seller.email,
-        nom_complet: form.full_name,
-        role: "vendeur",
-        seller_status: "active_seller",
-        wizard_completed: false,
-        catalogue_debloque: false,
-        training_completed: false,
-      }));
-      window.location.href = "/EspaceVendeur";
+      try {
+        localStorage.removeItem("admin_session");
+        localStorage.removeItem("sous_admin");
+        // Purge tout drapeau biométrique laissé par un précédent utilisateur
+        // sur ce navigateur, sinon l'AppLockScreen verrouille le nouveau vendeur.
+        localStorage.removeItem("bio_enabled");
+        localStorage.removeItem("zonite_bio_enrolled");
+        localStorage.removeItem("zonite_bio_cred_id");
+        localStorage.removeItem("zonite_bio_prompt_dismissed");
+        localStorage.setItem("vendeur_session", JSON.stringify({
+          id: seller.id,
+          email: seller.email,
+          nom_complet: form.full_name,
+          role: "vendeur",
+          seller_status: "active_seller",
+          wizard_completed: false,
+          catalogue_debloque: false,
+          training_completed: false,
+        }));
+        window.location.href = "/EspaceVendeur";
+      } catch (redirectError) {
+        setRedirectFailed(true);
+        setErreur("La redirection automatique vers votre espace vendeur a échoué. Cliquez sur le bouton ci-dessous pour continuer.");
+        toast({
+          title: "Redirection impossible",
+          description: "Votre compte est bien créé. Utilisez le bouton ci-dessous pour accéder à votre espace.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
 
     } catch (error) {
       setErreur(error.message || "Erreur lors de la vérification");
     } finally {
       setLoading(false);
     }
+
   };
 
   const [cooldownLeft, setCooldownLeft] = useState(0);
@@ -399,6 +427,20 @@ export default function InscriptionVendeur() {
 
         {erreur && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-400/30 rounded-xl text-sm text-red-300">{erreur}</div>
+        )}
+
+        {redirectFailed && (
+          <div className="mb-4 p-4 bg-amber-500/15 border border-amber-400/30 rounded-xl text-sm">
+            <p className="text-amber-200 mb-3">
+              Votre compte est activé, mais la redirection automatique a échoué.
+            </p>
+            <Button
+              onClick={continuerManuellement}
+              className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl"
+            >
+              Continuer vers mon espace vendeur →
+            </Button>
+          </div>
         )}
 
         {/* STEP 1: Registration form */}
@@ -600,7 +642,7 @@ export default function InscriptionVendeur() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setEtape(1); setErreur(""); }}
+              <Button variant="outline" onClick={() => { setEtape(1); setErreur(""); setRedirectFailed(false); }}
                 className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-11">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
