@@ -642,7 +642,7 @@ export default function InscriptionVendeur() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setEtape(1); setErreur(""); }}
+              <Button variant="outline" onClick={() => { setEtape(1); setErreur(""); setRedirectFailed(false); }}
                 className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-11">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
