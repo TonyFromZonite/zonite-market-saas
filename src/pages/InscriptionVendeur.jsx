@@ -301,6 +301,12 @@ export default function InscriptionVendeur() {
       // Set session & go to EspaceVendeur
       localStorage.removeItem("admin_session");
       localStorage.removeItem("sous_admin");
+      // Purge tout drapeau biométrique laissé par un précédent utilisateur
+      // sur ce navigateur, sinon l'AppLockScreen verrouille le nouveau vendeur.
+      localStorage.removeItem("bio_enabled");
+      localStorage.removeItem("zonite_bio_enrolled");
+      localStorage.removeItem("zonite_bio_cred_id");
+      localStorage.removeItem("zonite_bio_prompt_dismissed");
       localStorage.setItem("vendeur_session", JSON.stringify({
         id: seller.id,
         email: seller.email,
