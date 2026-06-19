@@ -59,6 +59,19 @@ export default function InscriptionVendeur() {
   const [erreur, setErreur] = useState("");
   const [redirectFailed, setRedirectFailed] = useState(false);
 
+  const continuerManuellement = () => {
+    try {
+      window.location.href = "/EspaceVendeur";
+    } catch (e) {
+      toast({
+        title: "Redirection impossible",
+        description: "Veuillez rafraîchir la page ou contacter le support si le problème persiste.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
 
   const usernameTimer = useRef(null);
   const emailTimer = useRef(null);
