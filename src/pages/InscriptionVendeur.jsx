@@ -57,6 +57,8 @@ export default function InscriptionVendeur() {
   const [sellerId, setSellerId] = useState(null);
   const [reenvoyerDisable, setReenvoyerDisable] = useState(false);
   const [erreur, setErreur] = useState("");
+  const [redirectFailed, setRedirectFailed] = useState(false);
+
 
   const usernameTimer = useRef(null);
   const emailTimer = useRef(null);
