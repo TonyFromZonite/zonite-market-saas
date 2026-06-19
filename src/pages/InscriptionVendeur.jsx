@@ -267,6 +267,7 @@ export default function InscriptionVendeur() {
     }
     setLoading(true);
     setErreur("");
+    setRedirectFailed(false);
 
     try {
       const { data: seller, error } = await supabase
