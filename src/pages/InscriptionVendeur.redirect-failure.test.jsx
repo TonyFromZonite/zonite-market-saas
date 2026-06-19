@@ -53,10 +53,21 @@ vi.mock("@/integrations/supabase/client", () => {
       auth: {
         signInWithPassword: vi.fn(() => Promise.resolve({ data: {}, error: null })),
       },
-      functions: { invoke: vi.fn(() => Promise.resolve({ data: {}, error: null })) },
+      functions: {
+        invoke: vi.fn((name) => {
+          if (name === "verify-email-code") {
+            return Promise.resolve({
+              data: { success: true, seller: { ...sellerRow, seller_status: "active_seller" } },
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: {}, error: null });
+        }),
+      },
     },
   };
 });
+
 
 import InscriptionVendeur from "./InscriptionVendeur";
 
