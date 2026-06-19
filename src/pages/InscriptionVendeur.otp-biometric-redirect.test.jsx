@@ -16,14 +16,12 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastMock }),
 }));
 
-const SELLER_ID = "seller-otp-bio";
-const CODE = "654321";
-
 const invokeMock = vi.fn();
 
 vi.mock("@/integrations/supabase/client", () => {
+  const SID = "seller-otp-bio";
   const sellerRow = {
-    id: SELLER_ID,
+    id: SID,
     email: "vendeur-bio@test.com",
     full_name: "Vendeur Bio",
     user_id: "user-bio-uuid",
@@ -55,6 +53,11 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 import InscriptionVendeur from "./InscriptionVendeur";
+
+const SELLER_ID = "seller-otp-bio";
+const CODE = "654321";
+
+
 
 const originalLocation = window.location;
 
