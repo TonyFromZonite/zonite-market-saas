@@ -428,6 +428,20 @@ export default function InscriptionVendeur() {
           <div className="mb-4 p-3 bg-red-500/20 border border-red-400/30 rounded-xl text-sm text-red-300">{erreur}</div>
         )}
 
+        {redirectFailed && (
+          <div className="mb-4 p-4 bg-amber-500/15 border border-amber-400/30 rounded-xl text-sm">
+            <p className="text-amber-200 mb-3">
+              Votre compte est activé, mais la redirection automatique a échoué.
+            </p>
+            <Button
+              onClick={continuerManuellement}
+              className="w-full h-11 bg-[#F5C518] hover:bg-[#e0b010] text-[#1a1f5e] font-black rounded-xl"
+            >
+              Continuer vers mon espace vendeur →
+            </Button>
+          </div>
+        )}
+
         {/* STEP 1: Registration form */}
         {etape === 1 && (
           <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 space-y-4">
