@@ -60,6 +60,9 @@ vi.mock("@/integrations/supabase/client", () => {
 
 import InscriptionVendeur from "./InscriptionVendeur";
 
+const SELLER_ID = "seller-redirect-fail";
+const CODE = "123456";
+
 const originalLocation = window.location;
 
 describe("InscriptionVendeur — gestion d'échec de redirection après code email", () => {
