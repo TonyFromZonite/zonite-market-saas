@@ -3,15 +3,16 @@
  *
  * Le bouton n'est visible que si :
  *  - Le compte a passé la vérification email (seller_status !== "pending_verification").
- *  - Le KYC du vendeur a été validé (`statut_kyc === "valide"`).
  *  - Le vendeur n'est pas l'admin principal (Tonykodjeu@gmail.com).
+ *
+ * Le statut KYC n'est PAS requis : un nouveau vendeur doit pouvoir supprimer
+ * son compte conformément au RGPD, même si son KYC n'a pas encore été validé.
  *
  * La protection admin est aussi appliquée côté serveur (Edge Function
  * `delete-seller-complete`) — défense en profondeur.
  */
 
 export const PRIMARY_ADMIN_EMAIL = "tonykodjeu@gmail.com";
-export const REQUIRED_KYC_STATUS = "valide";
 export const SELF_DELETE_FORBIDDEN_STATUSES = ["pending_verification"];
 
 export function isPrimaryAdminEmail(email) {
@@ -24,6 +25,5 @@ export function canSelfDeleteAccount(seller) {
   if (isPrimaryAdminEmail(seller.email)) return false;
   const status = seller.seller_status;
   if (!status || SELF_DELETE_FORBIDDEN_STATUSES.includes(status)) return false;
-  if (seller.statut_kyc !== REQUIRED_KYC_STATUS) return false;
   return true;
 }
