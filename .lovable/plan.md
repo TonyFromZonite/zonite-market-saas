@@ -1,13 +1,22 @@
-Le lien Webmail LWS qui ne s’ouvre pas n’est probablement pas lié à l’app ZONITE ni au domaine d’envoi `notify.zonite.org` : celui-ci est bien vérifié. Le souci est plutôt côté LWS / DNS mail du sous-domaine utilisé par leur bouton.
+# Réactiver la suppression de compte pour les nouveaux vendeurs
 
-Plan d’action recommandé :
+## Problème constaté
+Dans `src/pages/ProfilVendeur.jsx`, la zone « Suppression définitive du compte » n'est affichée que si `canSelfDeleteAccount(compteVendeur)` renvoie `true`.
 
-1. Depuis LWS, faire clic droit sur le bouton ou lien Webmail puis copier l’adresse du lien.
-2. Me coller ici l’URL exacte copiée, sans mot de passe ni information sensible.
-3. Je vérifierai si le lien pointe vers `mail.zonite.org`, `webmail.zonite.org`, une URL LWS/Roundcube, ou une URL cassée.
-4. Selon le cas :
-   - si c’est `mail.zonite.org` ou `webmail.zonite.org`, il faudra corriger les DNS chez le gestionnaire du domaine ;
-   - si c’est une URL LWS, il faudra plutôt tester blocage navigateur/session/pop-up ou ouvrir en navigation privée ;
-   - si le lien est vide ou invalide, il faudra régénérer/réinitialiser l’accès webmail côté LWS.
+Or, dans `src/lib/accountDeletion.js`, cette fonction exige actuellement :
+- `seller_status` différent de `pending_verification` (email vérifié) ✅ raisonnable
+- `statut_kyc === "valide"` ❌ bloque tous les nouveaux comptes
+- email différent de l'admin principal ✅ à conserver
 
-À faire maintenant : copie-colle uniquement l’adresse du lien Webmail que LWS ouvre quand tu cliques dessus.
+Conséquence : un vendeur fraîchement inscrit (KYC `non_soumis`, `en_attente` ou `rejete`) ne voit plus le bouton et ne peut plus supprimer son compte lui-même.
+
+## Correctif (1 seul fichier modifié)
+**`src/lib/accountDeletion.js`** — retirer la contrainte sur `statut_kyc` :
+- Supprimer la constante `REQUIRED_KYC_STATUS` (et son export).
+- Retirer la ligne `if (seller.statut_kyc !== REQUIRED_KYC_STATUS) return false;` dans `canSelfDeleteAccount`.
+- Mettre à jour le commentaire d'en-tête : la suppression reste interdite uniquement pour l'admin principal et tant que l'email n'est pas vérifié (`seller_status === "pending_verification"`).
+
+Aucune autre logique métier, UI ou Edge Function n'est touchée. La protection serveur (Edge Function `delete-seller-complete`) et la protection de l'admin principal restent inchangées.
+
+## Vérification
+- Lancer la suite de tests concernée : `audit-24-suppression-compte-vendeur` + `e2e/suppression-compte-vendeur.spec.ts` pour confirmer qu'aucune autre règle ne casse. Ajuster uniquement les assertions liées à `statut_kyc` si elles existaient.
