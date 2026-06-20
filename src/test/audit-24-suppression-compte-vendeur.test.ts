@@ -1,15 +1,15 @@
 /**
  * AUDIT 24 — Suppression définitive du compte vendeur (RGPD)
  *
- * Le bouton « Supprimer mon compte » est uniquement actif après validation KYC
- * et ne doit jamais permettre la suppression de l'admin principal.
+ * Le bouton « Supprimer mon compte » est disponible dès que l'email du vendeur
+ * a été vérifié (peu importe l'état du KYC, conformément au RGPD) et ne doit
+ * jamais permettre la suppression de l'admin principal.
  */
 import { describe, it, expect } from "vitest";
 import {
   canSelfDeleteAccount,
   isPrimaryAdminEmail,
   PRIMARY_ADMIN_EMAIL,
-  REQUIRED_KYC_STATUS,
 } from "@/lib/accountDeletion";
 
 const baseSeller = (overrides: Record<string, any> = {}) => ({
@@ -31,18 +31,13 @@ describe("Audit 24 — Suppression compte vendeur", () => {
     expect(canSelfDeleteAccount(undefined)).toBe(false);
   });
 
-  it("24.3 Bouton caché tant que le KYC n'est pas validé", () => {
-    for (const statut of [null, undefined, "non_soumis", "en_attente", "rejete"]) {
-      expect(canSelfDeleteAccount(baseSeller({ statut_kyc: statut }))).toBe(false);
+  it("24.3 Bouton visible même si le KYC n'est pas encore validé (RGPD)", () => {
+    for (const statut of [null, undefined, "non_soumis", "en_attente", "rejete", "valide"]) {
+      expect(canSelfDeleteAccount(baseSeller({ statut_kyc: statut }))).toBe(true);
     }
   });
 
-  it("24.4 Bouton visible uniquement quand statut_kyc === 'valide'", () => {
-    expect(canSelfDeleteAccount(baseSeller({ statut_kyc: "valide" }))).toBe(true);
-    expect(REQUIRED_KYC_STATUS).toBe("valide");
-  });
-
-  it("24.5 L'admin principal ne peut JAMAIS être supprimé", () => {
+  it("24.4 L'admin principal ne peut JAMAIS être supprimé", () => {
     expect(isPrimaryAdminEmail("Tonykodjeu@gmail.com")).toBe(true);
     expect(isPrimaryAdminEmail("tonykodjeu@gmail.com")).toBe(true);
     expect(isPrimaryAdminEmail("  TONYKODJEU@GMAIL.COM  ")).toBe(true);
@@ -51,7 +46,7 @@ describe("Audit 24 — Suppression compte vendeur", () => {
     ).toBe(false);
   });
 
-  it("24.6 Constantes de sécurité non altérées", () => {
+  it("24.5 Constantes de sécurité non altérées", () => {
     expect(PRIMARY_ADMIN_EMAIL).toBe("tonykodjeu@gmail.com");
   });
 });
