@@ -1,21 +1,3 @@
-## Problème
-
-Le trigger `prevent_seller_privileged_updates` bloque **toute** modification de `statut_kyc` par un vendeur non-admin. Or, lors de la soumission/resoumission KYC (`ResoumissionKYC.jsx`), le vendeur doit lui-même passer `statut_kyc` à `en_attente`. D'où l'erreur « Modification non autorisée : ces champs sont réservés à l'administration. »
-
-## Correctif (migration SQL uniquement)
-
-Modifier la fonction `public.prevent_seller_privileged_updates()` pour **autoriser une seule transition self-service** sur `statut_kyc` :
-
-- Le vendeur peut passer son propre `statut_kyc` de `NULL` / `non_soumis` / `rejete` → `en_attente`.
-- Toute autre transition (`en_attente → valide`, `→ rejete`, etc.) reste réservée à l'admin / service_role.
-- Tous les autres champs privilégiés (`role`, `seller_status`, soldes, `email_verified`, …) restent bloqués comme avant.
-- Le trigger `check_kyc_documents` continue de valider que les pièces sont bien uploadées avant d'autoriser le passage à `en_attente`.
-
-Aucune modification frontend, aucun changement de RLS, aucun autre comportement touché.
-
-### SQL prévu
-
-```sql
 CREATE OR REPLACE FUNCTION public.prevent_seller_privileged_updates()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
@@ -23,19 +5,16 @@ DECLARE
   is_privileged boolean := false;
   kyc_self_submit boolean := false;
 BEGIN
-  -- service_role bypass
   IF current_setting('request.jwt.claim.role', true) = 'service_role'
      OR current_setting('role', true) = 'service_role' THEN
     RETURN NEW;
   END IF;
 
-  -- admin / sous-admin bypass
   IF auth.uid() IS NOT NULL
      AND public.is_admin_or_sous_admin(auth.uid()) THEN
     RETURN NEW;
   END IF;
 
-  -- Autoriser la (re)soumission KYC par le vendeur lui-même
   IF NEW.statut_kyc IS DISTINCT FROM OLD.statut_kyc
      AND NEW.statut_kyc = 'en_attente'
      AND (OLD.statut_kyc IS NULL
@@ -71,10 +50,3 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-```
-
-## Vérification
-
-- Tester une soumission KYC depuis un compte vendeur (`/ResoumissionKYC`) → doit passer en `en_attente` sans erreur.
-- Vérifier qu'un vendeur ne peut toujours pas s'auto-valider (`en_attente → valide` reste bloqué).
-- Lancer `audit-02-kyc.test.ts` et `audit-24-suppression-compte-vendeur.test.ts`.
