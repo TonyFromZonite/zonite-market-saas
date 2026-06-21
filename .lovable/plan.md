@@ -1,80 +1,11 @@
-## Problème
+Constat : la correction précédente autorise seulement le passage de `statut_kyc` vers `en_attente`, mais la page `/ResoumissionKYC` envoie aussi `seller_status: 'kyc_pending'`. Le trigger backend considère encore `seller_status` comme champ réservé admin, donc il renvoie toujours “Modification non autorisée”.
 
-Le trigger `prevent_seller_privileged_updates` bloque **toute** modification de `statut_kyc` par un vendeur non-admin. Or, lors de la soumission/resoumission KYC (`ResoumissionKYC.jsx`), le vendeur doit lui-même passer `statut_kyc` à `en_attente`. D'où l'erreur « Modification non autorisée : ces champs sont réservés à l'administration. »
-
-## Correctif (migration SQL uniquement)
-
-Modifier la fonction `public.prevent_seller_privileged_updates()` pour **autoriser une seule transition self-service** sur `statut_kyc` :
-
-- Le vendeur peut passer son propre `statut_kyc` de `NULL` / `non_soumis` / `rejete` → `en_attente`.
-- Toute autre transition (`en_attente → valide`, `→ rejete`, etc.) reste réservée à l'admin / service_role.
-- Tous les autres champs privilégiés (`role`, `seller_status`, soldes, `email_verified`, …) restent bloqués comme avant.
-- Le trigger `check_kyc_documents` continue de valider que les pièces sont bien uploadées avant d'autoriser le passage à `en_attente`.
-
-Aucune modification frontend, aucun changement de RLS, aucun autre comportement touché.
-
-### SQL prévu
-
-```sql
-CREATE OR REPLACE FUNCTION public.prevent_seller_privileged_updates()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  is_privileged boolean := false;
-  kyc_self_submit boolean := false;
-BEGIN
-  -- service_role bypass
-  IF current_setting('request.jwt.claim.role', true) = 'service_role'
-     OR current_setting('role', true) = 'service_role' THEN
-    RETURN NEW;
-  END IF;
-
-  -- admin / sous-admin bypass
-  IF auth.uid() IS NOT NULL
-     AND public.is_admin_or_sous_admin(auth.uid()) THEN
-    RETURN NEW;
-  END IF;
-
-  -- Autoriser la (re)soumission KYC par le vendeur lui-même
-  IF NEW.statut_kyc IS DISTINCT FROM OLD.statut_kyc
-     AND NEW.statut_kyc = 'en_attente'
-     AND (OLD.statut_kyc IS NULL
-          OR OLD.statut_kyc IN ('non_soumis','rejete','en_attente')) THEN
-    kyc_self_submit := true;
-  END IF;
-
-  IF NEW.role IS DISTINCT FROM OLD.role
-     OR NEW.seller_status IS DISTINCT FROM OLD.seller_status
-     OR (NEW.statut_kyc IS DISTINCT FROM OLD.statut_kyc AND NOT kyc_self_submit)
-     OR NEW.catalogue_debloque IS DISTINCT FROM OLD.catalogue_debloque
-     OR NEW.training_completed IS DISTINCT FROM OLD.training_completed
-     OR NEW.conditions_acceptees IS DISTINCT FROM OLD.conditions_acceptees
-     OR NEW.solde_commission IS DISTINCT FROM OLD.solde_commission
-     OR NEW.solde_en_attente IS DISTINCT FROM OLD.solde_en_attente
-     OR NEW.total_commissions_gagnees IS DISTINCT FROM OLD.total_commissions_gagnees
-     OR NEW.total_commissions_payees IS DISTINCT FROM OLD.total_commissions_payees
-     OR NEW.email_verified IS DISTINCT FROM OLD.email_verified
-     OR NEW.email_verification_code IS DISTINCT FROM OLD.email_verification_code
-     OR NEW.email_verification_expires_at IS DISTINCT FROM OLD.email_verification_expires_at
-     OR NEW.parraine_par IS DISTINCT FROM OLD.parraine_par
-     OR NEW.user_id IS DISTINCT FROM OLD.user_id
-     OR NEW.email IS DISTINCT FROM OLD.email
-  THEN
-    is_privileged := true;
-  END IF;
-
-  IF is_privileged THEN
-    RAISE EXCEPTION 'Modification non autorisée : ces champs sont réservés à l''administration.'
-      USING ERRCODE = 'insufficient_privilege';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-```
-
-## Vérification
-
-- Tester une soumission KYC depuis un compte vendeur (`/ResoumissionKYC`) → doit passer en `en_attente` sans erreur.
-- Vérifier qu'un vendeur ne peut toujours pas s'auto-valider (`en_attente → valide` reste bloqué).
-- Lancer `audit-02-kyc.test.ts` et `audit-24-suppression-compte-vendeur.test.ts`.
+Plan de correction :
+1. Modifier uniquement la fonction backend `prevent_seller_privileged_updates()`.
+2. Autoriser, pour le vendeur connecté uniquement, la transition KYC self-service complète :
+   - `statut_kyc` vers `en_attente`
+   - `seller_status` vers `kyc_pending`
+   - depuis les états KYC autorisés : `NULL`, `non_soumis`, `rejete`, `en_attente`
+3. Garder bloquées toutes les autres modifications sensibles : rôle, soldes, email vérifié, catalogue, formation, changement d’email/user_id, validation/rejet KYC admin.
+4. Ne pas modifier le design, les routes, ni les autres fonctionnalités.
+5. Vérifier après migration que la fonction en base contient bien cette exception et que les règles KYC restent protégées.
