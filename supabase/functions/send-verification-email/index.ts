@@ -16,6 +16,12 @@ function escapeHtml(input: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
+const BLOCKED_EMAIL_PATTERNS = ['tempmail', 'guerrillamail', 'throwaway', 'mailinator', 'yopmail', 'sharklasers'];
+function isBlockedEmail(email: string): boolean {
+  const lc = String(email || '').toLowerCase();
+  return BLOCKED_EMAIL_PATTERNS.some((p) => lc.includes(p));
+}
+
 // Authorize: caller must be either an internal edge function (Authorization Bearer = service-role key)
 // or an authenticated Supabase user. Returns the authenticated user id when applicable.
 async function authorize(req: Request): Promise<
@@ -55,6 +61,11 @@ serve(async (req) => {
     }
     if (!code || !/^\d{4,8}$/.test(String(code))) {
       return new Response(JSON.stringify({ error: 'Invalid code' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (isBlockedEmail(email)) {
+      return new Response(JSON.stringify({ error: 'Email domain not allowed' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
