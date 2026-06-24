@@ -7,21 +7,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function escapeHtml(input: unknown): string {
+  return String(input ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Authorize: caller must be either an internal edge function (Authorization Bearer = service-role key)
-// or an authenticated Supabase user. Prevents anonymous abuse of our email sender.
-async function authorize(req: Request): Promise<{ ok: boolean; status?: number; msg?: string }> {
+// or an authenticated Supabase user. Returns the authenticated user id when applicable.
+async function authorize(req: Request): Promise<
+  { ok: true; isService: boolean; userId?: string } | { ok: false; status: number; msg: string }
+> {
   const authHeader = req.headers.get('Authorization') || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   if (!token) return { ok: false, status: 401, msg: 'Missing Authorization' };
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (serviceKey && token === serviceKey) return { ok: true };
+  if (serviceKey && token === serviceKey) return { ok: true, isService: true };
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_ANON_KEY')!,
   );
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data?.user) return { ok: false, status: 401, msg: 'Invalid token' };
-  return { ok: true };
+  return { ok: true, isService: false, userId: data.user.id };
 }
 
 serve(async (req) => {
@@ -47,6 +58,35 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // If caller is a regular user (not service-role), enforce ownership: the target email
+    // must match the caller's auth.users email or a seller row owned by them. Prevents using
+    // this function as an arbitrary email relay.
+    if (!auth.isService) {
+      const admin = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+      const targetEmail = String(email).toLowerCase().trim();
+      const { data: userRes } = await admin.auth.admin.getUserById(auth.userId!);
+      const callerEmail = (userRes?.user?.email || '').toLowerCase().trim();
+      let ownsEmail = callerEmail && callerEmail === targetEmail;
+      if (!ownsEmail) {
+        const { data: seller } = await admin
+          .from('sellers')
+          .select('id')
+          .eq('user_id', auth.userId)
+          .eq('email', targetEmail)
+          .maybeSingle();
+        ownsEmail = !!seller;
+      }
+      if (!ownsEmail) {
+        return new Response(JSON.stringify({ error: 'Forbidden: email does not belong to caller' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     console.log(`[send-verification-email] Sending to ${email}`);
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
@@ -56,6 +96,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const safeNom = escapeHtml(nom || '');
+    const safeCode = escapeHtml(code);
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
@@ -69,10 +112,10 @@ serve(async (req) => {
             <p style="color: #CBD5E1; margin-top: 5px;">Plateforme de vente</p>
           </div>
           <div style="background: white; padding: 30px; border: 1px solid #E2E8F0; border-radius: 0 0 12px 12px;">
-            <h2 style="color: #1E293B;">Bonjour ${nom} 👋</h2>
+            <h2 style="color: #1E293B;">Bonjour ${safeNom} 👋</h2>
             <p style="color: #64748B;">Votre code de vérification est :</p>
             <div style="background: #F1F5F9; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1f5e;">${code}</span>
+              <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1f5e;">${safeCode}</span>
             </div>
             <p style="color: #64748B; font-size: 14px;">Ce code expire dans 24 heures.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
@@ -96,7 +139,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('[send-verification-email] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
