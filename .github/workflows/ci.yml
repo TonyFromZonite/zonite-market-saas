@@ -30,6 +30,9 @@ jobs:
       - name: Tests (unit)
         run: npm test
 
+      - name: Soldes invariants (audit-25 + audit-26) — bloque le merge
+        run: npm run test:soldes-invariants
+
       - name: Build
         run: npm run build
 
