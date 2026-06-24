@@ -70,7 +70,6 @@ export async function logCritical({
   };
 
   try {
-    // eslint-disable-next-line no-console
     console.error(`[CRITICAL][${cat}] ${action}`, payload);
   } catch { /* ignore */ }
 
@@ -92,7 +91,6 @@ export async function logCritical({
       utilisateur: utilisateur || null,
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn("[criticalLogger] insert journal_audit failed:", e);
   }
 }

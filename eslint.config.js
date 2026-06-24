@@ -23,4 +23,31 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Tests and Supabase edge functions interact with untyped/dynamic payloads
+    // (Deno globals, SDK response shapes, mocks). Allow `any` there.
+    files: [
+      "src/test/**/*.{ts,tsx}",
+      "**/*.test.{ts,tsx}",
+      "supabase/functions/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    // Tailwind config is loaded by Node/PostCSS via CommonJS interop.
+    files: ["tailwind.config.ts"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    // shadcn/ui generated components keep empty interfaces to preserve
+    // forward-compatible prop extension points.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-empty-object-type": "off",
+    },
+  },
 );
