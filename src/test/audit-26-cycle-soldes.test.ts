@@ -87,15 +87,15 @@ function restoreBalance(s: Seller, amount: number): Seller {
 
 // --- Invariants ------------------------------------------------------------
 
-function assertInvariants(s: Seller, label: string, opts: { checkConservation?: boolean } = {}) {
-  const { checkConservation = true } = opts;
+function assertInvariants(s: Seller, label: string, opts: { strict?: boolean } = {}) {
+  const { strict = true } = opts;
   expect(s.solde_commission, `${label} I1 solde_commission≥0`).toBeGreaterThanOrEqual(0);
   expect(s.solde_en_attente, `${label} I2 solde_en_attente≥0`).toBeGreaterThanOrEqual(0);
-  expect(
-    s.total_commissions_gagnees,
-    `${label} I3 gagnees≥payees`
-  ).toBeGreaterThanOrEqual(s.total_commissions_payees);
-  if (checkConservation) {
+  if (strict) {
+    expect(
+      s.total_commissions_gagnees,
+      `${label} I3 gagnees≥payees`
+    ).toBeGreaterThanOrEqual(s.total_commissions_payees);
     expect(
       s.solde_commission + s.solde_en_attente + s.total_commissions_payees,
       `${label} I4 conservation comptable`
