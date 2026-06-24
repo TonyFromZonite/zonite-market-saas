@@ -1907,6 +1907,13 @@ export type Database = {
         Args: { _amount: number; _seller_id: string }
         Returns: number
       }
+      seller_self_update_only_safe: {
+        Args: {
+          _id: string
+          _new: Database["public"]["Tables"]["sellers"]["Row"]
+        }
+        Returns: boolean
+      }
       validate_referral_code: {
         Args: { _code: string }
         Returns: {
