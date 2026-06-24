@@ -281,25 +281,29 @@ export default function EspaceVendeur() {
 
   useEffect(() => {
     if (!compteVendeur?.id) return;
+    let mounted = true;
+    const vendeurId = compteVendeur.id;
 
     const refreshVendeurData = () => {
-      queryClient.invalidateQueries({ queryKey: ['COMPTE_VENDEUR_FRESH', compteVendeur.id] });
-      queryClient.invalidateQueries({ queryKey: ['vendeur_stats', compteVendeur.id] });
-      queryClient.invalidateQueries({ queryKey: ['vendeur_historique', compteVendeur.id] });
+      if (!mounted) return;
+      queryClient.invalidateQueries({ queryKey: ['COMPTE_VENDEUR_FRESH', vendeurId] });
+      queryClient.invalidateQueries({ queryKey: ['vendeur_stats', vendeurId] });
+      queryClient.invalidateQueries({ queryKey: ['vendeur_historique', vendeurId] });
     };
 
     const unsubscribeSellers = subscribeToTable('sellers', ({ id }) => {
-      if (id === compteVendeur.id) {
-        lastRealtimeAtRef.current = Date.now();
-        refreshVendeurData();
-      }
+      if (!mounted || id !== vendeurId) return;
+      lastRealtimeAtRef.current = Date.now();
+      refreshVendeurData();
     });
 
     const unsubscribeCommandes = subscribeToTable('commandes_vendeur', ({ data }) => {
-      if (data?.vendeur_id === compteVendeur.id) refreshVendeurData();
+      if (!mounted || data?.vendeur_id !== vendeurId) return;
+      refreshVendeurData();
     });
 
     return () => {
+      mounted = false;
       unsubscribeSellers?.();
       unsubscribeCommandes?.();
     };
