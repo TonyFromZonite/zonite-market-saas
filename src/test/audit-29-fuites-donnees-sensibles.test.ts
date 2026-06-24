@@ -206,36 +206,27 @@ describe("AUDIT 29 — Anti-régression fuites données sensibles", () => {
   });
 
   describe("T5/T6 — UPDATE sellers vendeur passe forcément par seller_self_update_only_safe", () => {
-    it("aucune policy UPDATE sur sellers ouverte aux vendeurs sans le helper", () => {
-      const offenders: string[] = [];
-      for (const { name, sql } of migrations) {
-        for (const pol of extractPolicies(sql)) {
-          const onSellers = /ON\s+(public\.)?sellers\b/i.test(pol);
-          const isUpdate = /FOR\s+(UPDATE|ALL)\b/i.test(pol);
-          if (!onSellers || !isUpdate) continue;
-          const polNameMatch = pol.match(/CREATE\s+POLICY\s+"([^"]+)"/i);
-          const polName = polNameMatch?.[1] || "";
-          // Admin policies OK
-          if (/^Admins?\b/i.test(polName)) continue;
-          if (
-            /is_admin_or_sous_admin/i.test(pol) ||
-            /has_role\s*\(/i.test(pol)
-          )
-            continue;
-          // Policy ouverte aux vendeurs → DOIT mentionner le helper
-          if (!/seller_self_update_only_safe/i.test(pol)) {
-            offenders.push(`${name} :: "${polName}"`);
-          }
-        }
-      }
-      expect(offenders, `Policies UPDATE sellers sans helper anti-escalade :\n${offenders.join("\n")}`).toEqual([]);
+    it("aucune policy UPDATE survivante sur sellers ouverte aux vendeurs sans le helper", () => {
+      const offenders = livePolicies.filter((p) => {
+        if (p.table !== "sellers") return false;
+        const isUpdate = /FOR\s+(UPDATE|ALL)\b/i.test(p.sql);
+        if (!isUpdate) return false;
+        if (/^Admins?\b/i.test(p.policy)) return false;
+        if (/is_admin_or_sous_admin/i.test(p.sql) || /has_role\s*\(/i.test(p.sql)) return false;
+        return !/seller_self_update_only_safe/i.test(p.sql);
+      });
+      expect(
+        offenders.map((o) => `${o.migration} :: "${o.policy}"`),
+        `Policies UPDATE sellers vivantes sans helper anti-escalade`,
+      ).toEqual([]);
     });
   });
 
   describe("T8 — Fonction seller_self_update_only_safe SECURITY DEFINER + couvre toutes les colonnes", () => {
     const allSql = migrations.map((m) => stripSqlComments(m.sql)).join("\n");
+    // Capture l'intégralité du corps : header `... AS $$` puis corps puis `$$`.
     const fnMatch = allSql.match(
-      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.seller_self_update_only_safe[\s\S]*?\$\$/i,
+      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.seller_self_update_only_safe[\s\S]*?\$\$[\s\S]*?\$\$/i,
     );
 
     it("la fonction est définie", () => {
