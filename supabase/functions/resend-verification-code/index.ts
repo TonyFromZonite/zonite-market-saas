@@ -13,6 +13,12 @@ const COOLDOWN_SECONDS = 60;
 const WINDOW_MINUTES = 30;
 const MAX_PER_WINDOW = 5;
 
+const BLOCKED_EMAIL_PATTERNS = ["tempmail", "guerrillamail", "throwaway", "mailinator", "yopmail", "sharklasers"];
+function isBlockedEmail(email: string): boolean {
+  const lc = String(email || "").toLowerCase();
+  return BLOCKED_EMAIL_PATTERNS.some((p) => lc.includes(p));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -59,6 +65,7 @@ Deno.serve(async (req) => {
     if (selErr) return json({ error: selErr.message }, 500);
     if (!seller) return json({ error: "Vendeur introuvable" }, 404);
     if (seller.email_verified) return json({ error: "Email déjà vérifié" }, 400);
+    if (isBlockedEmail(seller.email)) return json({ error: "Domaine email non autorisé" }, 400);
 
     // Ownership check: non-admin callers may only request a code for their own seller row.
     if (!isAdmin) {
