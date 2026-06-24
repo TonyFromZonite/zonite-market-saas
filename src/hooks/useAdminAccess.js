@@ -51,10 +51,8 @@ export default function useAdminAccess() {
         if (!isSousAdmin && getSousAdminSession()) {
           localStorage.removeItem('sous_admin');
         }
-        if (!isAdminOrSousAdmin && (getAdminSession() || getSousAdminSession())) {
-          // Belt-and-braces: clear stale admin caches for non-privileged users.
-          clearAllSessions();
-        }
+
+
 
         setState({
           isReady: isAdminOrSousAdmin,
