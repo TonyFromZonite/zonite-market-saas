@@ -114,7 +114,6 @@ Deno.serve(async (req) => {
       // 2) auth.users orphelins (pas de sellers, pas admin/sous_admin)
       const orphanEmails: { id: string; email: string }[] = [];
       let page = 1;
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data: list, error } = await admin.auth.admin.listUsers({
           page,
@@ -195,7 +194,6 @@ Deno.serve(async (req) => {
     if (!userId) {
       // Lookup auth user par email
       let page = 1;
-      // eslint-disable-next-line no-constant-condition
       while (!userId) {
         const { data: list, error } = await admin.auth.admin.listUsers({
           page,
