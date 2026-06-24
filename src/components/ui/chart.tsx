@@ -95,7 +95,7 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
-type TooltipPayloadItem = RechartsPrimitive.Payload<RechartsPrimitive.ValueType, RechartsPrimitive.NameType>;
+
 
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
