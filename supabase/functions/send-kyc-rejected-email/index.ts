@@ -64,7 +64,7 @@ serve(async (req) => {
             <p style="color: #64748B;">Malheureusement, votre dossier KYC n'a pas été validé.</p>
             <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 15px; margin: 20px 0;">
               <p style="color: #991B1B; font-weight: bold; margin: 0 0 5px;">Raison du rejet :</p>
-              <p style="color: #B91C1C; margin: 0;">${raison}</p>
+              <p style="color: #B91C1C; margin: 0;">${safeRaison}</p>
             </div>
             <p style="color: #64748B;">Vous pouvez resoumettre vos documents depuis votre espace vendeur.</p>
             <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
