@@ -240,7 +240,7 @@ describe("Audit 26 — Cycle réserve / paiement / rejet : cohérence multi-éta
         } catch {
           // reserveBalance peut lever "Solde insuffisant" → état inchangé
         }
-        assertInvariants(state, `run=${run} step=${i} op=${op}`, { checkConservation: false });
+        assertInvariants(state, `run=${run} step=${i} op=${op}`, { strict: false });
       }
     }
   });
