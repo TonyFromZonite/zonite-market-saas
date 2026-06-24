@@ -69,12 +69,21 @@ function ListeVendeurs() {
   const { data: ventes = [] } = useQuery({
     queryKey: ["ventes_stats"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("ventes").select("vendeur_id, created_at");
+      const { data, error } = await supabase.from("ventes").select("vendeur_id, montant_total, created_at");
       if (error) throw error;
       return data || [];
     },
     refetchInterval: 30000,
   });
+
+  const caParVendeur = useMemo(() => {
+    const m = new Map();
+    for (const v of ventes) {
+      m.set(v.vendeur_id, (m.get(v.vendeur_id) || 0) + Number(v.montant_total || 0));
+    }
+    return m;
+  }, [ventes]);
+
 
   const modifier = (champ, valeur) => {
     setForm((p) => ({ ...p, [champ]: valeur }));
@@ -294,7 +303,7 @@ function ListeVendeurs() {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm"><p>{v.email || "—"}</p><p className="text-slate-500">{v.telephone || "—"}</p></TableCell>
-                  <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
+                  <TableCell className="text-right font-medium">{formater(caParVendeur.get(v.id) || 0)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
                   <TableCell>
                     {(() => {
