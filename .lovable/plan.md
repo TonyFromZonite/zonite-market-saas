@@ -1,50 +1,55 @@
-## Problème
+# Plan — Tri des 8 « fixes » demandés
 
-La vendeuse a vu son solde inchangé après ton approbation du retrait. En base, on retrouve le même symptôme chez plusieurs vendeurs : leur `solde_commission` n'a pas été décrémenté malgré une demande passée à `payee`.
+Après lecture du schéma réel et des policies existantes, **la majorité du prompt ne s'applique pas tel quel à ce projet**. Voici le tri honnête, et ce que je propose de faire (ou ne pas faire).
 
-Exemples actuels :
-- Stéphane Obama : 5 000 FCFA payés, solde encore à 5 000.
-- Joel Balla : 5 200 payés, solde encore à 5 700 (devrait être 500).
-- Marie Amougou, Joseph Podka, Owen Fotsing : mêmes incohérences.
+## Audit rapide vs le prompt
 
-## Cause racine
+| # | Demande | Verdict |
+|---|---|---|
+| 1 | OTP resend : auth + rate limit | Auth **déjà ajouté** (turn précédent). Rate-limit DB **refusé par la plateforme** (pas de primitive standard). |
+| 2 | Email verif : auth + whitelist + audit log | Auth + ownership **déjà ajoutés**. Blocklist domaines + table `email_audit_log` = nouveaux. |
+| 3 | `password_reset_codes`, `otp_rate_limits`, `kyc_document_url_raw` | **Tables/colonnes inexistantes** dans ce projet → rien à faire. OTP plaintext déjà révoqué au turn précédent. |
+| 4 | Catalogue / categories / variations | Policy `Sellers read active products` **existe déjà**. `variations_produit` **n'existe pas**. |
+| 5 | `ventes` / `commandes_vendeur` SELECT pour vendeur | Policies `Sellers read own ventes` + `Sellers view own orders` **existent déjà**. |
+| 6 | Recalcul soldes (SUM ventes − retraits approuvés) | **Corrompt les données** : ignore les 10 lignes d'`ajustements_commission` et les 3 bonus de parrainage. Voir options ci-dessous. |
+| 7 | Stock `variations_produit` + trigger | Table **inexistante** ; stocks par variation vivent dans `sellers.stocks_par_coursier` (JSONB). Le flux SQL proposé ne peut pas s'exécuter. |
+| 8 | Flow retrait | Côté code : déjà géré par RPC `reserve_seller_balance` / `approve_seller_payment` / `restore_seller_balance` (corrigé hier). Côté SQL : les fonctions existent déjà sous d'autres noms. |
 
-Le trigger de sécurité `prevent_seller_privileged_updates` (ajouté récemment pour protéger les colonnes sensibles) bloque toute modification de `solde_commission` / `solde_en_attente` lorsque l'appelant n'est pas admin — **même quand la modification passe par les RPC légitimes** (`reserve_seller_balance`, `approve_seller_payment`, `restore_seller_balance`, `credit_seller_commission`, `debit_seller_commission`, `adjust_seller_commission`). Ces fonctions sont `SECURITY DEFINER`, mais `auth.uid()` reste celui du vendeur, donc le trigger lève "Modification non autorisée".
+État actuel vérifié : **0 vendeur avec solde négatif**, donc rien d'urgent à « nettoyer ».
 
-Conséquences observées :
-- Côté vendeur, dans `/DemandePaiement.jsx` : la ligne `demandes_paiement_vendeur` est insérée AVANT l'appel `reserve_seller_balance`. Quand la RPC échoue silencieusement, la demande reste en base mais le solde n'est pas réservé.
-- Côté admin, `approve_seller_payment` réussit (admin a les droits) mais ne décrémente que `solde_en_attente` (déjà à 0). Le `solde_commission` initial n'a jamais bougé → le vendeur voit toujours son ancien solde.
+## Ce que je propose d'exécuter
 
-## Plan de correction
+### A. FIX 2 — durcissement supplémentaire (sûr)
+- Ajouter une **blocklist de domaines jetables** (`tempmail`, `guerrillamail`, `mailinator`, `yopmail`, `sharklasers`, `throwaway`) dans `send-verification-email` ET `resend-verification-code`.
+- Pas de nouvelle table d'audit : `email_send_log` existe déjà et logge tous les envois.
 
-### 1) Trigger : autoriser les RPC internes
-Ajouter un drapeau de session (`app.bypass_seller_balance_guard`) que chaque RPC de mouvement de solde active via `set_config(..., true)` (scope transaction). Le trigger vérifie ce drapeau et n'examine alors **que** les champs financiers (`solde_commission`, `solde_en_attente`, `total_commissions_gagnees`, `total_commissions_payees`) — les autres champs sensibles (role, statut_kyc, email, user_id, etc.) restent verrouillés.
-
-RPC à modifier (toutes existantes) :
-`reserve_seller_balance`, `approve_seller_payment`, `restore_seller_balance`, `credit_seller_commission`, `debit_seller_commission`, `adjust_seller_commission`.
-
-### 2) Réconciliation des soldes incohérents
-Migration ponctuelle qui, pour chaque vendeur ayant des demandes `payee`, recalcule :
+### B. STEP 1 du précédent message — clamp défensif (sûr, idempotent)
+```sql
+UPDATE sellers SET solde_commission = 0 WHERE solde_commission < 0;
+UPDATE sellers SET solde_en_attente = 0 WHERE solde_en_attente < 0;
 ```
-solde_commission = max(0, total_commissions_gagnees − total_commissions_payees − solde_en_attente)
-```
-en se basant sur `total_commissions_gagnees` reconstruit depuis `ventes.commission_vendeur` quand il diverge (cas Landry, Mba, Zeinang où `total_commissions_gagnees = 0` alors qu'il y a des ventes).
+Actuellement 0 ligne affectée — mais garde-fou utile.
 
-Avant exécution, un `SELECT` d'aperçu te listera les nouveaux soldes proposés pour validation visuelle.
+## Ce que je refuse d'exécuter sans confirmation explicite
 
-### 3) Robustesse côté `/DemandePaiement.jsx`
-Inverser l'ordre : appeler `reserve_seller_balance` d'abord, puis `INSERT` la demande seulement si la réservation a réussi. Si l'insert échoue ensuite, appeler `restore_seller_balance` en compensation. Cela évite toute future demande "orpheline".
+1. **FIX 6 (recalcul des soldes)** — la formule proposée écrase les 10 ajustements admin et les 3 bonus parrainage. Si tu veux vraiment recalculer, dis-moi laquelle :
+   - **a)** `SUM(ventes.commission_vendeur) + SUM(ajustements.montant) + SUM(parrainages.commission_totale) − SUM(retraits approuvés) − solde_en_attente` (formule complète)
+   - **b)** Ne rien recalculer (recommandé — aucun solde négatif aujourd'hui)
+   - **c)** La formule du prompt tel quel (je préviens : ça va casser des soldes corrects)
 
-### 4) Vérification post-déploiement
-- Test côté vendeur : depuis un compte test, faire une demande de retrait et confirmer que le solde passe immédiatement en "en attente".
-- Test côté admin : approuver, confirmer que `solde_commission` et `solde_en_attente` sont à jour, et que le vendeur voit 0.
-- Audit SQL final : la requête de la section 2 ne doit plus retourner de divergence.
+2. **FIX 7 (stocks)** — toute la section cible une table inexistante. Si tu veux un audit du JSONB `stocks_par_coursier` à la place, je peux le scripter, mais c'est un autre sujet.
+
+3. **Rate-limiting OTP en DB** — la plateforme Lovable interdit explicitement ce pattern (« no standard rate-limiting primitive »). On a déjà un throttling soft via `email_verification_send_count` + `email_verification_window_start` sur `sellers`.
 
 ## Détails techniques
 
-- Migration `supabase/migrations/<timestamp>_fix_seller_balance_guard.sql` : 
-  - `CREATE OR REPLACE` du trigger `prevent_seller_privileged_updates` avec lecture de `current_setting('app.bypass_seller_balance_guard', true)`.
-  - `CREATE OR REPLACE` des 6 RPC ci-dessus avec `PERFORM set_config('app.bypass_seller_balance_guard','on',true);` en première ligne.
-  - Bloc `UPDATE sellers SET solde_commission = ...` de réconciliation.
-- Edit `src/pages/DemandePaiement.jsx` : réorganisation du flux `try/catch` (réserve → insert → compensation si insert KO).
-- Aucun changement UI.
+- **Migration unique** pour FIX 2 (blocklist) : édition des 2 edge functions, pas de SQL.
+- Pas de modif de policies RLS (déjà correctes pour catalogue, ventes, commandes).
+- Pas de modif UI.
+- Pas de modif des RPC soldes (déjà en place et auditées hier).
+
+## Ce que j'attends de toi avant build
+
+Réponds simplement :
+- **Option 6** : a / b / c ?
+- **OK pour appliquer A + B uniquement** (sinon liste ce que tu veux garder).
