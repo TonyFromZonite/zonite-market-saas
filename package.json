@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:soldes-invariants": "vitest run src/test/audit-25-restore-seller-balance.test.ts src/test/audit-26-cycle-soldes.test.ts src/test/audit-27-regularisation-inclut-parrainage.test.ts src/test/audit-28-garde-fou-regularisation.test.ts src/test/audit-29-fuites-donnees-sensibles.test.ts --reporter=verbose",
+    "test:soldes-invariants": "vitest run src/test/audit-25-restore-seller-balance.test.ts src/test/audit-26-cycle-soldes.test.ts src/test/audit-27-regularisation-inclut-parrainage.test.ts src/test/audit-28-garde-fou-regularisation.test.ts src/test/audit-29-fuites-donnees-sensibles.test.ts src/test/audit-30-policies-permissives-sentinelle.test.ts --reporter=verbose",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:smoke": "playwright test e2e/smoke-pre-publish.spec.ts --reporter=list",
