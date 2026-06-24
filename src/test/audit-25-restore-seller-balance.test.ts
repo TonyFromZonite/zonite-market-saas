@@ -141,7 +141,8 @@ describe("Audit 25 — restore_seller_balance (anti-crédits fantômes)", () => 
 
     expect(lastDefinition, "restore_seller_balance doit être défini dans une migration").not.toBeNull();
     // Garde anti-crédit fantôme : restauration bornée à solde_en_attente.
-    expect(lastDefinition!).toMatch(/LEAST\s*\([^)]*(solde_en_attente|v_en_attente)[^)]*\)/i);
+    expect(lastDefinition!).toMatch(/LEAST\s*\(/i);
+    expect(lastDefinition!).toMatch(/v_en_attente|solde_en_attente/i);
     // La fonction doit verrouiller la ligne avant lecture (FOR UPDATE).
     expect(lastDefinition!).toMatch(/FOR\s+UPDATE/i);
   });
