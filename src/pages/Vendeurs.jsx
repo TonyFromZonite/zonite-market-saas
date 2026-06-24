@@ -303,7 +303,7 @@ function ListeVendeurs() {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm"><p>{v.email || "—"}</p><p className="text-slate-500">{v.telephone || "—"}</p></TableCell>
-                  <TableCell className="text-right font-medium">{formater(v.total_commissions_gagnees)}</TableCell>
+                  <TableCell className="text-right font-medium">{formater(caParVendeur.get(v.id) || 0)}</TableCell>
                   <TableCell className="text-right font-bold text-yellow-600">{formater(v.solde_commission)}</TableCell>
                   <TableCell>
                     {(() => {
