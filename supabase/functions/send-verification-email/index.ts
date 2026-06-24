@@ -1,17 +1,53 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "npm:resend";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Authorize: caller must be either an internal edge function (Authorization Bearer = service-role key)
+// or an authenticated Supabase user. Prevents anonymous abuse of our email sender.
+async function authorize(req: Request): Promise<{ ok: boolean; status?: number; msg?: string }> {
+  const authHeader = req.headers.get('Authorization') || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return { ok: false, status: 401, msg: 'Missing Authorization' };
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (serviceKey && token === serviceKey) return { ok: true };
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+  );
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) return { ok: false, status: 401, msg: 'Invalid token' };
+  return { ok: true };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  const auth = await authorize(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.msg }), {
+      status: auth.status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { email, nom, code } = await req.json();
-    console.log(`[send-verification-email] Sending to ${email}, code: ${code}`);
+    if (!email || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!code || !/^\d{4,8}$/.test(String(code))) {
+      return new Response(JSON.stringify({ error: 'Invalid code' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    console.log(`[send-verification-email] Sending to ${email}`);
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!resendKey) {
