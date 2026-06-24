@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCachedQuery } from "@/components/CacheManager";
@@ -225,6 +225,9 @@ export default function EspaceVendeur() {
     { ttl: 5 * 60 * 1000, enabled: !!compteVendeur?.id }
   );
 
+  // Watchdog: if no realtime ping is received within 5 s of the last refetch,
+  // poll the sellers row to recover from a missed/dropped realtime event.
+  const lastRealtimeAtRef = useRef(Date.now());
   const { data: compteActualise, isLoading: loadingCompte } = useQuery({
     queryKey: ['COMPTE_VENDEUR_FRESH', compteVendeur?.id],
     queryFn: async () => {
@@ -232,8 +235,10 @@ export default function EspaceVendeur() {
       return data ? [data] : [];
     },
     enabled: !!compteVendeur?.id,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 1000,
     refetchOnWindowFocus: true,
+    refetchInterval: () => (Date.now() - lastRealtimeAtRef.current > 5000 ? 5000 : false),
+    refetchIntervalInBackground: false,
   });
 
   // SECTION A — Vendor personal stats
@@ -284,7 +289,10 @@ export default function EspaceVendeur() {
     };
 
     const unsubscribeSellers = subscribeToTable('sellers', ({ id }) => {
-      if (id === compteVendeur.id) refreshVendeurData();
+      if (id === compteVendeur.id) {
+        lastRealtimeAtRef.current = Date.now();
+        refreshVendeurData();
+      }
     });
 
     const unsubscribeCommandes = subscribeToTable('commandes_vendeur', ({ data }) => {
