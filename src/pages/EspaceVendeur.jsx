@@ -289,7 +289,10 @@ export default function EspaceVendeur() {
     };
 
     const unsubscribeSellers = subscribeToTable('sellers', ({ id }) => {
-      if (id === compteVendeur.id) refreshVendeurData();
+      if (id === compteVendeur.id) {
+        lastRealtimeAtRef.current = Date.now();
+        refreshVendeurData();
+      }
     });
 
     const unsubscribeCommandes = subscribeToTable('commandes_vendeur', ({ data }) => {
