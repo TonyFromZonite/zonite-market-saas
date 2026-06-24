@@ -60,6 +60,21 @@ Deno.serve(async (req) => {
     if (!seller) return json({ error: "Vendeur introuvable" }, 404);
     if (seller.email_verified) return json({ error: "Email déjà vérifié" }, 400);
 
+    // Ownership check: non-admin callers may only request a code for their own seller row.
+    if (!isAdmin) {
+      const { data: ownSeller } = await admin
+        .from("sellers")
+        .select("id, email")
+        .eq("user_id", callerId)
+        .maybeSingle();
+      const sellerEmailLc = String(seller.email || "").toLowerCase().trim();
+      const ownsByRow = ownSeller && ownSeller.id === seller.id;
+      const ownsByEmail = callerEmail && callerEmail === sellerEmailLc;
+      if (!ownsByRow && !ownsByEmail) {
+        return json({ error: "Accès refusé" }, 403);
+      }
+    }
+
     const now = Date.now();
 
     if (!isAdmin) {
