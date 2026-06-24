@@ -124,7 +124,15 @@ export default function DemandePaiement() {
         throw new Error(`Montant supérieur à votre solde disponible (${soldeDisponible.toLocaleString("fr-FR")} FCFA)`);
       }
 
-      // Create payment request
+      // 1) ATOMICALLY deduct from balance and move to pending FIRST.
+      // If this fails we never create an orphan demande row.
+      const { error: reserveError } = await supabase.rpc("reserve_seller_balance", {
+        _seller_id: compteVendeur.id,
+        _amount: montant,
+      });
+      if (reserveError) throw reserveError;
+
+      // 2) Create payment request. If this fails, restore the reserved amount.
       const { data: demande, error } = await supabase
         .from("demandes_paiement_vendeur")
         .insert({
@@ -139,13 +147,12 @@ export default function DemandePaiement() {
         .select()
         .single();
 
-      if (error) throw error;
-
-      // ATOMICALLY deduct from balance and move to pending
-      await supabase.rpc("reserve_seller_balance", {
-        _seller_id: compteVendeur.id,
-        _amount: montant,
-      });
+      if (error) {
+        try {
+          await supabase.rpc("restore_seller_balance", { _seller_id: compteVendeur.id, _amount: montant });
+        } catch (_) {}
+        throw error;
+      }
 
       // Note: pas de notif auto pour le vendeur — il a déjà le toast + l'écran de succès +
       // la demande apparaît dans l'historique. La notif persistante arrive uniquement quand
