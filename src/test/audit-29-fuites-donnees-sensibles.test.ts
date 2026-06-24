@@ -98,13 +98,24 @@ function extractDrops(sql: string): { policy: string; table: string }[] {
   return out;
 }
 
-/** Reconstitue l'état "vivant" des policies en rejouant CREATE/DROP dans l'ordre. */
+/** Reconstitue l'état "vivant" des policies en rejouant CREATE POLICY / DROP POLICY / DROP TABLE CASCADE. */
 function liveCreatePolicies(
   migrations: { name: string; sql: string }[],
 ): { migration: string; sql: string; policy: string; table: string }[] {
   type Entry = { migration: string; sql: string; policy: string; table: string };
   const live = new Map<string, Entry>(); // key = `${table}::${policy}`
+  const dropTableRe =
+    /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?(\w+)(?:\s*,\s*(?:public\.)?\w+)*\s+CASCADE/gi;
   for (const { name, sql } of migrations) {
+    const clean = stripSqlComments(sql);
+    // DROP TABLE ... CASCADE supprime toutes les policies de la table.
+    let dm: RegExpExecArray | null;
+    while ((dm = dropTableRe.exec(clean))) {
+      const table = dm[1];
+      for (const k of [...live.keys()]) {
+        if (k.startsWith(`${table}::`)) live.delete(k);
+      }
+    }
     for (const pol of extractPolicies(sql)) {
       const nameMatch = pol.match(/CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+(?:public\.)?(\w+)/i);
       if (!nameMatch) continue;
