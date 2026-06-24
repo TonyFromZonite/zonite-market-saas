@@ -181,11 +181,24 @@ export async function getCurrentUser() {
 }
 
 export function subscribeToTable(table, callback) {
+  // Unique channel name per subscription → avoids collisions when the same
+  // component remounts (e.g. React StrictMode) before the previous channel
+  // has finished tearing down.
+  const channelName = `${table}_changes_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
+  let active = true;
   const channel = supabase
-    .channel(`${table}_changes`)
+    .channel(channelName)
     .on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
+      if (!active) return;
       callback({ id: payload.new?.id || payload.old?.id, data: payload.new, type: payload.eventType });
     })
     .subscribe();
-  return () => supabase.removeChannel(channel);
+  let removed = false;
+  return () => {
+    if (removed) return;
+    removed = true;
+    active = false;
+    try { supabase.removeChannel(channel); } catch (_) {}
+  };
 }
+
