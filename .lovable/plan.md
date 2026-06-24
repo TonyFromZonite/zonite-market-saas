@@ -1,77 +1,56 @@
-# Audit du vendeur [fotsingsadeu@gmail.com](mailto:fotsingsadeu@gmail.com) (Owen Fotsing)
+## Diagnostic — Lengue Oumar (`lengue86@gmail.com`)
 
-## Données réelles en base
+**État actuel du compte**
+- `solde_commission` = 0 FCFA
+- `solde_en_attente` = 6 000 FCFA (1 demande de paiement de 6 000 F en attente)
+- `total_commissions_gagnees` = 6 000 FCFA
+- `total_commissions_payees` = 0 FCFA
 
-**Compte vendeur** (id `fa6deb03…11872`) :
+**Sources de revenus réelles**
+| Source | Montant | Détail |
+|---|---|---|
+| Ventes (table `ventes`) | 6 000 F | 2 ventes, commissions cumulées |
+| Parrainage (table `parrainages`) | 1 000 F | Filleul *Bonheur* (`bonheureyenga1@gmail.com`), 2 livraisons × 500 F |
+| **Total mérité** | **7 000 F** | |
 
-- `solde_commission` affiché : **31 000 FCFA**
-- `solde_en_attente` : 0
-- `total_commissions_gagnees` : 33 000
-- `total_commissions_payees` : 15 000
+**Ce qui s'est passé**
+La migration d'audit (`Régularisation audit cohérence : écart non justifié par les ventes`) du 24 juin a débité **−1 000 F** via `ajustements_commission` (7 000 → 6 000) en ne regardant que la table `ventes`. Elle a **oublié les commissions de parrainage** (`parrainages.commission_totale`), considérant à tort les 1 000 F comme un "écart non justifié". Le vendeur a donc raison : il manque 1 000 F qui correspondent à sa commission de parrainage légitime.
 
-**Chiffre d'affaires (table `ventes`, = commandes livrées)** :
+---
 
+## Plan d'action
 
-| Jour      | Cmds   | CA          | Commission |
-| --------- | ------ | ----------- | ---------- |
-| 11/06     | 1      | 10 000      | 2 000      |
-| 13/06     | 1      | 10 000      | 2 000      |
-| 14/06     | 1      | 12 000      | 5 500      |
-| 15/06     | 1      | 10 000      | 4 000      |
-| 17/06     | 4      | 44 000      | 14 000     |
-| 18/06     | 1      | 11 000      | 3 000      |
-| 20/06     | 1      | 12 000      | 3 500      |
-| **Total** | **10** | **109 000** | **34 000** |
+### 1. Recrédit du vendeur (migration de correction)
 
+Utiliser `admin_adjust_seller_commission` (ou un `UPDATE` direct via le bypass) pour recréditer **+1 000 FCFA** au solde commission de Lengue Oumar avec :
+- **Motif** : `Annulation régularisation erronée : commission de parrainage (filleul Bonheur, 2 livraisons × 500 F) non comptabilisée`
+- **Trace** : entrée dans `ajustements_commission` + `journal_audit` + notification au vendeur
 
-Cohérent côté admin : `commandes_vendeur` statut `livree` → 10 cmds / 109 000 FCFA. CA OK ✅
+Résultat attendu : `solde_commission` = 1 000 F, `solde_en_attente` reste 6 000 F, `total_commissions_gagnees` = 7 000 F.
 
-**Ajustement admin** : −1 000 FCFA le 18/06 (frais livraison échouée hôtel Faya).
-→ `total_commissions_gagnees` net attendu = 34 000 − 1 000 = **33 000** ✅
+### 2. Vérification post-correction
+- Re-lire la ligne `sellers` pour confirmer les soldes.
+- Vérifier qu'aucun autre vendeur ayant des parrainages actifs n'a subi le même débit erroné (scan des `ajustements_commission` du 24 juin avec motif "Régularisation audit cohérence").
 
-**Demandes de paiement** :
+### 3. Test de non-régression (`src/test/audit-27-regularisation-inclut-parrainage.test.ts`)
 
-- Payées : 5 000 (15/06) + 10 000 (18/06) = **15 000** ✅
-- Rejetées : 13 000 + 13 000 (24/06, motif « Solde insuffisant »)
+Test Vitest qui :
+- Définit la formule canonique du total attendu : `total_commissions_gagnees ≈ Σ ventes.commission_vendeur + Σ parrainages.commission_totale (parrain) − Σ ajustements.montant<0 légitimes`
+- Reproduit en JS un cas avec 6 000 F de ventes + 1 000 F de parrainage et vérifie qu'une fonction d'audit `computeExpectedEarnings(seller)` retourne **7 000 F** (pas 6 000 F).
+- Cas miroir : un audit qui ignorerait `parrainages` retournerait 6 000 F → le test échoue, prouvant qu'une future "régularisation" sans parrainage est bloquée.
+- Vérifie aussi que la migration de correction (fichier SQL du jour) contient le mot-clé `parrainage` dans son motif et un `+1000` pour `e631aae2-26f3-46f0-b9b4-3c3e799067e1`.
+- Branché dans le job CI `soldes-invariants` du workflow `.github/workflows/ci.yml` (script `test:soldes-invariants`).
 
-## Incohérence détectée ⚠️
+### Détails techniques
 
-Solde théorique = gagnées − payées − en_attente = 33 000 − 15 000 − 0 = **18 000 FCFA**
-Solde affiché = **31 000 FCFA**
-**Écart = +13 000 FCFA en faveur du vendeur**
-
-**Cause** : une des deux demandes rejetées du 24/06 a déclenché `restore_seller_balance(+13 000)` alors qu'aucune réservation préalable n'avait été faite (solde_en_attente était déjà à 0). La fonction `restore_seller_balance` crédite `solde_commission` sans vérifier qu'une réservation existe → crédit fantôme.
-
-## Plan de correction
-
-### 1. Correction immédiate du solde (donnée)
-
-Ajustement admin de **−13 000 FCFA** via `admin_adjust_seller_commission` :
-
-- Motif : « Régularisation : restauration en double suite à demande paiement rejetée du 24/06 »
-- Résultat : solde 31 000 → 18 000 (cohérent avec gagnées 33 000 − payées 15 000)
-- Crée automatiquement l'entrée audit + notification vendeur
-
-### 2. Correctif logique (à valider séparément, hors scope strict de cette demande)
-
-La RPC `restore_seller_balance` peut produire des crédits fantômes si appelée sans réservation préalable. Deux pistes :
-
-- Soit garantir que `reserve_seller_balance` est appelé à la création de chaque demande de paiement (ce qui semble être l'intention initiale du flow `solde_en_attente`).
-- Soit borner `restore` au minimum entre `_amount` et `solde_en_attente` actuel.
-
-Cette partie reste **en attente de ton accord** car elle touche la logique métier de paiements ; je propose de la traiter dans une itération dédiée après validation.
-
-### 3. Vérification post-correction
-
-Re-lecture des 4 compteurs du vendeur et confirmation : `solde_commission = 33 000 − 15 000 = 18 000`, `solde_en_attente = 0`.
-
-## Récap périodes (à communiquer au vendeur si besoin)
-
-- CA total réalisé : **109 000 FCFA** sur 10 commandes livrées (11/06 → 20/06)
-- Commissions brutes : 34 000 — ajustement −1 000 = **33 000**
-- Déjà retiré : **15 000** (2 paiements OK)
-- **Solde réel disponible : 18 000 FCFA** (et non 31 000)
-
-Approuve ce plan pour que j'applique l'ajustement de −13 000 FCFA (étape 1). L'étape 2 sera proposée séparément.
-
-faites aussi de meme pour tout les vendeur afin d'afficher les CA exacte en frontend cote admin et vendeur
+- Migration SQL (insert via outil `supabase--insert` car c'est une modification de données, pas de schéma) :
+  ```sql
+  SELECT admin_adjust_seller_commission(
+    'e631aae2-26f3-46f0-b9b4-3c3e799067e1'::uuid,
+    1000,
+    'Annulation régularisation erronée : commission parrainage (filleul Bonheur, 2 livraisons × 500F) non comptabilisée',
+    'system-audit@zonite.org'
+  );
+  ```
+  ⚠️ `admin_adjust_seller_commission` exige `has_role(auth.uid(),'admin')`. Comme la session SQL n'a pas d'`auth.uid()`, on fera plutôt un `UPDATE` direct + `INSERT` dans `ajustements_commission` + `journal_audit` + `notifications_vendeur`, en activant `app.bypass_seller_balance_guard`.
+- Mise à jour du script `npm run test:soldes-invariants` pour inclure le nouveau fichier `audit-27`.
