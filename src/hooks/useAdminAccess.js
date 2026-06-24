@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { getAdminSession, getSousAdminSession, clearAllSessions } from '@/components/useSessionGuard';
+import { getAdminSession, getSousAdminSession } from '@/components/useSessionGuard';
 
 /**
  * Hook that gates admin data access.
