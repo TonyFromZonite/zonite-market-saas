@@ -131,50 +131,36 @@ function extractViews(sql: string): { name: string; body: string }[] {
 describe("AUDIT 29 — Anti-régression fuites données sensibles", () => {
   const migrations = readAllMigrations();
 
-  describe("T1/T2 — Aucune policy SELECT vendeur sur produits/ventes", () => {
-    it("aucune CREATE POLICY pour SELECT sur public.produits sans clause admin", () => {
-      const offenders: string[] = [];
-      for (const { name, sql } of migrations) {
-        for (const pol of extractPolicies(sql)) {
-          const onProduits = /ON\s+(public\.)?produits\b/i.test(pol);
-          const isSelect = /FOR\s+(SELECT|ALL)\b/i.test(pol) || !/FOR\s+\w+/i.test(pol);
-          if (!onProduits || !isSelect) continue;
-          // Tolérer les policies admin-only
-          if (/policyname?\s*=?\s*"?Admins/i.test(pol)) continue;
-          const polNameMatch = pol.match(/CREATE\s+POLICY\s+"([^"]+)"/i);
-          const polName = polNameMatch?.[1] || "";
-          if (/^Admins?\b/i.test(polName)) continue;
-          // Doit contenir un check admin
-          if (
-            !/is_admin_or_sous_admin/i.test(pol) &&
-            !/has_role\s*\(/i.test(pol)
-          ) {
-            offenders.push(`${name} :: "${polName}"`);
-          }
-        }
-      }
-      expect(offenders, `Policies non-admin SELECT sur produits trouvées :\n${offenders.join("\n")}`).toEqual([]);
+  // État "vivant" : on rejoue CREATE/DROP dans l'ordre chronologique.
+  const livePolicies = liveCreatePolicies(migrations);
+
+  describe("T1/T2 — Aucune policy SELECT vendeur VIVANTE sur produits/ventes", () => {
+    it("aucune policy SELECT survivante sur public.produits sans clause admin", () => {
+      const offenders = livePolicies.filter((p) => {
+        if (p.table !== "produits") return false;
+        const isSelect = /FOR\s+(SELECT|ALL)\b/i.test(p.sql) || !/FOR\s+\w+/i.test(p.sql);
+        if (!isSelect) return false;
+        if (/^Admins?\b/i.test(p.policy)) return false;
+        return !/is_admin_or_sous_admin/i.test(p.sql) && !/has_role\s*\(/i.test(p.sql);
+      });
+      expect(
+        offenders.map((o) => `${o.migration} :: "${o.policy}"`),
+        `Policies vivantes non-admin SELECT sur produits`,
+      ).toEqual([]);
     });
 
-    it("aucune CREATE POLICY pour SELECT sur public.ventes sans clause admin", () => {
-      const offenders: string[] = [];
-      for (const { name, sql } of migrations) {
-        for (const pol of extractPolicies(sql)) {
-          const onVentes = /ON\s+(public\.)?ventes\b/i.test(pol);
-          const isSelect = /FOR\s+(SELECT|ALL)\b/i.test(pol) || !/FOR\s+\w+/i.test(pol);
-          if (!onVentes || !isSelect) continue;
-          const polNameMatch = pol.match(/CREATE\s+POLICY\s+"([^"]+)"/i);
-          const polName = polNameMatch?.[1] || "";
-          if (/^Admins?\b/i.test(polName)) continue;
-          if (
-            !/is_admin_or_sous_admin/i.test(pol) &&
-            !/has_role\s*\(/i.test(pol)
-          ) {
-            offenders.push(`${name} :: "${polName}"`);
-          }
-        }
-      }
-      expect(offenders, `Policies non-admin SELECT sur ventes trouvées :\n${offenders.join("\n")}`).toEqual([]);
+    it("aucune policy SELECT survivante sur public.ventes sans clause admin", () => {
+      const offenders = livePolicies.filter((p) => {
+        if (p.table !== "ventes") return false;
+        const isSelect = /FOR\s+(SELECT|ALL)\b/i.test(p.sql) || !/FOR\s+\w+/i.test(p.sql);
+        if (!isSelect) return false;
+        if (/^Admins?\b/i.test(p.policy)) return false;
+        return !/is_admin_or_sous_admin/i.test(p.sql) && !/has_role\s*\(/i.test(p.sql);
+      });
+      expect(
+        offenders.map((o) => `${o.migration} :: "${o.policy}"`),
+        `Policies vivantes non-admin SELECT sur ventes`,
+      ).toEqual([]);
     });
   });
 
