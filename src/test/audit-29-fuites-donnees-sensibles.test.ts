@@ -87,6 +87,37 @@ function extractPolicies(sql: string): string[] {
   return clean.match(re) || [];
 }
 
+/** Liste les `DROP POLICY [IF EXISTS] "name" ON [public.]table` */
+function extractDrops(sql: string): { policy: string; table: string }[] {
+  const clean = stripSqlComments(sql);
+  const re =
+    /DROP\s+POLICY\s+(?:IF\s+EXISTS\s+)?"([^"]+)"\s+ON\s+(?:public\.)?(\w+)/gi;
+  const out: { policy: string; table: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(clean))) out.push({ policy: m[1], table: m[2] });
+  return out;
+}
+
+/** Reconstitue l'état "vivant" des policies en rejouant CREATE/DROP dans l'ordre. */
+function liveCreatePolicies(
+  migrations: { name: string; sql: string }[],
+): { migration: string; sql: string; policy: string; table: string }[] {
+  type Entry = { migration: string; sql: string; policy: string; table: string };
+  const live = new Map<string, Entry>(); // key = `${table}::${policy}`
+  for (const { name, sql } of migrations) {
+    for (const pol of extractPolicies(sql)) {
+      const nameMatch = pol.match(/CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+(?:public\.)?(\w+)/i);
+      if (!nameMatch) continue;
+      const [, policy, table] = nameMatch;
+      live.set(`${table}::${policy}`, { migration: name, sql: pol, policy, table });
+    }
+    for (const { policy, table } of extractDrops(sql)) {
+      live.delete(`${table}::${policy}`);
+    }
+  }
+  return [...live.values()];
+}
+
 /** Liste les blocs `CREATE [OR REPLACE] VIEW name AS ...` */
 function extractViews(sql: string): { name: string; body: string }[] {
   const clean = stripSqlComments(sql);
