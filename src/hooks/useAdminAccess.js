@@ -1,35 +1,76 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { getAdminSession, getSousAdminSession } from '@/components/useSessionGuard';
 
 /**
  * Hook that gates admin data access.
  * Returns { isReady, isAdmin, isSousAdmin, isAdminOrSousAdmin }
- * 
- * `isReady` is true only when:
- *  1. Supabase auth is fully initialized (isAuthReady)
- *  2. A valid localStorage admin/sous_admin session exists
- * 
- * Use `isReady` as the `enabled` flag for admin queries.
+ *
+ * SECURITY: The role is verified SERVER-SIDE via the `has_role` SECURITY DEFINER
+ * RPC against the `user_roles` table. localStorage is no longer trusted as the
+ * source of truth — a tampered `admin_session` entry has no effect because the
+ * RPC re-checks the JWT's `auth.uid()` against the role table.
  */
 export default function useAdminAccess() {
-  const { isAuthReady, isAuthenticated } = useAuth();
+  const { isAuthReady, isAuthenticated, user } = useAuth();
+  const [state, setState] = useState({
+    isReady: false,
+    isAdmin: false,
+    isSousAdmin: false,
+    isAdminOrSousAdmin: false,
+    isVerifying: true,
+  });
 
-  return useMemo(() => {
-    if (!isAuthReady || !isAuthenticated) {
-      return { isReady: false, isAdmin: false, isSousAdmin: false, isAdminOrSousAdmin: false };
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAuthReady) {
+      setState((s) => ({ ...s, isVerifying: true }));
+      return;
     }
-    const admin = getAdminSession();
-    const sousAdmin = getSousAdminSession();
-    const isAdmin = !!admin && admin.role === 'admin';
-    const isSousAdmin = !!sousAdmin;
-    const isAdminOrSousAdmin = isAdmin || isSousAdmin;
+    if (!isAuthenticated || !user?.id) {
+      setState({ isReady: false, isAdmin: false, isSousAdmin: false, isAdminOrSousAdmin: false, isVerifying: false });
+      return;
+    }
 
-    return {
-      isReady: isAdminOrSousAdmin,
-      isAdmin,
-      isSousAdmin,
-      isAdminOrSousAdmin,
+    (async () => {
+      try {
+        const [adminRes, sousRes] = await Promise.all([
+          supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
+          supabase.rpc('has_role', { _user_id: user.id, _role: 'sous_admin' }),
+        ]);
+        if (cancelled) return;
+        const isAdmin = adminRes.data === true;
+        const isSousAdmin = sousRes.data === true;
+        const isAdminOrSousAdmin = isAdmin || isSousAdmin;
+
+        // Self-heal localStorage if it disagrees with the server.
+        if (!isAdmin && getAdminSession()) {
+          localStorage.removeItem('admin_session');
+        }
+        if (!isSousAdmin && getSousAdminSession()) {
+          localStorage.removeItem('sous_admin');
+        }
+
+
+
+        setState({
+          isReady: isAdminOrSousAdmin,
+          isAdmin,
+          isSousAdmin,
+          isAdminOrSousAdmin,
+          isVerifying: false,
+        });
+      } catch (_) {
+        if (cancelled) return;
+        setState({ isReady: false, isAdmin: false, isSousAdmin: false, isAdminOrSousAdmin: false, isVerifying: false });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-  }, [isAuthReady, isAuthenticated]);
+  }, [isAuthReady, isAuthenticated, user?.id]);
+
+  return state;
 }
