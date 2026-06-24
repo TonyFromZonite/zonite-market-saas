@@ -27,25 +27,26 @@ Deno.serve(async (req) => {
       return json({ error: "seller_id ou email requis" }, 400);
     }
 
-    // Detect admin from caller JWT (bypass throttle)
-    let isAdmin = false;
+    // Require authentication. Anonymous callers are rejected to prevent OTP-email abuse.
     const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace(/^Bearer\s+/i, "");
-    if (token) {
-      const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      });
-      const { data: userData } = await userClient.auth.getUser();
-      const uid = userData?.user?.id;
-      if (uid) {
-        const { data: rr } = await admin
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", uid)
-          .in("role", ["admin", "sous_admin"]);
-        isAdmin = !!(rr && rr.length > 0);
-      }
-    }
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) return json({ error: "Authentification requise" }, 401);
+
+    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: userData, error: authErr } = await userClient.auth.getUser();
+    const callerId = userData?.user?.id;
+    const callerEmail = (userData?.user?.email || "").toLowerCase().trim();
+    if (authErr || !callerId) return json({ error: "Token invalide" }, 401);
+
+    let isAdmin = false;
+    const { data: rr } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callerId)
+      .in("role", ["admin", "sous_admin"]);
+    isAdmin = !!(rr && rr.length > 0);
 
     // Load seller
     const query = admin.from("sellers").select(
