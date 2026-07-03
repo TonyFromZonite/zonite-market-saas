@@ -184,14 +184,18 @@ export default function SupportAdmin() {
         });
       }
 
-      // Create admin notification for audit
-      await supabase.rpc("create_admin_notification", {
-        p_type: "info",
-        p_titre: "Ticket répondu",
-        p_message: `Réponse envoyée au ticket "${ticketSelectionne.sujet}" de ${ticketSelectionne.vendeur_email}`,
-        p_reference_id: ticketSelectionne.id,
-        p_vendeur_email: ticketSelectionne.vendeur_email,
-      });
+      // Create admin notification for audit (non-blocking)
+      try {
+        await supabase.rpc("create_admin_notification", {
+          p_type: "info",
+          p_titre: "Ticket répondu",
+          p_message: `Réponse envoyée au ticket "${ticketSelectionne.sujet}" de ${ticketSelectionne.vendeur_email}`,
+          p_reference_id: ticketSelectionne.id,
+          p_vendeur_email: ticketSelectionne.vendeur_email,
+        });
+      } catch (notifErr) {
+        console.warn("Notification admin non envoyée (non bloquant):", notifErr);
+      }
 
       queryClient.invalidateQueries({ queryKey: ["tickets_support"] });
       setTicketSelectionne(prev => ({ ...prev, reponse_admin: reponse, statut: nouveauStatut || "en_cours" }));

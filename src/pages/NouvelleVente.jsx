@@ -98,14 +98,18 @@ export default function NouvelleVente() {
         });
       }
 
-      // 4. Admin notification
-      await supabase.rpc("create_admin_notification", {
-        p_type: "vente",
-        p_titre: "🛒 Nouvelle vente admin",
-        p_message: `Vente de ${donnees.quantite}x ${produit.nom} par ${vendeur.full_name}`,
-        p_reference_id: newOrder?.id || null,
-        p_vendeur_email: vendeur.email,
-      });
+      // 4. Admin notification (non-blocking)
+      try {
+        await supabase.rpc("create_admin_notification", {
+          p_type: "vente",
+          p_titre: "🛒 Nouvelle vente admin",
+          p_message: `Vente de ${donnees.quantite}x ${produit.nom} par ${vendeur.full_name}`,
+          p_reference_id: newOrder?.id || null,
+          p_vendeur_email: vendeur.email,
+        });
+      } catch (notifErr) {
+        console.warn("Notification admin non envoyée (non bloquant):", notifErr);
+      }
 
       // 5. Audit
       await supabase.from("journal_audit").insert({

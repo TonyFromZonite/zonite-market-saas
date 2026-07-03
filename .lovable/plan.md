@@ -1,81 +1,46 @@
-## Diagnostic
+## Problème
 
-Preuves DB :
-- `notifications_admin` : dernière ligne = **2026‑06‑24 20:47** (0 nouvelle en 9 jours).
-- `notifications_vendeur` : dernière ligne = **2026‑07‑03**, 152 non‑lues → le flux vendeur fonctionne.
+Depuis la migration des notifications admin vers `create_admin_notification()`, quand un vendeur soumet un ticket dans `AideVendeur.jsx` :
 
-Cause : la migration `20260624212709` a supprimé la policy `Authenticated insert admin notifs` sur `notifications_admin` (durcissement sécurité anti‑spam de la boîte admin, gardé par l’event trigger `guard_no_audit_notif_insert_leak`, cf. audit‑31). Depuis, tous les `supabase.from("notifications_admin").insert(...)` déclenchés côté vendeur sont **rejetés silencieusement par RLS**, donc l’admin ne reçoit plus rien.
+1. L'INSERT dans `tickets_support` réussit ✅
+2. L'appel `supabase.rpc("create_admin_notification", …)` peut échouer (rate-limit 20/5min, session expirée, validation email, etc.)
+3. L'erreur est levée dans le même `try/catch` que la création du ticket → le formulaire **ne se ferme pas**, aucun succès n'est affiché, et le vendeur pense que "le ticket ne part pas" alors qu'il est bien enregistré.
 
-Fichiers concernés (insertions client aujourd’hui bloquées) :
-- `src/pages/NouvelleVente.jsx`
-- `src/pages/NouvelleCommandeVendeur.jsx`
-- `src/pages/DemandePaiement.jsx`
-- `src/pages/AideVendeur.jsx`
-- `src/pages/ResoumissionKYC.jsx`
-- `src/pages/SupportAdmin.jsx` (admin qui répond à un ticket — écrit dans `notifications_admin` type `support` : admin sessions étant custom localStorage, `auth.uid()` peut ne pas être admin ; à passer par la RPC aussi).
-
-Côté vendeur, le flux est OK (policy `Authenticated insert vendor notifs` toujours en place, temps réel activé, invalidation `["notifications_vendeur"]` propage bien vers la cloche). Aucune modification côté vendeur n’est nécessaire — si un cas précis subsiste, on l’adressera après vérif logs.
+Le même schéma bloquant existe dans les autres pages migrées (`NouvelleVente`, `NouvelleCommandeVendeur`, `DemandePaiement`, `ResoumissionKYC`, `SupportAdmin`) : si la notif admin échoue, l'action principale (vente, commande, paiement, resoumission KYC, réponse support) est perçue comme échouée alors qu'elle a réussi côté DB.
 
 ## Correctif
 
-1) **Nouvelle migration** créant une fonction SECURITY DEFINER whitelistée par la sentinelle (elle contourne RLS sans nécessiter de policy permissive) :
+Rendre l'appel `create_admin_notification` **non bloquant** : la notification admin est un effet de bord, elle ne doit jamais faire échouer l'action métier du vendeur.
 
-```sql
-CREATE OR REPLACE FUNCTION public.create_admin_notification(
-  p_type text,
-  p_titre text,
-  p_message text,
-  p_reference_id uuid DEFAULT NULL,
-  p_vendeur_email text DEFAULT NULL
-) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE v_id uuid; v_uid uuid := auth.uid();
-BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'auth required' USING ERRCODE = '42501';
-  END IF;
-  IF p_type NOT IN ('kyc','support','commande','paiement','vendeur','info') THEN
-    RAISE EXCEPTION 'invalid type' USING ERRCODE = '22023';
-  END IF;
-  -- Petit garde-fou anti-spam : max 20 inserts / 5 min / utilisateur
-  IF (SELECT count(*) FROM public.notifications_admin
-       WHERE created_at > now() - interval '5 minutes'
-         AND vendeur_email = COALESCE(p_vendeur_email, (SELECT email FROM public.sellers WHERE user_id = v_uid LIMIT 1))
-     ) > 20 THEN
-    RAISE EXCEPTION 'rate limit' USING ERRCODE = '54000';
-  END IF;
-  INSERT INTO public.notifications_admin (type, titre, message, reference_id, vendeur_email, lu)
-  VALUES (p_type, p_titre, p_message, p_reference_id, p_vendeur_email, false)
-  RETURNING id INTO v_id;
-  RETURN v_id;
-END $$;
+### Changements
 
-REVOKE ALL ON FUNCTION public.create_admin_notification(text,text,text,uuid,text) FROM public;
-GRANT EXECUTE ON FUNCTION public.create_admin_notification(text,text,text,uuid,text) TO authenticated;
-```
-
-Aucune nouvelle policy sur `notifications_admin` → la sentinelle audit‑31 reste satisfaite.
-
-2) **Remplacement des inserts client** dans les 6 fichiers listés :
+Dans les 6 fichiers migrés au tour précédent, isoler le RPC dans son propre `try/catch` qui logue l'erreur mais ne la propage pas :
 
 ```js
-// avant
-await supabase.from("notifications_admin").insert({ type, titre, message, reference_id, vendeur_email });
-// après
-await supabase.rpc("create_admin_notification", {
-  p_type: type, p_titre: titre, p_message: message,
-  p_reference_id: reference_id ?? null, p_vendeur_email: vendeur_email ?? null,
-});
+try {
+  await supabase.rpc("create_admin_notification", { … });
+} catch (notifErr) {
+  console.warn("Notification admin non envoyée (non bloquant):", notifErr);
+}
 ```
 
-3) **Vérification** :
-- exécuter la migration → `SELECT count(*) FROM notifications_admin WHERE created_at > now() - interval '1 minute'` après un test d’AideVendeur / DemandePaiement en preview.
-- Ouvrir la cloche admin : l’invalidation `["notifications_admin"]` via Realtime + polling 15 s la rafraîchira automatiquement.
-- `bun run vitest run src/test/audit-31-policies-insert-audit-notif.test.ts` doit toujours passer (aucune policy INSERT ajoutée).
+Fichiers touchés :
+- `src/pages/AideVendeur.jsx` — soumission ticket
+- `src/pages/NouvelleVente.jsx` — création vente
+- `src/pages/NouvelleCommandeVendeur.jsx` — création commande
+- `src/pages/DemandePaiement.jsx` — demande de paiement
+- `src/pages/ResoumissionKYC.jsx` — resoumission KYC
+- `src/pages/SupportAdmin.jsx` — réponse admin (garder bloquant ici ? à confirmer, mais côté admin le RPC ne devrait pas rate-limit)
 
-## Hors périmètre
+### Détails techniques
 
-- Pas de refactor de `NotificationCenter` / `NotificationManager` / `notificationSystem.js`.
-- Pas de changement RLS côté `notifications_vendeur`.
-- Si après ce fix le côté vendeur reste anormal, on ouvrira un second ticket avec logs précis (page, symptôme).
+- On garde l'appel RPC (les notifs admin restent créées quand tout va bien).
+- La bannière de succès + fermeture du formulaire + `invalidateQueries` s'exécutent maintenant systématiquement dès que l'INSERT métier a réussi.
+- Aucun changement de schéma ni de policy : les migrations SQL du tour précédent restent valides.
+- Aucun impact sur `audit-31` (pas de nouvelle policy INSERT sur `notifications_admin`).
+
+### Vérification
+
+- Relire `AideVendeur.jsx` → le `try` autour de l'insert ticket ne contient plus le RPC.
+- Vérifier build/lint OK.
+- Test manuel : simuler un rate-limit (ou couper le réseau au moment du RPC) → le ticket doit apparaître dans "Mes Tickets" et le formulaire doit se fermer avec le message de succès.
