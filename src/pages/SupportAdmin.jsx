@@ -185,12 +185,12 @@ export default function SupportAdmin() {
       }
 
       // Create admin notification for audit
-      await supabase.from("notifications_admin").insert({
-        titre: "Ticket répondu",
-        message: `Réponse envoyée au ticket "${ticketSelectionne.sujet}" de ${ticketSelectionne.vendeur_email}`,
-        type: "info",
-        vendeur_email: ticketSelectionne.vendeur_email,
-        reference_id: ticketSelectionne.id,
+      await supabase.rpc("create_admin_notification", {
+        p_type: "info",
+        p_titre: "Ticket répondu",
+        p_message: `Réponse envoyée au ticket "${ticketSelectionne.sujet}" de ${ticketSelectionne.vendeur_email}`,
+        p_reference_id: ticketSelectionne.id,
+        p_vendeur_email: ticketSelectionne.vendeur_email,
       });
 
       queryClient.invalidateQueries({ queryKey: ["tickets_support"] });
