@@ -160,12 +160,12 @@ export default function DemandePaiement() {
 
       // Notify admin (non-blocking)
       try {
-        await supabase.from("notifications_admin").insert({
-          titre: "💰 Nouvelle demande de paiement",
-          message: `${compteVendeur.full_name} demande un retrait de ${formater(montant)} via ${form.operateur}. Numéro : ${form.numero_mobile_money}. Nom titulaire : ${form.nom_titulaire}`,
-          type: "paiement",
-          vendeur_email: compteVendeur.email,
-          reference_id: demande?.id || null,
+        await supabase.rpc("create_admin_notification", {
+          p_type: "paiement",
+          p_titre: "💰 Nouvelle demande de paiement",
+          p_message: `${compteVendeur.full_name} demande un retrait de ${formater(montant)} via ${form.operateur}. Numéro : ${form.numero_mobile_money}. Nom titulaire : ${form.nom_titulaire}`,
+          p_reference_id: demande?.id || null,
+          p_vendeur_email: compteVendeur.email,
         });
       } catch (_) {}
 
