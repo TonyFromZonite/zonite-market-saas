@@ -150,12 +150,12 @@ export default function ResoumissionKYC() {
         kyc_submitted_at: new Date().toISOString(),
       }).eq('id', vendeur.id);
       if (error) throw error;
-      await supabase.from('notifications_admin').insert({
-        titre: isResubmission ? '🪪 KYC Resoumis' : '🪪 Nouveau KYC',
-        message: `${vendeur.full_name} (${vendeur.email}) a ${isResubmission ? 'resoumis' : 'soumis'} son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
-        type: 'kyc',
-        vendeur_email: vendeur.email,
-        reference_id: vendeur.id,
+      await supabase.rpc('create_admin_notification', {
+        p_type: 'kyc',
+        p_titre: isResubmission ? '🪪 KYC Resoumis' : '🪪 Nouveau KYC',
+        p_message: `${vendeur.full_name} (${vendeur.email}) a ${isResubmission ? 'resoumis' : 'soumis'} son KYC avec ${typeDocument === 'cni' ? 'CNI' : 'Passeport'}. ${getRequiredDocs().length} documents fournis.`,
+        p_reference_id: vendeur.id,
+        p_vendeur_email: vendeur.email,
       });
       // Note: pas de notif auto pour le vendeur — il a déjà le toast + l'écran de succès + la bannière "en attente".
       // La notif persistante arrive uniquement quand l'admin valide/rejette (voir GestionKYC.jsx).

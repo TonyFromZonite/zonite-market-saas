@@ -99,12 +99,12 @@ export default function NouvelleVente() {
       }
 
       // 4. Admin notification
-      await supabase.from("notifications_admin").insert({
-        titre: "🛒 Nouvelle vente admin",
-        message: `Vente de ${donnees.quantite}x ${produit.nom} par ${vendeur.full_name}`,
-        type: "vente",
-        vendeur_email: vendeur.email,
-        reference_id: newOrder?.id || null,
+      await supabase.rpc("create_admin_notification", {
+        p_type: "vente",
+        p_titre: "🛒 Nouvelle vente admin",
+        p_message: `Vente de ${donnees.quantite}x ${produit.nom} par ${vendeur.full_name}`,
+        p_reference_id: newOrder?.id || null,
+        p_vendeur_email: vendeur.email,
       });
 
       // 5. Audit

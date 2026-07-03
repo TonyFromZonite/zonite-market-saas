@@ -99,11 +99,12 @@ export default function AideVendeur() {
       if (error) throw error;
 
       // Notify admin
-      await supabase.from("notifications_admin").insert({
-        titre: "Nouveau ticket support",
-        message: `${compteVendeur.full_name} a ouvert un ticket : ${form.sujet}`,
-        type: "support",
-        vendeur_email: compteVendeur.email,
+      await supabase.rpc("create_admin_notification", {
+        p_type: "support",
+        p_titre: "Nouveau ticket support",
+        p_message: `${compteVendeur.full_name} a ouvert un ticket : ${form.sujet}`,
+        p_reference_id: null,
+        p_vendeur_email: compteVendeur.email,
       });
 
       queryClient.invalidateQueries({ queryKey: ["tickets_vendeur"] });
