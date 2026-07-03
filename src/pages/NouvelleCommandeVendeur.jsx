@@ -453,12 +453,12 @@ export default function NouvelleCommandeVendeur() {
       if (orderError) throw orderError;
 
       const resume = lignes.map((l) => `${l.variation || "standard"}×${l.quantite}`).join(", ");
-      await supabase.from("notifications_admin").insert({
-        titre: lignes.length > 1 ? "🛒 Nouvelles commandes" : "🛒 Nouvelle commande",
-        message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${resume}) pour ${form.client_nom} à ${villeText.trim()}`,
-        type: "commande",
-        vendeur_email: compteVendeur.email,
-        reference_id: newOrders?.[0]?.id || null,
+      await supabase.rpc("create_admin_notification", {
+        p_type: "commande",
+        p_titre: lignes.length > 1 ? "🛒 Nouvelles commandes" : "🛒 Nouvelle commande",
+        p_message: `${compteVendeur.full_name} a commandé ${qte}x ${produitSelectionne.nom} (${resume}) pour ${form.client_nom} à ${villeText.trim()}`,
+        p_reference_id: newOrders?.[0]?.id || null,
+        p_vendeur_email: compteVendeur.email,
       });
 
       queryClient.invalidateQueries({ queryKey: ["commandes_vendeur"] });
