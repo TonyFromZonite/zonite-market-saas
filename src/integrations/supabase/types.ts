@@ -1838,6 +1838,16 @@ export type Database = {
         Args: { _amount: number; _seller_id: string }
         Returns: undefined
       }
+      create_admin_notification: {
+        Args: {
+          p_message: string
+          p_reference_id?: string
+          p_titre: string
+          p_type: string
+          p_vendeur_email?: string
+        }
+        Returns: string
+      }
       credit_seller_commission: {
         Args: { _commission: number; _seller_id: string }
         Returns: number
